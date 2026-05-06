@@ -6,6 +6,9 @@ function footer() {
 
 const handler = async ({ sock, m, from }) => {
 
+  // 🚫 evitar mensajes del propio bot
+  if (m.key.fromMe) return
+
   // 🚫 solo grupos
   if (!from.endsWith('@g.us')) {
     return sock.sendMessage(from, {
@@ -13,13 +16,13 @@ const handler = async ({ sock, m, from }) => {
     }, { quoted: m })
   }
 
-  // 📊 metadata grupo
+  // 📊 metadata
   let metadata
   try {
     metadata = await sock.groupMetadata(from)
   } catch {
     return sock.sendMessage(from, {
-      text: '❌ No se pudo obtener el grupo'
+      text: '❌ Error grupo'
     }, { quoted: m })
   }
 
@@ -48,8 +51,16 @@ const handler = async ({ sock, m, from }) => {
     ? text.slice(2).trim()
     : text.trim()
 
-  const ctx = m.message?.extendedTextMessage?.contextInfo
-  const quoted = ctx?.quotedMessage
+  // ───────── 🔥 ANTI LOOP REAL ─────────
+  const quotedMsg =
+    m.message?.extendedTextMessage?.contextInfo?.quotedMessage
+
+  const quotedText =
+    quotedMsg?.conversation ||
+    quotedMsg?.extendedTextMessage?.text ||
+    ''
+
+  if (quotedText.includes('.n')) return
 
   // 🔥 reacción
   await sock.sendMessage(from, {
@@ -57,7 +68,7 @@ const handler = async ({ sock, m, from }) => {
   })
 
   // ───────── SOLO TEXTO ─────────
-  if (!quoted && clean) {
+  if (!quotedMsg && clean) {
     return sock.sendMessage(from, {
       text: clean + footer(),
       mentions
@@ -65,16 +76,16 @@ const handler = async ({ sock, m, from }) => {
   }
 
   // ───────── CITADO ─────────
-  if (quoted) {
+  if (quotedMsg) {
 
-    const type = Object.keys(quoted)[0]
+    const type = Object.keys(quotedMsg)[0]
 
-    // 📄 TEXTO
+    // 📄 texto citado
     if (type === 'conversation' || type === 'extendedTextMessage') {
 
       const t =
-        quoted.conversation ||
-        quoted.extendedTextMessage?.text ||
+        quotedMsg.conversation ||
+        quotedMsg.extendedTextMessage?.text ||
         ''
 
       return sock.sendMessage(from, {
@@ -86,7 +97,7 @@ const handler = async ({ sock, m, from }) => {
     const mediaType = type.replace('Message', '')
 
     try {
-      const stream = await downloadContentFromMessage(quoted[type], mediaType)
+      const stream = await downloadContentFromMessage(quotedMsg[type], mediaType)
       let buffer = Buffer.from([])
 
       for await (const chunk of stream) {
@@ -95,7 +106,7 @@ const handler = async ({ sock, m, from }) => {
 
       const caption = clean ? `${clean}${footer()}` : footer()
 
-      // 🖼 IMAGEN (FIX REAL)
+      // 🖼 imagen
       if (mediaType === 'image') {
         return sock.sendMessage(from, {
           image: buffer,
@@ -104,7 +115,7 @@ const handler = async ({ sock, m, from }) => {
         }, { quoted: m })
       }
 
-      // 🎥 VIDEO
+      // 🎥 video
       if (mediaType === 'video') {
         return sock.sendMessage(from, {
           video: buffer,
@@ -113,7 +124,7 @@ const handler = async ({ sock, m, from }) => {
         }, { quoted: m })
       }
 
-      // 🎧 AUDIO
+      // 🎧 audio
       if (mediaType === 'audio') {
         return sock.sendMessage(from, {
           audio: buffer,
@@ -123,7 +134,7 @@ const handler = async ({ sock, m, from }) => {
         }, { quoted: m })
       }
 
-      // 🧩 STICKER
+      // 🧩 sticker
       if (mediaType === 'sticker') {
         return sock.sendMessage(from, {
           sticker: buffer
