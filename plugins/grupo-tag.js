@@ -6,20 +6,20 @@ function footer() {
 
 const handler = async ({ sock, m, from }) => {
 
-  // 📌 solo grupos
+  // 🚫 solo grupos
   if (!from.endsWith('@g.us')) {
     return sock.sendMessage(from, {
       text: '⚠️ Solo funciona en grupos'
     }, { quoted: m })
   }
 
-  // 📊 obtener metadata del grupo
+  // 📊 metadata del grupo
   let metadata
   try {
     metadata = await sock.groupMetadata(from)
   } catch {
     return sock.sendMessage(from, {
-      text: '❌ Error obteniendo datos del grupo'
+      text: '❌ No se pudo obtener info del grupo'
     }, { quoted: m })
   }
 
@@ -37,7 +37,6 @@ const handler = async ({ sock, m, from }) => {
     }, { quoted: m })
   }
 
-  // 👥 menciones
   const mentions = participants.map(p => p.id)
 
   const text =
@@ -56,7 +55,7 @@ const handler = async ({ sock, m, from }) => {
     react: { text: '📣', key: m.key }
   })
 
-  // ───────── TEXTO ─────────
+  // ───────── SOLO TEXTO ─────────
   if (!quoted && clean) {
     return sock.sendMessage(from, {
       text: clean + footer(),
@@ -68,8 +67,8 @@ const handler = async ({ sock, m, from }) => {
   if (quoted) {
 
     const type = Object.keys(quoted)[0]
-    let msg = {}
 
+    // 📄 texto citado
     if (type === 'conversation' || type === 'extendedTextMessage') {
 
       const t =
@@ -93,34 +92,49 @@ const handler = async ({ sock, m, from }) => {
         buffer = Buffer.concat([buffer, chunk])
       }
 
+      let msg = {}
+
+      // 🖼 IMAGEN
       if (mediaType === 'image') {
-        msg.image = buffer
-        msg.caption = clean + footer()
+        msg = {
+          image: buffer,
+          caption: clean + footer(),
+          mentions
+        }
       }
 
+      // 🎥 VIDEO
       if (mediaType === 'video') {
-        msg.video = buffer
-        msg.caption = clean + footer()
+        msg = {
+          video: buffer,
+          caption: clean + footer(),
+          mentions
+        }
       }
 
+      // 🎧 AUDIO
       if (mediaType === 'audio') {
-        msg.audio = buffer
-        msg.ptt = true
-        msg.mimetype = 'audio/mp4'
+        msg = {
+          audio: buffer,
+          ptt: true,
+          mimetype: 'audio/mp4',
+          mentions
+        }
       }
 
+      // 🧩 STICKER
       if (mediaType === 'sticker') {
-        msg.sticker = buffer
+        msg = {
+          sticker: buffer
+        }
       }
-
-      msg.mentions = mentions
 
       return sock.sendMessage(from, msg, { quoted: m })
 
     } catch (e) {
       console.log(e)
       return sock.sendMessage(from, {
-        text: '❌ Error procesando contenido'
+        text: '❌ Error procesando archivo'
       }, { quoted: m })
     }
   }
