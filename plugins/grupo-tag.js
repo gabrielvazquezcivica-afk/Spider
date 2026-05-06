@@ -13,20 +13,20 @@ const handler = async ({ sock, m, from }) => {
     }, { quoted: m })
   }
 
-  // 📊 metadata del grupo
+  // 📊 metadata grupo
   let metadata
   try {
     metadata = await sock.groupMetadata(from)
   } catch {
     return sock.sendMessage(from, {
-      text: '❌ No se pudo obtener info del grupo'
+      text: '❌ No se pudo obtener el grupo'
     }, { quoted: m })
   }
 
   const participants = metadata.participants
   const sender = m.key.participant || m.key.remoteJid
 
-  // 👑 validar admin real
+  // 👑 admin real
   const isAdmin = participants.some(p =>
     p.id === sender && (p.admin === 'admin' || p.admin === 'superadmin')
   )
@@ -51,6 +51,7 @@ const handler = async ({ sock, m, from }) => {
   const ctx = m.message?.extendedTextMessage?.contextInfo
   const quoted = ctx?.quotedMessage
 
+  // 🔥 reacción
   await sock.sendMessage(from, {
     react: { text: '📣', key: m.key }
   })
@@ -68,7 +69,7 @@ const handler = async ({ sock, m, from }) => {
 
     const type = Object.keys(quoted)[0]
 
-    // 📄 texto citado
+    // 📄 TEXTO
     if (type === 'conversation' || type === 'extendedTextMessage') {
 
       const t =
@@ -92,44 +93,42 @@ const handler = async ({ sock, m, from }) => {
         buffer = Buffer.concat([buffer, chunk])
       }
 
-      let msg = {}
+      const caption = clean ? `${clean}${footer()}` : footer()
 
-      // 🖼 IMAGEN
+      // 🖼 IMAGEN (FIX REAL)
       if (mediaType === 'image') {
-        msg = {
+        return sock.sendMessage(from, {
           image: buffer,
-          caption: clean + footer(),
+          caption,
           mentions
-        }
+        }, { quoted: m })
       }
 
       // 🎥 VIDEO
       if (mediaType === 'video') {
-        msg = {
+        return sock.sendMessage(from, {
           video: buffer,
-          caption: clean + footer(),
+          caption,
           mentions
-        }
+        }, { quoted: m })
       }
 
       // 🎧 AUDIO
       if (mediaType === 'audio') {
-        msg = {
+        return sock.sendMessage(from, {
           audio: buffer,
           ptt: true,
           mimetype: 'audio/mp4',
           mentions
-        }
+        }, { quoted: m })
       }
 
       // 🧩 STICKER
       if (mediaType === 'sticker') {
-        msg = {
+        return sock.sendMessage(from, {
           sticker: buffer
-        }
+        }, { quoted: m })
       }
-
-      return sock.sendMessage(from, msg, { quoted: m })
 
     } catch (e) {
       console.log(e)
