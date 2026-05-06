@@ -13,12 +13,12 @@ const handler = async (m, { sock, from, pushName, plugins }) => {
   const dev = 'Gabriel'
   const saludo = getGreeting()
 
-  // 🎯 emojis por categoría
+  // 🎯 emojis por categoría (CORREGIDO)
   const tagEmoji = {
-    informacion: '🧠',
-    grupo: '👥',
-    juegos: '🎮',
-    descargas: '📥',
+    info: '🧠',
+    group: '👥',
+    fun: '🎮',
+    download: '📥',
     tools: '⚙️',
     owner: '👑',
     search: '🔎',
@@ -28,12 +28,12 @@ const handler = async (m, { sock, from, pushName, plugins }) => {
     others: '📦'
   }
 
-  // 🎯 emojis por comando
+  // 🎯 emojis por comando (CORREGIDO)
   const cmdEmojiByTag = {
-    informacion: '⚠️',
-    grupo: '🌟',
-    juegos: '🎯',
-    descargas: '⬇️',
+    info: '⚠️',
+    group: '🌟',
+    fun: '🎯',
+    download: '⬇️',
     tools: '🔧',
     owner: '🔥',
     search: '🔍',
@@ -93,13 +93,12 @@ const handler = async (m, { sock, from, pushName, plugins }) => {
     const emojiTag = tagEmoji[tag] || '📦'
     const emojiCmd = cmdEmojiByTag[tag] || '➤'
 
-    // 🔥 limpiar duplicados
     const cmds = [...new Set(categories[tag])].sort()
 
     menu += `\n╭─ ${emojiTag} ${tag.toUpperCase()}\n`
 
     for (const cmd of cmds) {
-      menu += `│ ${emojiCmd} ${cmd}\n`
+      menu += `│ ${emojiCmd} .${cmd}\n`
     }
 
     menu += `╰────────────⬣`
@@ -107,7 +106,7 @@ const handler = async (m, { sock, from, pushName, plugins }) => {
 
   menu += `\n\n╰─➤ ${botName}`
 
-  // 📤 enviar con imagen
+  // 📤 enviar
   await sock.sendMessage(from, {
     image: { url: 'https://i.postimg.cc/VsSqN5RG/19d8fec1698683dde758218220caa31e.jpg' },
     caption: menu
@@ -120,7 +119,6 @@ handler.menu = true
 
 export default handler
 
-// 🕒 saludo
 function getGreeting() {
   const hour = new Date().getHours()
   if (hour >= 5 && hour < 12) return 'Buenos días ☀️'
