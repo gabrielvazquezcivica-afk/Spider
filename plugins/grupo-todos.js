@@ -16,16 +16,18 @@ const handler = async ({ sock, m, from }) => {
   }
 
   const participants = metadata.participants || []
+
+  // 👇 ESTE ES EL FIX REAL
   const sender = m.key.participant || m.key.remoteJid
 
-  // 👑 solo admins
+  // 👑 validación correcta de admin
   const isAdmin = participants.some(p =>
     p.id === sender && (p.admin === 'admin' || p.admin === 'superadmin')
   )
 
   if (!isAdmin) {
     return sock.sendMessage(from, {
-      text: '🕷️ Solo administradores pueden activar la red'
+      text: '🕷️ Solo los administradores pueden usar este comando.'
     }, { quoted: m })
   }
 
@@ -34,12 +36,11 @@ const handler = async ({ sock, m, from }) => {
 
   const mentions = participants.map(p => p.id)
 
-  // 🧠 emoji fijo para menciones
   const mentionText = participants
     .map(p => `🕷️ @${p.id.split('@')[0]}`)
     .join('\n')
 
-  // 🕷️ reacción al comando
+  // 🕸 reacción
   await sock.sendMessage(from, {
     react: { text: '🕸️', key: m.key }
   })
