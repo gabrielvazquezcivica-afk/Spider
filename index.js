@@ -33,6 +33,8 @@ async function loadPlugins() {
         }
     }
 
+    global.plugins = plugins
+
     console.log(chalk.green(`✅ Plugins cargados: ${plugins.length}`))
 }
 
