@@ -11,14 +11,12 @@ const handler = async (ctx) => {
   const botName = 'Spider Bot'
   const msgs = global.config?.messages || {}
 
-  // 🚫 solo grupos
   if (!isGroup) {
     return sock.sendMessage(from, {
       text: msgs.group || '⚠️ Este comando solo funciona en grupos'
     }, { quoted: m })
   }
 
-  // 👑 validar admin (compatible con tu index)
   const user = participants?.find(p => p.id === sender)
   const isAdmin = user?.admin || user?.admin === 'admin' || user?.admin === 'superadmin'
 
@@ -28,10 +26,8 @@ const handler = async (ctx) => {
     }, { quoted: m })
   }
 
-  // 👥 todos los participantes
   const groupMembers = participants.map(p => p.id)
 
-  // 📌 texto limpio
   const rawText =
     m.message?.conversation ||
     m.message?.extendedTextMessage?.text ||
@@ -41,15 +37,14 @@ const handler = async (ctx) => {
     ? rawText.slice((global.prefix || '.').length).trim()
     : rawText.trim()
 
-  // 📌 mensaje citado
-  const ctx = m.message?.extendedTextMessage?.contextInfo
-  const quoted = ctx?.quotedMessage
+  // 🔥 FIX AQUÍ
+  const contextInfo = m.message?.extendedTextMessage?.contextInfo
+  const quoted = contextInfo?.quotedMessage
 
   await sock.sendMessage(from, {
     react: { text: '📣', key: m.key }
   })
 
-  // ───────── TEXT ─────────
   if (!quoted && cleanText) {
     return sock.sendMessage(from, {
       text: cleanText + footer(botName),
@@ -57,14 +52,12 @@ const handler = async (ctx) => {
     }, { quoted: m })
   }
 
-  // ───────── MEDIA ─────────
   if (quoted) {
 
     const type = Object.keys(quoted)[0]
 
     let msg = {}
 
-    // 📄 texto citado
     if (type === 'conversation' || type === 'extendedTextMessage') {
 
       const text =
@@ -78,7 +71,6 @@ const handler = async (ctx) => {
       return sock.sendMessage(from, msg, { quoted: m })
     }
 
-    // 📦 media (imagen, video, audio, sticker)
     const mediaType = type.replace('Message', '')
 
     try {
