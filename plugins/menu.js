@@ -17,10 +17,10 @@ const handler = async (ctx) => {
   const saludo = getGreeting()
 
   const tagEmoji = {
-    info: '🧠',
-    group: '👥',
-    fun: '🎮',
-    download: '📥',
+    informacion: '🧠',
+    grupo: '👥',
+    juegos: '🎮',
+    descargas: '📥',
     tools: '⚙️',
     owner: '👑',
     search: '🔎',
@@ -31,10 +31,10 @@ const handler = async (ctx) => {
   }
 
   const cmdEmojiByTag = {
-    info: '⚠️',
-    group: '🌟',
-    fun: '🎯',
-    download: '⬇️',
+    informacion: '⚠️',
+    grupo: '🌟',
+    juegos: '🎯',
+    descargas: '⬇️',
     tools: '🔧',
     owner: '🔥',
     search: '🔍',
@@ -45,10 +45,10 @@ const handler = async (ctx) => {
   }
 
   const tagOrder = [
-    'info',
-    'group',
-    'fun',
-    'download',
+    'informacion',
+    'grupo',
+    'juegos',
+    'descargas',
     'tools',
     'search',
     'rpg',
@@ -111,7 +111,7 @@ const handler = async (ctx) => {
 }
 
 handler.command = ['menu']
-handler.tags = ['info']
+handler.tags = ['informacion']
 handler.menu = true
 
 export default handler
