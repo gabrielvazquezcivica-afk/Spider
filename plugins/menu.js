@@ -1,4 +1,7 @@
-const handler = async (m, { sock, from, pushName, plugins }) => {
+const handler = async (ctx) => {
+
+  const { sock, from, pushName, m } = ctx
+  const plugins = global.plugins || []
 
   if (!Array.isArray(plugins) || plugins.length === 0) {
     return sock.sendMessage(from, { text: '❌ No hay plugins cargados.' }, { quoted: m })
@@ -13,7 +16,6 @@ const handler = async (m, { sock, from, pushName, plugins }) => {
   const dev = 'Gabriel'
   const saludo = getGreeting()
 
-  // 🎯 emojis por categoría (CORREGIDO)
   const tagEmoji = {
     info: '🧠',
     group: '👥',
@@ -28,7 +30,6 @@ const handler = async (m, { sock, from, pushName, plugins }) => {
     others: '📦'
   }
 
-  // 🎯 emojis por comando (CORREGIDO)
   const cmdEmojiByTag = {
     info: '⚠️',
     group: '🌟',
@@ -43,7 +44,6 @@ const handler = async (m, { sock, from, pushName, plugins }) => {
     others: '▫️'
   }
 
-  // 📊 orden
   const tagOrder = [
     'info',
     'group',
@@ -58,7 +58,6 @@ const handler = async (m, { sock, from, pushName, plugins }) => {
     'others'
   ]
 
-  // 📂 agrupar
   const categories = {}
   let total = 0
 
@@ -78,7 +77,6 @@ const handler = async (m, { sock, from, pushName, plugins }) => {
     total += cmds.length
   }
 
-  // 🧠 construir menú
   let menu = `╭━━━〔 🕷️ ${botName} 〕━━━⬣
 ┃ 👋 ${saludo}
 ┃ 👤 ${pushName}
@@ -106,7 +104,6 @@ const handler = async (m, { sock, from, pushName, plugins }) => {
 
   menu += `\n\n╰─➤ ${botName}`
 
-  // 📤 enviar
   await sock.sendMessage(from, {
     image: { url: 'https://i.postimg.cc/VsSqN5RG/19d8fec1698683dde758218220caa31e.jpg' },
     caption: menu
