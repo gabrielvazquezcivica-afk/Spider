@@ -1,33 +1,44 @@
 import { downloadContentFromMessage } from '@whiskeysockets/baileys'
 
-function footer(name) {
-  return `\n\n> ${name}`
+function footer() {
+  return `\n\n> SPIDER BOT`
 }
 
-const handler = async (ctx) => {
+const handler = async ({ sock, m, from }) => {
 
-  const { sock, from, m, isGroup, participants, sender } = ctx
-
-  if (!sock || !from || !m) return
-
-  const botName = 'Spider Bot'
-
-  // 🚫 solo grupos
-  if (!isGroup) {
+  // 📌 solo grupos
+  if (!from.endsWith('@g.us')) {
     return sock.sendMessage(from, {
       text: '⚠️ Solo funciona en grupos'
     }, { quoted: m })
   }
 
-  // 👑 admin check
-  const user = participants?.find(p => p.id === sender)
-  if (!user?.admin) {
+  // 📊 obtener metadata del grupo
+  let metadata
+  try {
+    metadata = await sock.groupMetadata(from)
+  } catch {
     return sock.sendMessage(from, {
-      text: '⚠️ Solo admins pueden usar este comando'
+      text: '❌ Error obteniendo datos del grupo'
     }, { quoted: m })
   }
 
-  const members = participants.map(p => p.id)
+  const participants = metadata.participants
+  const sender = m.key.participant || m.key.remoteJid
+
+  // 👑 validar admin real
+  const isAdmin = participants.some(p =>
+    p.id === sender && (p.admin === 'admin' || p.admin === 'superadmin')
+  )
+
+  if (!isAdmin) {
+    return sock.sendMessage(from, {
+      text: '⚠️ Solo administradores pueden usar este comando'
+    }, { quoted: m })
+  }
+
+  // 👥 menciones
+  const mentions = participants.map(p => p.id)
 
   const text =
     m.message?.conversation ||
@@ -38,18 +49,18 @@ const handler = async (ctx) => {
     ? text.slice(2).trim()
     : text.trim()
 
-  const ctxInfo = m.message?.extendedTextMessage?.contextInfo
-  const quoted = ctxInfo?.quotedMessage
+  const ctx = m.message?.extendedTextMessage?.contextInfo
+  const quoted = ctx?.quotedMessage
 
   await sock.sendMessage(from, {
     react: { text: '📣', key: m.key }
   })
 
-  // ───────── SOLO TEXTO ─────────
+  // ───────── TEXTO ─────────
   if (!quoted && clean) {
     return sock.sendMessage(from, {
-      text: clean + footer(botName),
-      mentions: members
+      text: clean + footer(),
+      mentions
     }, { quoted: m })
   }
 
@@ -61,11 +72,14 @@ const handler = async (ctx) => {
 
     if (type === 'conversation' || type === 'extendedTextMessage') {
 
-      const t = quoted.conversation || quoted.extendedTextMessage?.text || ''
+      const t =
+        quoted.conversation ||
+        quoted.extendedTextMessage?.text ||
+        ''
 
       return sock.sendMessage(from, {
-        text: t + footer(botName),
-        mentions: members
+        text: t + footer(),
+        mentions
       }, { quoted: m })
     }
 
@@ -81,12 +95,12 @@ const handler = async (ctx) => {
 
       if (mediaType === 'image') {
         msg.image = buffer
-        msg.caption = clean + footer(botName)
+        msg.caption = clean + footer()
       }
 
       if (mediaType === 'video') {
         msg.video = buffer
-        msg.caption = clean + footer(botName)
+        msg.caption = clean + footer()
       }
 
       if (mediaType === 'audio') {
@@ -99,20 +113,20 @@ const handler = async (ctx) => {
         msg.sticker = buffer
       }
 
-      msg.mentions = members
+      msg.mentions = mentions
 
       return sock.sendMessage(from, msg, { quoted: m })
 
     } catch (e) {
       console.log(e)
       return sock.sendMessage(from, {
-        text: '❌ Error procesando media'
+        text: '❌ Error procesando contenido'
       }, { quoted: m })
     }
   }
 
   return sock.sendMessage(from, {
-    text: '⚠️ Usa .n respondiendo o con texto'
+    text: '⚠️ Usa .n respondiendo o escribiendo texto'
   }, { quoted: m })
 }
 
@@ -120,6 +134,5 @@ handler.command = ['n']
 handler.tags = ['grupo']
 handler.menu = true
 handler.group = true
-handler.admin = true
 
 export default handler
