@@ -68,12 +68,19 @@ async function start() {
 
     const groupCache = new Map()
 
+    // 🔥 MARCA DE INICIO (anti mensajes antiguos)
+    const startTime = Date.now()
+
     // 📩 eventos
     sock.ev.on('messages.upsert', async ({ messages, type }) => {
         if (type !== 'notify') return
 
         const m = messages[0]
         if (!m.message) return
+
+        // 🔥 IGNORAR MENSAJES ANTIGUOS
+        const msgTime = (m.messageTimestamp || 0) * 1000
+        if (msgTime < startTime) return
 
         setImmediate(async () => {
             try {
@@ -91,6 +98,8 @@ async function start() {
                 if (!msg) return
 
                 const prefix = config.prefix
+
+                // 🔥 SOLO COMANDOS
                 if (!msg.startsWith(prefix)) return
 
                 const args = msg.slice(prefix.length).trim().split(/ +/)
