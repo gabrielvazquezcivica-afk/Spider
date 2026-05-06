@@ -8,67 +8,65 @@ const handler = async (ctx) => {
 
   const { sock, from, m, isGroup, participants, sender } = ctx
 
-  const botName = 'Spider Bot'
-  const msgs = global.config?.messages || {}
+  if (!sock || !from || !m) return
 
+  const botName = 'Spider Bot'
+
+  // 🚫 solo grupos
   if (!isGroup) {
     return sock.sendMessage(from, {
-      text: msgs.group || '⚠️ Este comando solo funciona en grupos'
+      text: '⚠️ Solo funciona en grupos'
     }, { quoted: m })
   }
 
+  // 👑 admin check
   const user = participants?.find(p => p.id === sender)
-  const isAdmin = user?.admin || user?.admin === 'admin' || user?.admin === 'superadmin'
-
-  if (!isAdmin) {
+  if (!user?.admin) {
     return sock.sendMessage(from, {
-      text: msgs.admin || '⚠️ Solo administradores pueden usar este comando'
+      text: '⚠️ Solo admins pueden usar este comando'
     }, { quoted: m })
   }
 
-  const groupMembers = participants.map(p => p.id)
+  const members = participants.map(p => p.id)
 
-  const rawText =
+  const text =
     m.message?.conversation ||
     m.message?.extendedTextMessage?.text ||
     ''
 
-  const cleanText = rawText.startsWith(global.prefix || '.')
-    ? rawText.slice((global.prefix || '.').length).trim()
-    : rawText.trim()
+  const clean = text.startsWith('.n')
+    ? text.slice(2).trim()
+    : text.trim()
 
-  // 🔥 FIX AQUÍ
-  const contextInfo = m.message?.extendedTextMessage?.contextInfo
-  const quoted = contextInfo?.quotedMessage
+  const ctxInfo = m.message?.extendedTextMessage?.contextInfo
+  const quoted = ctxInfo?.quotedMessage
 
   await sock.sendMessage(from, {
     react: { text: '📣', key: m.key }
   })
 
-  if (!quoted && cleanText) {
+  // ───────── SOLO TEXTO ─────────
+  if (!quoted && clean) {
     return sock.sendMessage(from, {
-      text: cleanText + footer(botName),
-      mentions: groupMembers
+      text: clean + footer(botName),
+      mentions: members
     }, { quoted: m })
   }
 
+  // ───────── CITADO ─────────
   if (quoted) {
 
     const type = Object.keys(quoted)[0]
-
     let msg = {}
 
     if (type === 'conversation' || type === 'extendedTextMessage') {
 
-      const text =
-        quoted.conversation ||
-        quoted.extendedTextMessage?.text ||
-        ''
+      const t = quoted.conversation || quoted.extendedTextMessage?.text || ''
 
-      msg.text = text + footer(botName)
-      msg.mentions = groupMembers
-
-      return sock.sendMessage(from, msg, { quoted: m })
+      return sock.sendMessage(from, {
+        text: t + footer(botName),
+        mentions: members
+      }, { quoted: m })
     }
 
     const mediaType = type.replace('Message', '')
@@ -81,47 +79,47 @@ const handler = async (ctx) => {
         buffer = Buffer.concat([buffer, chunk])
       }
 
-      if (mediaType === 'audio') {
-        msg.audio = buffer
-        msg.mimetype = 'audio/mp4'
-        msg.ptt = true
-      }
-
       if (mediaType === 'image') {
         msg.image = buffer
-        msg.caption = (quoted[type]?.caption || cleanText || '') + footer(botName)
+        msg.caption = clean + footer(botName)
       }
 
       if (mediaType === 'video') {
         msg.video = buffer
-        msg.caption = (quoted[type]?.caption || cleanText || '') + footer(botName)
+        msg.caption = clean + footer(botName)
+      }
+
+      if (mediaType === 'audio') {
+        msg.audio = buffer
+        msg.ptt = true
+        msg.mimetype = 'audio/mp4'
       }
 
       if (mediaType === 'sticker') {
         msg.sticker = buffer
       }
 
-      msg.mentions = groupMembers
+      msg.mentions = members
 
       return sock.sendMessage(from, msg, { quoted: m })
 
     } catch (e) {
+      console.log(e)
       return sock.sendMessage(from, {
-        text: '❌ Error al procesar el mensaje'
+        text: '❌ Error procesando media'
       }, { quoted: m })
     }
   }
 
   return sock.sendMessage(from, {
-    text: '⚠️ Usa .n respondiendo o escribiendo un mensaje'
+    text: '⚠️ Usa .n respondiendo o con texto'
   }, { quoted: m })
 }
 
 handler.command = ['n']
 handler.tags = ['grupo']
-handler.help = ['n <texto>']
+handler.menu = true
 handler.group = true
 handler.admin = true
-handler.menu = true
 
 export default handler
