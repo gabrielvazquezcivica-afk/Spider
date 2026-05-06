@@ -1,6 +1,6 @@
-const handler = async ({ sock, from, pushName, sender }) => {
+const handler = async ({ sock, from, sender, m }) => {
 
-    // 🕒 saludo según hora
+    // 🕒 saludo
     const hour = new Date().getHours()
     let saludo = 'Hola'
 
@@ -8,28 +8,35 @@ const handler = async ({ sock, from, pushName, sender }) => {
     else if (hour >= 12 && hour < 18) saludo = '🌞 Buenas tardes'
     else saludo = '🌙 Buenas noches'
 
-    // 🎯 emojis por TAG
-    const tagEmojis = {
-        grupo: '👥',
-        informacion: 'ℹ️',
-        juegos: '🎮',
-        'on-off': '🟢🔴',
-        owner: '👑',
-        descargas: '📥',
-        tools: '⚙️'
-    }
+    // 📊 orden de categorías
+    const tagOrder = [
+        'info',
+        'group',
+        'fun',
+        'owner',
+        'tools',
+        'download',
+        'others'
+    ]
 
-    // ⚡ emoji comandos
-    const cmdEmoji = '➤'
+    // 🧠 config de tags
+    const tagData = {
+        info: { name: 'Información', tagEmoji: 'ℹ️', cmdEmoji: '⚠️' },
+        group: { name: 'Grupo', tagEmoji: '🏖️', cmdEmoji: '🌟' },
+        fun: { name: 'Juegos', tagEmoji: '🎮', cmdEmoji: '🎯' },
+        owner: { name: 'Owner', tagEmoji: '👑', cmdEmoji: '🔥' },
+        tools: { name: 'Herramientas', tagEmoji: '🛠️', cmdEmoji: '⚙️' },
+        download: { name: 'Descargas', tagEmoji: '📥', cmdEmoji: '📎' },
+        others: { name: 'Otros', tagEmoji: '📦', cmdEmoji: '✨' }
+    }
 
     let menu = `╭━━━〔 🤖 SPIDER BOT 〕━━━⬣
 ┃ ${saludo} @${sender.split('@')[0]}
-┃ 👤 Usuario: ${pushName}
 ╰━━━━━━━━━━━━━━━⬣\n`
 
-    // 📦 agrupar plugins
     const groups = {}
 
+    // 📦 agrupar plugins
     for (const plugin of global.plugins || []) {
 
         if (!plugin.menu) continue
@@ -47,28 +54,34 @@ const handler = async ({ sock, from, pushName, sender }) => {
     }
 
     // 🧾 construir menú
-    for (const tag in groups) {
+    for (const tag of tagOrder) {
 
-        const emojiTag = tagEmojis[tag] || '📦'
+        if (!groups[tag]) continue
 
-        menu += `\n╭───〔 ${emojiTag} ${tag.toUpperCase()} 〕\n`
+        const data = tagData[tag] || tagData['others']
 
-        for (const cmd of groups[tag]) {
-            menu += `│ ${cmdEmoji} .${cmd}\n`
+        // 🔥 quitar duplicados + ordenar
+        const cmds = [...new Set(groups[tag])].sort()
+
+        menu += `\n${data.name} ${data.tagEmoji}\n`
+
+        for (const cmd of cmds) {
+            menu += `${data.cmdEmoji} .${cmd}\n`
         }
-
-        menu += `╰────────────⬣\n`
     }
 
-    menu += `\n⚡ Total comandos: ${
-        Object.values(groups).flat().length
-    }`
+    // 📊 total real
+    const total = Object.values(groups)
+        .flat()
+        .filter((v, i, a) => a.indexOf(v) === i).length
 
-    // 📤 enviar con mención
+    menu += `\n⚡ Total comandos: ${total}`
+
+    // 📤 enviar
     await sock.sendMessage(from, {
         text: menu,
         mentions: [sender]
-    })
+    }, { quoted: m })
 }
 
 handler.command = ['menu']
