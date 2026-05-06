@@ -1,91 +1,129 @@
-const handler = async ({ sock, from, sender, m }) => {
+const handler = async (m, { sock, from, pushName, plugins }) => {
 
-    // 🕒 saludo
-    const hour = new Date().getHours()
-    let saludo = 'Hola'
+  if (!Array.isArray(plugins) || plugins.length === 0) {
+    return sock.sendMessage(from, { text: '❌ No hay plugins cargados.' }, { quoted: m })
+  }
 
-    if (hour >= 5 && hour < 12) saludo = '🌅 Buenos días'
-    else if (hour >= 12 && hour < 18) saludo = '🌞 Buenas tardes'
-    else saludo = '🌙 Buenas noches'
+  // ⚡ reacción
+  await sock.sendMessage(from, {
+    react: { text: '📜', key: m.key }
+  })
 
-    // 📊 orden de categorías
-    const tagOrder = [
-        'info',
-        'group',
-        'fun',
-        'owner',
-        'tools',
-        'download',
-        'others'
-    ]
+  const botName = 'Spider Bot'
+  const dev = 'Gabriel'
+  const saludo = getGreeting()
 
-    // 🧠 config de tags
-    const tagData = {
-        info: { name: 'Información', tagEmoji: 'ℹ️', cmdEmoji: '⚠️' },
-        group: { name: 'Grupo', tagEmoji: '🏖️', cmdEmoji: '🌟' },
-        fun: { name: 'Juegos', tagEmoji: '🎮', cmdEmoji: '🎯' },
-        owner: { name: 'Owner', tagEmoji: '👑', cmdEmoji: '🔥' },
-        tools: { name: 'Herramientas', tagEmoji: '🛠️', cmdEmoji: '⚙️' },
-        download: { name: 'Descargas', tagEmoji: '📥', cmdEmoji: '📎' },
-        others: { name: 'Otros', tagEmoji: '📦', cmdEmoji: '✨' }
+  // 🎯 emojis por categoría
+  const tagEmoji = {
+    informacion: '🧠',
+    grupo: '👥',
+    juegos: '🎮',
+    descargas: '📥',
+    tools: '⚙️',
+    owner: '👑',
+    search: '🔎',
+    rpg: '💰',
+    stickers: '🖼️',
+    nsfw: '🔞',
+    others: '📦'
+  }
+
+  // 🎯 emojis por comando
+  const cmdEmojiByTag = {
+    informacion: '⚠️',
+    grupo: '🌟',
+    juegos: '🎯',
+    descargas: '⬇️',
+    tools: '🔧',
+    owner: '🔥',
+    search: '🔍',
+    rpg: '💎',
+    stickers: '🖌️',
+    nsfw: '⚠️',
+    others: '▫️'
+  }
+
+  // 📊 orden
+  const tagOrder = [
+    'info',
+    'group',
+    'fun',
+    'download',
+    'tools',
+    'search',
+    'rpg',
+    'stickers',
+    'owner',
+    'nsfw',
+    'others'
+  ]
+
+  // 📂 agrupar
+  const categories = {}
+  let total = 0
+
+  for (const plugin of plugins) {
+
+    if (!plugin.menu || !plugin.command) continue
+
+    const cmds = Array.isArray(plugin.command)
+      ? plugin.command
+      : [plugin.command]
+
+    const tag = plugin.tags?.[0] || 'others'
+
+    if (!categories[tag]) categories[tag] = []
+
+    categories[tag].push(...cmds)
+    total += cmds.length
+  }
+
+  // 🧠 construir menú
+  let menu = `╭━━━〔 🕷️ ${botName} 〕━━━⬣
+┃ 👋 ${saludo}
+┃ 👤 ${pushName}
+┃ ⚙️ Dev: ${dev}
+╰━━━━━━━━━━━━━━━━⬣
+📊 Comandos: ${total}\n`
+
+  for (const tag of tagOrder) {
+
+    if (!categories[tag]) continue
+
+    const emojiTag = tagEmoji[tag] || '📦'
+    const emojiCmd = cmdEmojiByTag[tag] || '➤'
+
+    // 🔥 limpiar duplicados
+    const cmds = [...new Set(categories[tag])].sort()
+
+    menu += `\n╭─ ${emojiTag} ${tag.toUpperCase()}\n`
+
+    for (const cmd of cmds) {
+      menu += `│ ${emojiCmd} ${cmd}\n`
     }
 
-    let menu = `╭━━━〔 🤖 SPIDER BOT 〕━━━⬣
-┃ ${saludo} @${sender.split('@')[0]}
-╰━━━━━━━━━━━━━━━⬣\n`
+    menu += `╰────────────⬣`
+  }
 
-    const groups = {}
+  menu += `\n\n╰─➤ ${botName}`
 
-    // 📦 agrupar plugins
-    for (const plugin of global.plugins || []) {
-
-        if (!plugin.menu) continue
-        if (!plugin.command) continue
-
-        const tag = plugin.tags?.[0] || 'others'
-
-        if (!groups[tag]) groups[tag] = []
-
-        const commands = Array.isArray(plugin.command)
-            ? plugin.command
-            : [plugin.command]
-
-        groups[tag].push(...commands)
-    }
-
-    // 🧾 construir menú
-    for (const tag of tagOrder) {
-
-        if (!groups[tag]) continue
-
-        const data = tagData[tag] || tagData['others']
-
-        // 🔥 quitar duplicados + ordenar
-        const cmds = [...new Set(groups[tag])].sort()
-
-        menu += `\n${data.name} ${data.tagEmoji}\n`
-
-        for (const cmd of cmds) {
-            menu += `${data.cmdEmoji} .${cmd}\n`
-        }
-    }
-
-    // 📊 total real
-    const total = Object.values(groups)
-        .flat()
-        .filter((v, i, a) => a.indexOf(v) === i).length
-
-    menu += `\n⚡ Total comandos: ${total}`
-
-    // 📤 enviar
-    await sock.sendMessage(from, {
-        text: menu,
-        mentions: [sender]
-    }, { quoted: m })
+  // 📤 enviar con imagen
+  await sock.sendMessage(from, {
+    image: { url: 'https://i.postimg.cc/VsSqN5RG/19d8fec1698683dde758218220caa31e.jpg' },
+    caption: menu
+  }, { quoted: m })
 }
 
 handler.command = ['menu']
-handler.tags = ['informacion']
+handler.tags = ['info']
 handler.menu = true
 
 export default handler
+
+// 🕒 saludo
+function getGreeting() {
+  const hour = new Date().getHours()
+  if (hour >= 5 && hour < 12) return 'Buenos días ☀️'
+  if (hour >= 12 && hour < 19) return 'Buenas tardes 🌤️'
+  return 'Buenas noches 🌙'
+}
