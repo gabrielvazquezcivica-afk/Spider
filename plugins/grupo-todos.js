@@ -17,12 +17,13 @@ const handler = async ({ sock, m, from }) => {
 
   const participants = metadata.participants || []
 
-  // 👇 ESTE ES EL FIX REAL
+  // 🔥 FIX REAL (más estable que el tuyo)
   const sender = m.key.participant || m.key.remoteJid
 
-  // 👑 validación correcta de admin
-  const isAdmin = participants.some(p =>
-    p.id === sender && (p.admin === 'admin' || p.admin === 'superadmin')
+  // 👑 validación robusta
+  const isAdmin = participants.find(p =>
+    (p.id === sender || p.id === sender.replace(/:[0-9]+/, '')) &&
+    (p.admin === 'admin' || p.admin === 'superadmin')
   )
 
   if (!isAdmin) {
@@ -40,7 +41,6 @@ const handler = async ({ sock, m, from }) => {
     .map(p => `🕷️ @${p.id.split('@')[0]}`)
     .join('\n')
 
-  // 🕸 reacción
   await sock.sendMessage(from, {
     react: { text: '🕸️', key: m.key }
   })
