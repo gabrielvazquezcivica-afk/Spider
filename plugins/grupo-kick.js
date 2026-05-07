@@ -26,7 +26,7 @@ const handler = async ({ sock, m, from, pushName }) => {
   const sender = (m.key.participant || m.key.remoteJid)
     ?.split(':')[0]
 
-  // 👑 validar admin
+  // 👑 validar admin usuario
   const isAdmin = participants.some(p =>
     p.id.split(':')[0] === sender &&
     (p.admin === 'admin' || p.admin === 'superadmin')
@@ -39,12 +39,16 @@ const handler = async ({ sock, m, from, pushName }) => {
   }
 
   // 🤖 validar admin bot
-  const botNumber = sock.user.id.split(':')[0]
+  const botId =
+    sock.user.id.split(':')[0] + '@s.whatsapp.net'
 
-  const isBotAdmin = participants.some(p =>
-    p.id.split(':')[0] === botNumber &&
-    (p.admin === 'admin' || p.admin === 'superadmin')
+  const botData = participants.find(p =>
+    p.id === botId
   )
+
+  const isBotAdmin =
+    botData?.admin === 'admin' ||
+    botData?.admin === 'superadmin'
 
   if (!isBotAdmin) {
     return sock.sendMessage(from, {
@@ -85,7 +89,7 @@ const handler = async ({ sock, m, from, pushName }) => {
       'remove'
     )
 
-    // 📤 mensaje limpio
+    // 📤 mensaje
     await sock.sendMessage(from, {
       text:
 `╭─〔 ☠️ SPIDER KICK 〕
