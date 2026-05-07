@@ -1,5 +1,8 @@
 const handler = async ({ sock, m, from }) => {
 
+  // 🚫 evitar mensajes del bot
+  if (m.key.fromMe) return
+
   // 🚫 solo grupos
   if (!from.endsWith('@g.us')) {
     return sock.sendMessage(from, {
@@ -18,14 +21,18 @@ const handler = async ({ sock, m, from }) => {
   }
 
   const participants = metadata.participants || []
-  const sender = m.key.participant || m.key.remoteJid
 
-  // 👑 validar admin
+  // 👤 usuario
+  const sender = (m.key.participant || m.key.remoteJid)
+    ?.split(':')[0]
+
+  // 👑 validar admin REAL
   const isAdmin = participants.some(p =>
-    p.id === sender &&
+    p.id.split(':')[0] === sender &&
     (p.admin === 'admin' || p.admin === 'superadmin')
   )
 
+  // 🚫 no admin
   if (!isAdmin) {
     return sock.sendMessage(from, {
       text: '🕷️ Solo los administradores pueden usar este comando.'
@@ -39,7 +46,7 @@ const handler = async ({ sock, m, from }) => {
 
   try {
 
-    // 🔗 link grupo
+    // 🔗 link
     const code = await sock.groupInviteCode(from)
     const link = `https://chat.whatsapp.com/${code}`
 
@@ -79,6 +86,5 @@ handler.command = ['link']
 handler.tags = ['grupo']
 handler.menu = true
 handler.group = true
-handler.admin = true
 
 export default handler
