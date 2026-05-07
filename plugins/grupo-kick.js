@@ -12,7 +12,6 @@ const handler = async ({
   from,
   sender,
   isGroup,
-  isAdmin,
   pushName
 }) => {
 
@@ -26,13 +25,6 @@ const handler = async ({
     }, { quoted: m })
   }
 
-  // 👑 solo admins
-  if (!isAdmin) {
-    return sock.sendMessage(from, {
-      text: '🕷️ Solo los administradores pueden usar este comando.'
-    }, { quoted: m })
-  }
-
   // 📊 metadata
   let metadata
   try {
@@ -43,25 +35,27 @@ const handler = async ({
     }, { quoted: m })
   }
 
-  // 🤖 verificar admin bot
-  const botJid = sock.user?.id || ''
-  const botNum = onlyNumber(botJid)
+  const participants = metadata.participants || []
 
-  const botData = metadata.participants.find(p =>
-    onlyNumber(p.id) === botNum
+  // 👤 usuario limpio
+  const senderNum = onlyNumber(sender)
+
+  // 👑 ADMIN REAL
+  const userData = participants.find(p =>
+    onlyNumber(p.id) === senderNum
   )
 
-  const isBotAdmin =
-    botData?.admin === 'admin' ||
-    botData?.admin === 'superadmin'
+  const isAdmin =
+    userData?.admin === 'admin' ||
+    userData?.admin === 'superadmin'
 
-  if (!isBotAdmin) {
+  if (!isAdmin) {
     return sock.sendMessage(from, {
-      text: '⚠️ Necesito ser administrador para expulsar usuarios.'
+      text: '🕷️ Solo los administradores pueden usar este comando.'
     }, { quoted: m })
   }
 
-  // 👤 usuario
+  // 👤 usuario mencionado
   const ctx = m.message?.extendedTextMessage?.contextInfo
 
   const userRaw =
@@ -91,13 +85,6 @@ Ejemplo:
     }, { quoted: m })
   }
 
-  // 🤖 evitar kick bot
-  if (userNum === botNum) {
-    return sock.sendMessage(from, {
-      text: '⚠️ No puedo eliminarme.'
-    }, { quoted: m })
-  }
-
   // ⚡ reacción
   await sock.sendMessage(from, {
     react: { text: '🕸️', key: m.key }
@@ -112,10 +99,10 @@ Ejemplo:
       'remove'
     )
 
-    // 📩 mensaje spider
+    // 📩 mensaje
     await sock.sendMessage(from, {
       text:
-`╭━━━〔 🕷️ SPIDER KICK 〕━━━⬣
+`╭━━━〔 🕷️ SPIDER SYSTEM 〕━━━⬣
 ┃
 ┃ ☠️ Objetivo eliminado
 ┃ 👤 Usuario: @${userNum}
@@ -140,7 +127,6 @@ Ejemplo:
 handler.command = ['kick']
 handler.tags = ['grupo']
 handler.group = true
-handler.admin = true
 handler.menu = true
 
 export default handler
