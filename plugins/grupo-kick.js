@@ -1,12 +1,35 @@
-const handler = async ({ sock, m, from, pushName }) => {
+function normalizeJid(u) {
+  return typeof u === 'string' ? u : u?.id
+}
+
+function onlyNumber(jid = '') {
+  return normalizeJid(jid)?.replace(/[^0-9]/g, '')
+}
+
+const handler = async ({
+  sock,
+  m,
+  from,
+  sender,
+  isGroup,
+  isAdmin,
+  pushName
+}) => {
 
   // 🚫 evitar mensajes del bot
   if (m.key.fromMe) return
 
-  // 🚫 solo grupos
-  if (!from.endsWith('@g.us')) {
+  // ❌ solo grupos
+  if (!isGroup) {
     return sock.sendMessage(from, {
-      text: '⚠️ Este comando solo funciona en grupos'
+      text: '⚠️ Este comando solo funciona en grupos.'
+    }, { quoted: m })
+  }
+
+  // 👑 solo admins
+  if (!isAdmin) {
+    return sock.sendMessage(from, {
+      text: '🕷️ Solo los administradores pueden usar este comando.'
     }, { quoted: m })
   }
 
@@ -16,66 +39,68 @@ const handler = async ({ sock, m, from, pushName }) => {
     metadata = await sock.groupMetadata(from)
   } catch {
     return sock.sendMessage(from, {
-      text: '❌ Error obteniendo datos del grupo'
+      text: '❌ No pude obtener la información del grupo.'
     }, { quoted: m })
   }
 
-  const participants = metadata.participants || []
+  // 🤖 verificar admin bot
+  const botJid = sock.user?.id || ''
+  const botNum = onlyNumber(botJid)
 
-  // 👤 usuario
-  const sender =
-    (m.key.participant || m.key.remoteJid)
-      ?.split(':')[0]
-
-  // 👑 validar admin usuario
-  const isAdmin = participants.some(p =>
-    p.id.split(':')[0] === sender &&
-    p.admin
+  const botData = metadata.participants.find(p =>
+    onlyNumber(p.id) === botNum
   )
 
-  if (!isAdmin) {
-    return sock.sendMessage(from, {
-      text: '🕷️ Solo los administradores pueden usar este comando.'
-    }, { quoted: m })
-  }
-
-  // 🤖 VALIDACIÓN REAL DEL BOT
-  const botNumber = sock.user.id.split(':')[0]
-
-  const botAdmin = participants.find(p =>
-    p.id.includes(botNumber)
-  )
-
-  const isBotAdmin = !!botAdmin?.admin
+  const isBotAdmin =
+    botData?.admin === 'admin' ||
+    botData?.admin === 'superadmin'
 
   if (!isBotAdmin) {
     return sock.sendMessage(from, {
-      text: '⚠️ El bot necesita ser administrador.'
+      text: '⚠️ Necesito ser administrador para expulsar usuarios.'
     }, { quoted: m })
   }
 
-  // 🎯 usuario mencionado
-  const mentioned =
-    m.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0]
+  // 👤 usuario
+  const ctx = m.message?.extendedTextMessage?.contextInfo
 
-  if (!mentioned) {
+  const userRaw =
+    ctx?.mentionedJid?.[0] ||
+    ctx?.participant
+
+  if (!userRaw) {
     return sock.sendMessage(from, {
-      text: '⚠️ Menciona al usuario.\n\nEjemplo:\n.kick @usuario'
+      text:
+`⚠️ Debes mencionar al usuario.
+
+Ejemplo:
+.kick @usuario`
     }, { quoted: m })
   }
 
-  // 🚫 evitar kick al owner del grupo
-  const target = participants.find(p => p.id === mentioned)
+  const userNum = onlyNumber(userRaw)
 
-  if (target?.admin === 'superadmin') {
+  // 👑 owners protegidos
+  const owners = (global.config.owner || []).map(n =>
+    onlyNumber(n)
+  )
+
+  if (owners.includes(userNum)) {
     return sock.sendMessage(from, {
-      text: '❌ No puedo expulsar al creador del grupo.'
+      text: '❌ Ese usuario está protegido.'
+    }, { quoted: m })
+  }
+
+  // 🤖 evitar kick bot
+  if (userNum === botNum) {
+    return sock.sendMessage(from, {
+      text: '⚠️ No puedo eliminarme.'
     }, { quoted: m })
   }
 
   // ⚡ reacción
   await sock.sendMessage(from, {
-    react: { text: '☠️', key: m.key }
+    react: { text: '🕸️', key: m.key }
   })
 
   try {
@@ -83,28 +108,28 @@ const handler = async ({ sock, m, from, pushName }) => {
     // 👢 expulsar
     await sock.groupParticipantsUpdate(
       from,
-      [mentioned],
+      [normalizeJid(userRaw)],
       'remove'
     )
 
-    // 📤 mensaje final
+    // 📩 mensaje spider
     await sock.sendMessage(from, {
       text:
-`╭─〔 ☠️ SPIDER KICK 〕
-│
-│ Enemigo eliminado
-│ @${mentioned.split('@')[0]}
-│
-│ > Por: ${pushName}
-╰────────────⬣
+`╭━━━〔 🕷️ SPIDER KICK 〕━━━⬣
+┃
+┃ ☠️ Objetivo eliminado
+┃ 👤 Usuario: @${userNum}
+┃ 🕸️ por:
+┃ ${pushName}
+╰━━━━━━━━━━━━━━━━⬣
 
 > SPIDER BOT`,
-      mentions: [mentioned]
+      mentions: [normalizeJid(userRaw)]
     }, { quoted: m })
 
   } catch (e) {
 
-    console.log(e)
+    console.log('❌ Error kick:', e)
 
     return sock.sendMessage(from, {
       text: '❌ No pude expulsar al usuario.'
@@ -114,7 +139,8 @@ const handler = async ({ sock, m, from, pushName }) => {
 
 handler.command = ['kick']
 handler.tags = ['grupo']
-handler.menu = true
 handler.group = true
+handler.admin = true
+handler.menu = true
 
 export default handler
