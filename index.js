@@ -12,6 +12,7 @@ const pluginsPath = path.join(__dirname, 'plugins')
 
 // 📦 plugins
 let plugins = []
+let sockGlobal
 
 // 🔄 cargar plugins
 async function loadPlugins() {
@@ -40,7 +41,7 @@ async function loadPlugins() {
 
 // 👀 recarga automática
 fs.watch(pluginsPath, async (_, file) => {
-    if (file.endsWith('.js')) {
+    if (file?.endsWith('.js')) {
         console.log(chalk.yellow(`♻️ Recargando ${file}...`))
         await loadPlugins()
     }
@@ -49,7 +50,15 @@ fs.watch(pluginsPath, async (_, file) => {
 // 🚀 iniciar bot
 async function start() {
 
+    // 🔥 LIMPIAR SOCKET ANTERIOR (FIX CLAVE)
+    if (sockGlobal?.ev) {
+        try {
+            sockGlobal.ev.removeAllListeners()
+        } catch {}
+    }
+
     const sock = await connect()
+    sockGlobal = sock
 
     console.clear()
 
@@ -69,8 +78,6 @@ async function start() {
     await loadPlugins()
 
     const groupCache = new Map()
-
-    // 🔥 MARCA DE INICIO (anti mensajes antiguos)
     const startTime = Date.now()
 
     // 📩 eventos
@@ -98,18 +105,13 @@ async function start() {
                     ''
 
                 if (!msg) return
+                if (!msg.startsWith(config.prefix)) return
 
-                const prefix = config.prefix
-
-                // 🔥 SOLO COMANDOS
-                if (!msg.startsWith(prefix)) return
-
-                const args = msg.slice(prefix.length).trim().split(/ +/)
+                const args = msg.slice(config.prefix.length).trim().split(/ +/)
                 const command = args.shift().toLowerCase()
 
                 let pushName = m.pushName || 'Usuario'
                 let groupName = 'Privado'
-
                 let groupMetadata = null
                 let participants = []
 
@@ -125,14 +127,12 @@ async function start() {
                     participants = groupMetadata.participants
                 }
 
-                // 🖨️ LOG
                 console.log(
                     chalk.cyan(`\n📌 Comando: ${command}`) +
                     chalk.yellow(`\n👤 Usuario: ${pushName}`) +
                     chalk.green(`\n📍 Lugar: ${groupName}\n`)
                 )
 
-                // ⚡ ejecutar handlers
                 for (const handler of plugins) {
 
                     if (!handler.command) continue
@@ -143,22 +143,18 @@ async function start() {
 
                     if (!commands.includes(command)) continue
 
-                    // 🚫 validaciones
                     if (handler.group && !isGroup) continue
                     if (handler.private && isGroup) continue
 
-                    // 👑 admin
                     if (handler.admin) {
                         const isAdmin = participants.find(p => p.id === sender)?.admin
                         if (!isAdmin) continue
                     }
 
-                    // 👑 owner
                     if (handler.owner) {
                         if (!config.owner.includes(sender)) continue
                     }
 
-                    // 🚀 ejecutar
                     await handler({
                         sock,
                         m,
@@ -179,11 +175,11 @@ async function start() {
         })
     })
 
-    // ♻️ reconexión total
+    // ♻️ reconexión limpia (SIN duplicar start infinito)
     sock.ev.on('connection.update', ({ connection }) => {
         if (connection === 'close') {
             console.log(chalk.red('🔄 Reiniciando bot...'))
-            start()
+            setTimeout(start, 2000)
         }
     })
 }
