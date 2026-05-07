@@ -15,27 +15,23 @@ const handler = async ({ sock, m, from }) => {
     }, { quoted: m })
   }
 
-  const participants = metadata.participants || []
-
-  // 🔥 FIX REAL (más estable que el tuyo)
+  const participants = metadata.participants
   const sender = m.key.participant || m.key.remoteJid
 
-  // 👑 validación robusta
-  const isAdmin = participants.find(p =>
-    (p.id === sender || p.id === sender.replace(/:[0-9]+/, '')) &&
-    (p.admin === 'admin' || p.admin === 'superadmin')
+  // 🔥 MISMA LÓGICA QUE TU .n (LA QUE SÍ FUNCIONA)
+  const isAdmin = participants.some(p =>
+    p.id === sender && (p.admin === 'admin' || p.admin === 'superadmin')
   )
 
   if (!isAdmin) {
     return sock.sendMessage(from, {
-      text: '🕷️ Solo los administradores pueden usar este comando.'
+      text: '⚠️ Solo administradores pueden usar este comando'
     }, { quoted: m })
   }
 
+  const mentions = participants.map(p => p.id)
   const groupName = metadata.subject
   const total = participants.length
-
-  const mentions = participants.map(p => p.id)
 
   const mentionText = participants
     .map(p => `🕷️ @${p.id.split('@')[0]}`)
@@ -53,8 +49,6 @@ const handler = async ({ sock, m, from }) => {
 🏷️ Grupo: ${groupName}
 👥 Miembros: ${total}
 
-☠️ Red activada...
-
 🕷️ MENCIONES:
 ${mentionText}
 
@@ -70,6 +64,5 @@ handler.command = ['todos']
 handler.tags = ['grupo']
 handler.menu = true
 handler.group = true
-handler.admin = true
 
 export default handler
