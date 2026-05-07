@@ -23,13 +23,14 @@ const handler = async ({ sock, m, from, pushName }) => {
   const participants = metadata.participants || []
 
   // 👤 usuario
-  const sender = (m.key.participant || m.key.remoteJid)
-    ?.split(':')[0]
+  const sender =
+    (m.key.participant || m.key.remoteJid)
+      ?.split(':')[0]
 
   // 👑 validar admin usuario
   const isAdmin = participants.some(p =>
     p.id.split(':')[0] === sender &&
-    (p.admin === 'admin' || p.admin === 'superadmin')
+    p.admin
   )
 
   if (!isAdmin) {
@@ -38,17 +39,14 @@ const handler = async ({ sock, m, from, pushName }) => {
     }, { quoted: m })
   }
 
-  // 🤖 validar admin bot
-  const botId =
-    sock.user.id.split(':')[0] + '@s.whatsapp.net'
+  // 🤖 VALIDACIÓN REAL DEL BOT
+  const botNumber = sock.user.id.split(':')[0]
 
-  const botData = participants.find(p =>
-    p.id === botId
+  const botAdmin = participants.find(p =>
+    p.id.includes(botNumber)
   )
 
-  const isBotAdmin =
-    botData?.admin === 'admin' ||
-    botData?.admin === 'superadmin'
+  const isBotAdmin = !!botAdmin?.admin
 
   if (!isBotAdmin) {
     return sock.sendMessage(from, {
@@ -66,7 +64,7 @@ const handler = async ({ sock, m, from, pushName }) => {
     }, { quoted: m })
   }
 
-  // 🚫 evitar kick al owner
+  // 🚫 evitar kick al owner del grupo
   const target = participants.find(p => p.id === mentioned)
 
   if (target?.admin === 'superadmin') {
@@ -89,7 +87,7 @@ const handler = async ({ sock, m, from, pushName }) => {
       'remove'
     )
 
-    // 📤 mensaje
+    // 📤 mensaje final
     await sock.sendMessage(from, {
       text:
 `╭─〔 ☠️ SPIDER KICK 〕
