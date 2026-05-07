@@ -13,7 +13,7 @@ const handler = async ({ sock, m, from }) => {
     metadata = await sock.groupMetadata(from)
   } catch {
     return sock.sendMessage(from, {
-      text: '❌ Error obteniendo información del grupo'
+      text: '❌ Error obteniendo datos del grupo'
     }, { quoted: m })
   }
 
@@ -39,27 +39,30 @@ const handler = async ({ sock, m, from }) => {
 
   try {
 
-    // 🔗 obtener código
+    // 🔗 link grupo
     const code = await sock.groupInviteCode(from)
-
     const link = `https://chat.whatsapp.com/${code}`
 
+    // 🖼️ foto grupo
+    let groupPic
+
+    try {
+      groupPic = await sock.profilePictureUrl(from, 'image')
+    } catch {
+      groupPic = 'https://i.postimg.cc/0QNxYz4V/spider.jpg'
+    }
+
     const text =
-`🕷️━━━━━━━━━━━━━━━🕷️
-       *SPIDER LINK*
-🕸️━━━━━━━━━━━━━━━🕸️
-
-🏷️ Grupo: ${metadata.subject}
-
-🔗 Link del grupo:
-${link}
-
-🕷️━━━━━━━━━━━━━━━🕷️
+`╭━━━〔 🕷️ LINK DEL GRUPO 〕━━━⬣
+┃ 🔗 ${link}
+╰━━━━━━━━━━━━━━━━⬣
 
 > SPIDER BOT`
 
+    // 📤 enviar
     await sock.sendMessage(from, {
-      text
+      image: { url: groupPic },
+      caption: text
     }, { quoted: m })
 
   } catch (e) {
@@ -67,7 +70,7 @@ ${link}
     console.log(e)
 
     return sock.sendMessage(from, {
-      text: '❌ No pude obtener el link del grupo'
+      text: '❌ No pude obtener el enlace del grupo'
     }, { quoted: m })
   }
 }
