@@ -140,13 +140,8 @@ async function start() {
                     m.message.conversation ||
                     m.message.extendedTextMessage?.text ||
                     m.message.imageMessage?.caption ||
+                    m.message.videoMessage?.caption ||
                     ''
-
-                if (!msg) return
-                if (!msg.startsWith(config.prefix)) return
-
-                const args = msg.slice(config.prefix.length).trim().split(/ +/)
-                const command = args.shift().toLowerCase()
 
                 let pushName = m.pushName || 'Usuario'
                 let groupName = 'Privado'
@@ -163,6 +158,29 @@ async function start() {
                         participants = []
                     }
                 }
+
+                // 🔥 BEFORE GLOBAL
+                for (const plugin of plugins) {
+
+                    if (typeof plugin.before === 'function') {
+
+                        await plugin.before({
+                            sock,
+                            m,
+                            from,
+                            isGroup,
+                            sender,
+                            participants,
+                            groupMetadata
+                        })
+                    }
+                }
+
+                if (!msg) return
+                if (!msg.startsWith(config.prefix)) return
+
+                const args = msg.slice(config.prefix.length).trim().split(/ +/)
+                const command = args.shift().toLowerCase()
 
                 // 🔒 MODODADMIN
                 const modoadmin = getModoadmin()
