@@ -21,6 +21,9 @@ const sistema = (titulo = '🕷️ Spider Bot') => ({
 })
 // ────────────────────────────────
 
+// 🧠 CACHE
+const groupCache = new Map()
+
 handler.before = async (m, { sock }) => {
 
   if (started) return
@@ -42,14 +45,29 @@ handler.before = async (m, { sock }) => {
 
       if (!id || !id.endsWith('@g.us')) return
 
+      // 📥 guardar metadata
+      try {
+
+        const metadata = await sock.groupMetadata(id)
+
+        groupCache.set(id, {
+          subject: metadata.subject,
+          desc: metadata.desc,
+          announce: metadata.announce,
+          restrict: metadata.restrict
+        })
+
+      } catch {}
+
       if (!['promote', 'demote'].includes(action)) return
 
       const user = participants?.[0]
 
-      if (typeof user !== 'string') return
+      if (!user) return
 
       let text = ''
 
+      // 🟢 promote
       if (action === 'promote') {
 
         text =
@@ -58,7 +76,10 @@ handler.before = async (m, { sock }) => {
 👑 Usuario:
 @${user.split('@')[0]}`
 
-      } else {
+      }
+
+      // 🔴 demote
+      if (action === 'demote') {
 
         text =
 `🕸️ Administrador removido
@@ -67,6 +88,7 @@ handler.before = async (m, { sock }) => {
 @${user.split('@')[0]}`
       }
 
+      // 👮 autor
       if (author) {
 
         text += `
@@ -75,86 +97,57 @@ handler.before = async (m, { sock }) => {
 @${author.split('@')[0]}`
       }
 
-      await sock.sendMessage(
-        id,
-        {
-          text: `${text}
+      await sock.sendMessage(id,{
+        text: `${text}
 
 > ${botName}`,
-          mentions: [user, author].filter(Boolean)
-        },
-        { quoted: sistema() }
-      )
+        mentions: [user, author].filter(Boolean)
+      },{ quoted:sistema() })
 
     } catch (e) {
 
-      console.log('AUTO-DETECT ADMIN ERROR:', e)
+      console.log('AUTO ADMIN ERROR:', e)
     }
   })
 
   // ⚙️ CAMBIOS DEL GRUPO
   sock.ev.on('groups.update', async (updates) => {
 
-    for (const g of updates) {
+    try {
 
-      try {
+      for (const update of updates) {
 
-        const {
-          id,
-          subject,
-          desc,
-          announce,
-          restrict,
-          author,
-          picture
-        } = g
+        const id = update.id
 
         if (!id || !id.endsWith('@g.us')) continue
 
-        let text = ''
+        let metadata
+
+        try {
+          metadata = await sock.groupMetadata(id)
+        } catch {
+          continue
+        }
+
+        const old = groupCache.get(id) || {}
+
+        const subject = metadata.subject
+        const desc = metadata.desc
+        const announce = metadata.announce
+        const restrict = metadata.restrict
+
+        const actor =
+          update.author ||
+          update.participants?.[0]
+
         let mentions = []
+        let text = ''
 
-        // 🔒 grupo cerrado
-        if (announce === true) {
-
-          text =
-`🕷️ El grupo fue cerrado
-
-🔒 Ahora solo los administradores
-pueden enviar mensajes`
-        }
-
-        // 🔓 grupo abierto
-        else if (announce === false) {
-
-          text =
-`🕸️ El grupo fue abierto
-
-⚡ Todos los miembros ya pueden hablar`
-        }
-
-        // 🔐 edición solo admins
-        else if (restrict === true) {
-
-          text =
-`🕷️ La edición del grupo fue restringida
-
-🔒 Solo administradores pueden editar
-información del grupo`
-        }
-
-        // 🔓 edición libre
-        else if (restrict === false) {
-
-          text =
-`🕸️ La edición del grupo fue abierta
-
-⚡ Todos los miembros pueden editar
-información del grupo`
-        }
-
-        // ✏️ nombre
-        else if (subject) {
+        // ✏️ NOMBRE
+        if (
+          old.subject &&
+          old.subject !== subject
+        ) {
 
           text =
 `🕷️ Nombre del grupo actualizado
@@ -163,49 +156,128 @@ información del grupo`
 ${subject}`
         }
 
-        // 📝 descripción
-        else if (desc !== undefined) {
+        // 📝 DESCRIPCIÓN
+        else if (
+          old.desc !== undefined &&
+          old.desc !== desc
+        ) {
 
           text =
 `🕸️ La descripción del grupo
 fue modificada`
         }
 
-        // 🖼️ foto
-        else if (picture) {
+        // 🔒 CERRADO
+        else if (
+          old.announce !== undefined &&
+          old.announce !== announce
+        ) {
 
-          text =
-`🕷️ La foto del grupo fue actualizada`
+          text = announce
+            ? `🕷️ El grupo fue cerrado
+
+🔒 Solo administradores
+pueden enviar mensajes`
+            : `🕸️ El grupo fue abierto
+
+⚡ Todos los miembros
+pueden enviar mensajes`
         }
 
-        if (!text) continue
+        // 🔐 EDICIÓN
+        else if (
+          old.restrict !== undefined &&
+          old.restrict !== restrict
+        ) {
 
-        // 👮 autor
-        if (author) {
+          text = restrict
+            ? `🕷️ La edición del grupo fue restringida`
+            : `🕸️ La edición del grupo fue abierta`
+        }
+
+        // 👮 actor
+        if (text && actor) {
 
           text += `
 
 👮 Acción realizada por:
-@${author.split('@')[0]}`
+@${actor.split('@')[0]}`
 
-          mentions.push(author)
+          mentions.push(actor)
         }
 
-        await sock.sendMessage(
-          id,
-          {
+        // 📩 enviar
+        if (text) {
+
+          await sock.sendMessage(id,{
             text: `${text}
 
 > ${botName}`,
             mentions
-          },
-          { quoted: sistema() }
-        )
+          },{ quoted:sistema() })
+        }
 
-      } catch (e) {
-
-        console.log('AUTO-DETECT GROUP ERROR:', e)
+        // 💾 guardar cache
+        groupCache.set(id,{
+          subject,
+          desc,
+          announce,
+          restrict
+        })
       }
+
+    } catch (e) {
+
+      console.log('AUTO GROUP ERROR:', e)
+    }
+  })
+
+  // 🖼️ FOTO DEL GRUPO
+  sock.ev.on('groups.upsert', async (groups) => {
+
+    try {
+
+      for (const group of groups) {
+
+        const id = group.id
+
+        if (!id || !id.endsWith('@g.us')) continue
+
+        const old = groupCache.get(id) || {}
+
+        let metadata
+
+        try {
+          metadata = await sock.groupMetadata(id)
+        } catch {
+          continue
+        }
+
+        const pic = await sock.profilePictureUrl(id, 'image')
+          .catch(() => null)
+
+        if (
+          old.picture &&
+          old.picture !== pic
+        ) {
+
+          await sock.sendMessage(id,{
+            text:
+`🕷️ La foto del grupo fue actualizada
+
+> ${botName}`
+          },{ quoted:sistema() })
+        }
+
+        groupCache.set(id,{
+          ...old,
+          picture: pic
+        })
+      }
+
+    } catch (e) {
+
+      console.log('AUTO PHOTO ERROR:', e)
     }
   })
 }
