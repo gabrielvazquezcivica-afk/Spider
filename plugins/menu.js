@@ -12,8 +12,8 @@ const handler = async (ctx) => {
     react: { text: '📜', key: m.key }
   })
 
-  const botName = 'Spider Bot'
-  const dev = 'Gabriel'
+  const botName = '𝐒𝐩𝐢𝐝𝐞𝐫-𝐁𝐨𝐭'
+  const dev = '𝐒𝐨𝐲𝐆𝐚𝐛𝐨'
   const saludo = getGreeting()
 
   const tagEmoji = {
@@ -79,7 +79,7 @@ const handler = async (ctx) => {
 
   let menu = `╭━━━〔 🕷️ ${botName} 〕━━━⬣
 ┃ 👋 ${saludo}
-┃ 👤 ${pushName}
+┃ 👤 @${pushName}
 ┃ ⚙️ Dev: ${dev}
 ╰━━━━━━━━━━━━━━━━⬣
 📊 Comandos: ${total}\n`
