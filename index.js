@@ -14,6 +14,18 @@ const pluginsPath = path.join(__dirname, 'plugins')
 let plugins = []
 let sockGlobal
 
+// 🔒 MODODADMIN FILE
+const modoadminPath = './data/modoadmin.json'
+
+function getModoadmin() {
+    try {
+        if (!fs.existsSync(modoadminPath)) return {}
+        return JSON.parse(fs.readFileSync(modoadminPath, 'utf-8'))
+    } catch {
+        return {}
+    }
+}
+
 // 🔄 cargar plugins
 async function loadPlugins() {
     plugins = []
@@ -35,7 +47,6 @@ async function loadPlugins() {
     }
 
     global.plugins = plugins
-
     console.log(chalk.green(`✅ Plugins cargados: ${plugins.length}`))
 }
 
@@ -50,7 +61,6 @@ fs.watch(pluginsPath, async (_, file) => {
 // 🚀 iniciar bot
 async function start() {
 
-    // 🔥 LIMPIAR SOCKET ANTERIOR (FIX CLAVE)
     if (sockGlobal?.ev) {
         try {
             sockGlobal.ev.removeAllListeners()
@@ -80,14 +90,12 @@ async function start() {
     const groupCache = new Map()
     const startTime = Date.now()
 
-    // 📩 eventos
     sock.ev.on('messages.upsert', async ({ messages, type }) => {
         if (type !== 'notify') return
 
         const m = messages[0]
         if (!m.message) return
 
-        // 🔥 IGNORAR MENSAJES ANTIGUOS
         const msgTime = (m.messageTimestamp || 0) * 1000
         if (msgTime < startTime) return
 
@@ -127,6 +135,10 @@ async function start() {
                     participants = groupMetadata.participants
                 }
 
+                // 🔒 MODODADMIN (SIN ROMPER NADA)
+                const modoadmin = getModoadmin()
+                const isBlockedGroup = isGroup && modoadmin[from]
+
                 console.log(
                     chalk.cyan(`\n📌 Comando: ${command}`) +
                     chalk.yellow(`\n👤 Usuario: ${pushName}`) +
@@ -145,6 +157,19 @@ async function start() {
 
                     if (handler.group && !isGroup) continue
                     if (handler.private && isGroup) continue
+
+                    // 🔥 BLOQUEO GLOBAL SOLO COMANDOS NORMALES
+                    const isGroupCommand = handler.group === true
+
+                    if (isBlockedGroup && !isGroupCommand) {
+                        const user = participants.find(p => p.id === sender)
+
+                        const isAdmin =
+                            user?.admin === 'admin' ||
+                            user?.admin === 'superadmin'
+
+                        if (!isAdmin) return
+                    }
 
                     if (handler.admin) {
                         const isAdmin = participants.find(p => p.id === sender)?.admin
@@ -175,7 +200,6 @@ async function start() {
         })
     })
 
-    // ♻️ reconexión limpia (SIN duplicar start infinito)
     sock.ev.on('connection.update', ({ connection }) => {
         if (connection === 'close') {
             console.log(chalk.red('🔄 Reiniciando bot...'))
@@ -184,5 +208,4 @@ async function start() {
     })
 }
 
-// 🚀 run
 start()
