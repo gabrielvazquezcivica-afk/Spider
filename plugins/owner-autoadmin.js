@@ -43,17 +43,15 @@ const handler = async ({
   const participants = metadata.participants || []
 
   // 🤖 verificar admin bot
-  const botNumber = sock.user.id
-    .split('@')[0]
-    .split(':')[0]
+  const botJid = sock.user.id
 
-  const botData = participants.find(p =>
-    p.id.includes(botNumber)
-  )
+const botData = participants.find(p =>
+  p.id === botJid
+)
 
-  const isBotAdmin =
-    botData?.admin === 'admin' ||
-    botData?.admin === 'superadmin'
+const isBotAdmin =
+  botData?.admin === 'admin' ||
+  botData?.admin === 'superadmin'
 
   if (!isBotAdmin) {
     return sock.sendMessage(from, {
