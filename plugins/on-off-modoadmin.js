@@ -17,7 +17,7 @@ function saveDB(data) {
     fs.writeFileSync(path, JSON.stringify(data, null, 2))
 }
 
-const handler = async ({ sock, m, from, isGroup, participants, sender }) => {
+const handler = async ({ sock, m, from, isGroup, participants, sender, args }) => {
 
     if (!isGroup) return
 
@@ -35,19 +35,50 @@ const handler = async ({ sock, m, from, isGroup, participants, sender }) => {
 
     let db = getDB()
 
-    if (db[from]) {
-        delete db[from]
+    const option = (args[0] || '').toLowerCase()
 
+    // 📌 AYUDA (si no ponen nada)
+    if (!option) {
         return sock.sendMessage(from, {
-            text: '🕷️ Modo admin OFF'
+            text:
+`🕷️ *MODOMADMIN*
+
+📌 Uso del comando:
+
+🟢 Activar:
+.modoadmin on
+
+🔴 Desactivar:
+.modoadmin off
+
+⚡ Estado actual:
+${db[from] ? '🟢 ACTIVADO' : '🔴 DESACTIVADO'}`
         }, { quoted: m })
     }
 
-    db[from] = true
-    saveDB(db)
+    // 🔴 OFF
+    if (option === 'off') {
+        delete db[from]
+        saveDB(db)
 
+        return sock.sendMessage(from, {
+            text: '🔴 Modo admin OFF'
+        }, { quoted: m })
+    }
+
+    // 🟢 ON
+    if (option === 'on') {
+        db[from] = true
+        saveDB(db)
+
+        return sock.sendMessage(from, {
+            text: '🟢 Modo admin ON'
+        }, { quoted: m })
+    }
+
+    // ❌ opción inválida
     return sock.sendMessage(from, {
-        text: '🕸️ Modo admin ON'
+        text: '⚠️ Opción inválida. Usa: .modoadmin on / off'
     }, { quoted: m })
 }
 
