@@ -2,6 +2,39 @@ import { exec } from 'child_process'
 import fs from 'fs'
 import path from 'path'
 import crypto from 'crypto'
+import https from 'https'
+
+function formatTime(seconds) {
+  seconds = Number(seconds || 0)
+
+  const h = Math.floor(seconds / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  const s = Math.floor(seconds % 60)
+
+  if (h > 0) {
+    return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
+  }
+
+  return `${m}:${s.toString().padStart(2, '0')}`
+}
+
+function downloadImage(url, filepath) {
+  return new Promise((resolve, reject) => {
+
+    https.get(url, (res) => {
+
+      const stream = fs.createWriteStream(filepath)
+
+      res.pipe(stream)
+
+      stream.on('finish', () => {
+        stream.close()
+        resolve()
+      })
+
+    }).on('error', reject)
+  })
+}
 
 const handler = async ({
   sock,
@@ -14,10 +47,10 @@ const handler = async ({
   if (!args[0]) {
     return sock.sendMessage(from, {
       text:
-`🎵 Ingresa el nombre de una canción
+`🎵 Ingresa una canción
 
 Ejemplo:
-.play peso pluma`
+.play emilia blackout`
     }, { quoted: m })
   }
 
@@ -25,10 +58,13 @@ Ejemplo:
 
   // ⚡ reacción
   await sock.sendMessage(from, {
-    react: { text: '🎧', key: m.key }
+    react: {
+      text: '🎧',
+      key: m.key
+    }
   })
 
-  // 📂 carpeta temp
+  // 📂 temp
   const tempDir = './tmp'
 
   if (!fs.existsSync(tempDir)) {
@@ -38,17 +74,19 @@ Ejemplo:
   const id = crypto.randomBytes(5).toString('hex')
 
   const output = path.join(tempDir, `${id}.mp3`)
-  const infoPath = path.join(tempDir, `${id}.json`)
+  const infoPath = path.join(tempDir, `${id}.info.json`)
+  const thumbPath = path.join(tempDir, `${id}.jpg`)
 
-  // 🔥 descarga rápida
+  // 🚀 descarga rápida
   const cmd =
 `yt-dlp "ytsearch1:${query}" \
--x \
+--no-playlist \
+--extract-audio \
 --audio-format mp3 \
 --audio-quality 0 \
---no-playlist \
 --write-info-json \
 --quiet \
+--no-warnings \
 -o "${output.replace('.mp3', '.%(ext)s')}"`
 
   exec(cmd, async (err) => {
@@ -58,84 +96,113 @@ Ejemplo:
       console.log(err)
 
       return sock.sendMessage(from, {
-        text: '❌ Error descargando audio.'
-      }, { quoted: m })
-    }
-
-    if (!fs.existsSync(output)) {
-      return sock.sendMessage(from, {
-        text: '❌ No encontré resultados.'
+        text: '❌ Error descargando canción.'
       }, { quoted: m })
     }
 
     try {
 
-      // 📀 info
-      let title = 'Desconocido'
-      let duration = '00:00'
-      let channel = 'Desconocido'
-      let views = '0'
+      if (!fs.existsSync(output)) {
+        return sock.sendMessage(from, {
+          text: '❌ No encontré resultados.'
+        }, { quoted: m })
+      }
 
+      // 📀 defaults
+      let title = 'Desconocido'
+      let author = 'Desconocido'
+      let duration = '00:00'
+      let views = '0'
+      let thumbnail = null
+
+      // 📄 info
       if (fs.existsSync(infoPath)) {
 
-        const json = JSON.parse(
+        const data = JSON.parse(
           fs.readFileSync(infoPath)
         )
 
-        title = json.title || title
-        channel = json.uploader || channel
-        views = json.view_count
-          ? json.view_count.toLocaleString()
+        title = data.title || title
+        author = data.uploader || author
+        duration = formatTime(data.duration)
+
+        views = data.view_count
+          ? Number(data.view_count).toLocaleString()
           : views
 
-        if (json.duration) {
-
-          const min = Math.floor(json.duration / 60)
-          const sec = json.duration % 60
-
-          duration =
-`${min}:${sec.toString().padStart(2, '0')}`
-        }
+        thumbnail =
+          data.thumbnail ||
+          (data.thumbnails?.length
+            ? data.thumbnails[data.thumbnails.length - 1].url
+            : null)
       }
 
-      // 📩 info mensaje
-      await sock.sendMessage(from, {
-        text:
+      // 🖼️ miniatura
+      if (thumbnail) {
+        try {
+          await downloadImage(thumbnail, thumbPath)
+        } catch {}
+      }
+
+      // 📩 info primero
+      const caption =
 `╭━━━〔 🎵 SPIDER PLAY 〕━━━⬣
 ┃
-┃ 🎶 ${title}
-┃ 👤 ${channel}
-┃ ⏱️ ${duration}
-┃ 👁️ ${views} vistas
-┃ 📥 Solicitado por:
+┃ 🎶 Título:
+┃ ${title}
+┃
+┃ ⏱️ Duración:
+┃ ${duration}
+┃
+┃ 👤 Autor:
+┃ ${author}
+┃
+┃ 👁️ Vistas:
+┃ ${views}
+┃
+┃ 📥 Pedido por:
 ┃ ${pushName}
 ╰━━━━━━━━━━━━━━━━⬣
 
 > SPIDER BOT`
-      }, { quoted: m })
 
-      // 🎧 audio
-      const buffer = fs.readFileSync(output)
+      // 🔥 enviar info antes
+      if (fs.existsSync(thumbPath)) {
+
+        await sock.sendMessage(from, {
+          image: fs.readFileSync(thumbPath),
+          caption
+        }, { quoted: m })
+
+      } else {
+
+        await sock.sendMessage(from, {
+          text: caption
+        }, { quoted: m })
+      }
+
+      // 🚀 audio después
+      const audioBuffer = fs.readFileSync(output)
 
       await sock.sendMessage(from, {
-        audio: buffer,
+        audio: audioBuffer,
         mimetype: 'audio/mpeg',
         ptt: false
       }, { quoted: m })
 
       // 🗑️ limpiar
-      fs.unlinkSync(output)
-
-      if (fs.existsSync(infoPath)) {
-        fs.unlinkSync(infoPath)
-      }
+      ;[output, infoPath, thumbPath].forEach(file => {
+        if (fs.existsSync(file)) {
+          fs.unlinkSync(file)
+        }
+      })
 
     } catch (e) {
 
       console.log(e)
 
       return sock.sendMessage(from, {
-        text: '❌ Error enviando audio.'
+        text: '❌ Error enviando canción.'
       }, { quoted: m })
     }
   })
