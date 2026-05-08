@@ -27,7 +27,7 @@ const handler = async (ctx) => {
     rpg: '💰',
     stickers: '🖼️',
     nsfw: '🔞',
-    others: '📦'
+    'on-off: '🔴🟢'
   }
 
   const cmdEmojiByTag = {
@@ -41,21 +41,21 @@ const handler = async (ctx) => {
     rpg: '💎',
     stickers: '🖌️',
     nsfw: '⚠️',
-    others: '▫️'
+    'on-off': '🔛'
   }
 
   const tagOrder = [
     'informacion',
-    'grupo',
+    'on-off',
+    'descargas',
     'juegos',
     'descargas',
-    'tools',
     'search',
     'rpg',
     'stickers',
+    'tools',
     'owner',
-    'nsfw',
-    'others'
+    'nsfw'
   ]
 
   const categories = {}
