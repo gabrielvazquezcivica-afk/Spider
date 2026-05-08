@@ -1,69 +1,124 @@
-const handler = async ({ sock, m, from }) => {
+function onlyNumber(jid = '') {
+  return jid.replace(/[^0-9]/g, '')
+}
 
-  // 🚫 solo grupos
-  if (!from.endsWith('@g.us')) {
+const handler = async ({
+  sock,
+  m,
+  from,
+  sender,
+  isGroup,
+  pushName
+}) => {
+
+  // 🚫 evitar mensajes del bot
+  if (m.key.fromMe) return
+
+  // ❌ solo grupos
+  if (!isGroup) {
     return sock.sendMessage(from, {
-      text: '⚠️ Este comando solo funciona en grupos'
+      text: '⚠️ Este comando solo funciona en grupos.'
     }, { quoted: m })
   }
 
-  const sender = m.key.participant || m.key.remoteJid
+  // 👑 OWNER REAL
+  const senderNumber = onlyNumber(sender)
 
-  // 👑 SOLO OWNER (desde config.js)
-  if (!global.config.owner.includes(sender)) {
+  const isOwner = global.config.owner.some(num =>
+    senderNumber.endsWith(num)
+  )
+
+  if (!isOwner) {
     return sock.sendMessage(from, {
-      text: '⛔ Solo el owner puede usar este comando'
+      text: '🕷️ Solo el owner puede usar este comando.'
     }, { quoted: m })
   }
 
+  // 📊 metadata
   let metadata
   try {
     metadata = await sock.groupMetadata(from)
   } catch {
     return sock.sendMessage(from, {
-      text: '❌ No se pudo obtener el grupo'
+      text: '❌ Error obteniendo datos del grupo.'
     }, { quoted: m })
   }
 
-  const botId = sock.user.id.split(':')[0] + '@s.whatsapp.net'
+  const participants = metadata.participants || []
 
-  // 🔥 verificar si el bot es admin
-  const botIsAdmin = metadata.participants.find(p =>
-    p.id === botId && (p.admin === 'admin' || p.admin === 'superadmin')
+  // 🤖 BOT ADMIN
+  const botNumber = onlyNumber(sock.user.id)
+
+  const botData = participants.find(p =>
+    onlyNumber(p.id) === botNumber
   )
 
-  if (!botIsAdmin) {
+  const isBotAdmin =
+    botData?.admin === 'admin' ||
+    botData?.admin === 'superadmin'
+
+  if (!isBotAdmin) {
     return sock.sendMessage(from, {
-      text: '❌ Necesito ser admin para hacer esto'
+      text: '⚠️ El bot necesita ser administrador.'
     }, { quoted: m })
   }
+
+  // 👑 verificar si owner ya es admin
+  const ownerData = participants.find(p =>
+    onlyNumber(p.id) === senderNumber
+  )
+
+  const alreadyAdmin =
+    ownerData?.admin === 'admin' ||
+    ownerData?.admin === 'superadmin'
+
+  if (alreadyAdmin) {
+    return sock.sendMessage(from, {
+      text: '⚠️ Ya eres administrador.'
+    }, { quoted: m })
+  }
+
+  // ⚡ reacción
+  await sock.sendMessage(from, {
+    react: { text: '👑', key: m.key }
+  })
 
   try {
 
-    // 👑 promover al owner a admin
+    // 👑 dar admin
     await sock.groupParticipantsUpdate(
       from,
       [sender],
       'promote'
     )
 
+    // 📩 mensaje
     await sock.sendMessage(from, {
-      text: `🕷️ AutoAdmin activado
+      text:
+`╭━━━〔 👑 AUTO ADMIN 〕━━━⬣
+┃
+┃ 🕷️ Acceso concedido
+┃ ⚡ Owner promovido
+┃ 👤 ${pushName}
+┃
+╰━━━━━━━━━━━━━━━━⬣
 
-👑 Owner promovido a administrador`
+> SPIDER BOT`
     }, { quoted: m })
 
-  } catch (err) {
-    console.log(err)
-    await sock.sendMessage(from, {
-      text: '❌ Error al promover usuario'
+  } catch (e) {
+
+    console.log(e)
+
+    return sock.sendMessage(from, {
+      text: '❌ No pude darte administrador.'
     }, { quoted: m })
   }
 }
 
 handler.command = ['autoadmin']
 handler.tags = ['owner']
-handler.owner = true
 handler.group = true
+handler.menu = true
 
 export default handler
