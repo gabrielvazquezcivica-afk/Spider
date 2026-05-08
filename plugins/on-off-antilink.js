@@ -134,13 +134,14 @@ export async function before({
 
     if (!db[from]?.enabled) return
 
-    // ❌ ignorar mensajes del bot
+    // ❌ ignorar bot
     if (m.key.fromMe) return
 
     const text =
         m.message?.conversation ||
         m.message?.extendedTextMessage?.text ||
         m.message?.imageMessage?.caption ||
+        m.message?.videoMessage?.caption ||
         ''
 
     if (!text) return
@@ -158,9 +159,14 @@ export async function before({
 
     try {
 
-        // 🗑️ borrar mensaje
-        await sock.sendMessage(from,{
-            delete:m.key
+        // 🗑️ borrar mensaje REAL
+        await sock.sendMessage(from, {
+            delete: {
+                remoteJid: from,
+                fromMe: false,
+                id: m.key.id,
+                participant: sender
+            }
         })
 
         // ⚠️ aviso
@@ -172,4 +178,4 @@ export async function before({
     } catch (e) {
         console.log('❌ Error AntiLink:', e)
     }
-          }
+}
