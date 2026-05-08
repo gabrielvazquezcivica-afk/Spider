@@ -79,7 +79,7 @@ const handler = async (ctx) => {
 
   let menu = `╭━━━〔 🕷️ ${botName} 〕━━━⬣
 ┃ 👋 ${saludo}
-┃ 👤 @${pushName}
+┃ 👤 ${pushName}
 ┃ ⚙️ Dev: ${dev}
 ╰━━━━━━━━━━━━━━━━⬣
 📊 Comandos: ${total}\n`
