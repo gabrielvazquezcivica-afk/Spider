@@ -21,9 +21,6 @@ const sistema = (titulo = '🕷️ Spider Bot') => ({
 })
 // ────────────────────────────────
 
-// 🧠 CACHE
-const groupCache = new Map()
-
 handler.before = async (m, { sock }) => {
 
   if (started) return
@@ -45,20 +42,6 @@ handler.before = async (m, { sock }) => {
 
       if (!id || !id.endsWith('@g.us')) return
 
-      // 📥 guardar metadata
-      try {
-
-        const metadata = await sock.groupMetadata(id)
-
-        groupCache.set(id, {
-          subject: metadata.subject,
-          desc: metadata.desc,
-          announce: metadata.announce,
-          restrict: metadata.restrict
-        })
-
-      } catch {}
-
       if (!['promote', 'demote'].includes(action)) return
 
       const user = participants?.[0]
@@ -75,7 +58,6 @@ handler.before = async (m, { sock }) => {
 
 👑 Usuario:
 @${user.split('@')[0]}`
-
       }
 
       // 🔴 demote
@@ -88,7 +70,7 @@ handler.before = async (m, { sock }) => {
 @${user.split('@')[0]}`
       }
 
-      // 👮 autor
+      // 👮 actor
       if (author) {
 
         text += `
@@ -117,37 +99,21 @@ handler.before = async (m, { sock }) => {
 
       for (const update of updates) {
 
-        const id = update.id
+        const {
+          id,
+          subject,
+          desc,
+          announce,
+          restrict,
+          author
+        } = update
 
         if (!id || !id.endsWith('@g.us')) continue
 
-        let metadata
-
-        try {
-          metadata = await sock.groupMetadata(id)
-        } catch {
-          continue
-        }
-
-        const old = groupCache.get(id) || {}
-
-        const subject = metadata.subject
-        const desc = metadata.desc
-        const announce = metadata.announce
-        const restrict = metadata.restrict
-
-        const actor =
-          update.author ||
-          update.participants?.[0]
-
-        let mentions = []
         let text = ''
 
-        // ✏️ NOMBRE
-        if (
-          old.subject &&
-          old.subject !== subject
-        ) {
+        // ✏️ nombre
+        if (subject) {
 
           text =
 `🕷️ Nombre del grupo actualizado
@@ -156,74 +122,68 @@ handler.before = async (m, { sock }) => {
 ${subject}`
         }
 
-        // 📝 DESCRIPCIÓN
-        else if (
-          old.desc !== undefined &&
-          old.desc !== desc
-        ) {
+        // 📝 descripción
+        else if (desc !== undefined) {
 
           text =
 `🕸️ La descripción del grupo
 fue modificada`
         }
 
-        // 🔒 CERRADO
-        else if (
-          old.announce !== undefined &&
-          old.announce !== announce
-        ) {
+        // 🔒 cerrado
+        else if (announce === true) {
 
-          text = announce
-            ? `🕷️ El grupo fue cerrado
+          text =
+`🕷️ El grupo fue cerrado
 
 🔒 Solo administradores
 pueden enviar mensajes`
-            : `🕸️ El grupo fue abierto
+        }
+
+        // 🔓 abierto
+        else if (announce === false) {
+
+          text =
+`🕸️ El grupo fue abierto
 
 ⚡ Todos los miembros
 pueden enviar mensajes`
         }
 
-        // 🔐 EDICIÓN
-        else if (
-          old.restrict !== undefined &&
-          old.restrict !== restrict
-        ) {
+        // 🔐 restringido
+        else if (restrict === true) {
 
-          text = restrict
-            ? `🕷️ La edición del grupo fue restringida`
-            : `🕸️ La edición del grupo fue abierta`
+          text =
+`🕷️ La edición del grupo
+fue restringida`
         }
 
+        // 🔓 edición libre
+        else if (restrict === false) {
+
+          text =
+`🕸️ La edición del grupo
+fue habilitada`
+        }
+
+        // ❌ nada
+        if (!text) continue
+
         // 👮 actor
-        if (text && actor) {
+        if (author) {
 
           text += `
 
 👮 Acción realizada por:
-@${actor.split('@')[0]}`
-
-          mentions.push(actor)
+@${author.split('@')[0]}`
         }
 
-        // 📩 enviar
-        if (text) {
-
-          await sock.sendMessage(id,{
-            text: `${text}
+        await sock.sendMessage(id,{
+          text: `${text}
 
 > ${botName}`,
-            mentions
-          },{ quoted:sistema() })
-        }
-
-        // 💾 guardar cache
-        groupCache.set(id,{
-          subject,
-          desc,
-          announce,
-          restrict
-        })
+          mentions: author ? [author] : []
+        },{ quoted:sistema() })
       }
 
     } catch (e) {
@@ -232,47 +192,38 @@ pueden enviar mensajes`
     }
   })
 
-  // 🖼️ FOTO DEL GRUPO
-  sock.ev.on('groups.upsert', async (groups) => {
+  // 🖼️ FOTO GRUPO
+  sock.ev.on('groups.update', async (updates) => {
 
     try {
 
-      for (const group of groups) {
+      for (const update of updates) {
 
-        const id = group.id
+        const {
+          id,
+          picture,
+          author
+        } = update
 
-        if (!id || !id.endsWith('@g.us')) continue
+        if (!id || !picture) continue
 
-        const old = groupCache.get(id) || {}
+        let text =
+`🕷️ La foto del grupo fue actualizada`
 
-        let metadata
+        if (author) {
 
-        try {
-          metadata = await sock.groupMetadata(id)
-        } catch {
-          continue
+          text += `
+
+👮 Acción realizada por:
+@${author.split('@')[0]}`
         }
 
-        const pic = await sock.profilePictureUrl(id, 'image')
-          .catch(() => null)
+        await sock.sendMessage(id,{
+          text: `${text}
 
-        if (
-          old.picture &&
-          old.picture !== pic
-        ) {
-
-          await sock.sendMessage(id,{
-            text:
-`🕷️ La foto del grupo fue actualizada
-
-> ${botName}`
-          },{ quoted:sistema() })
-        }
-
-        groupCache.set(id,{
-          ...old,
-          picture: pic
-        })
+> ${botName}`,
+          mentions: author ? [author] : []
+        },{ quoted:sistema() })
       }
 
     } catch (e) {
