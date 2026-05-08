@@ -1,5 +1,3 @@
-import config from '../config.js'
-
 function normalizeJid(u) {
   return typeof u === 'string' ? u : u?.id
 }
@@ -76,17 +74,6 @@ Ejemplo:
 
   const userNum = onlyNumber(userRaw)
 
-  // 👑 owners protegidos
-  const owners = (config.owner || []).map(n =>
-    onlyNumber(n)
-  )
-
-  if (owners.includes(userNum)) {
-    return sock.sendMessage(from, {
-      text: '❌ Ese usuario está protegido.'
-    }, { quoted: m })
-  }
-
   // ⚡ reacción
   await sock.sendMessage(from, {
     react: { text: '🕸️', key: m.key }
@@ -106,10 +93,10 @@ Ejemplo:
       text:
 `╭━━━〔 🕷️ SPIDER SYSTEM 〕━━━⬣
 ┃
-┃ ☠️ Objetivo eliminado
+┃ ☠️ Enemigo eliminado
 ┃ 👤 Usuario: @${userNum}
-┃ 🕸️ por:
-┃ ${pushName}
+┃ 🕸️ Por:
+┃ @${pushName}
 ╰━━━━━━━━━━━━━━━━⬣
 
 > SPIDER BOT`,
