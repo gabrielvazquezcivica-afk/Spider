@@ -1,9 +1,5 @@
 import config from '../config.js'
 
-function onlyNumber(jid = '') {
-  return jid.replace(/[^0-9]/g, '')
-}
-
 const handler = async ({
   sock,
   m,
@@ -13,7 +9,9 @@ const handler = async ({
   pushName
 }) => {
 
-  // 🚫 evitar mensajes del bot
+  // 🔍 DEBUG
+  console.log('📌 SENDER RAW =>', sender)
+
   if (m.key.fromMe) return
 
   // ❌ solo grupos
@@ -23,17 +21,22 @@ const handler = async ({
     }, { quoted: m })
   }
 
-  // 👑 OWNER REAL
-  const senderNumber = sender
-  .split('@')[0]
-  .split(':')[0]
-  .replace(/^521/, '')
-  .replace(/^52/, '')
+  // 👑 limpiar número
+  const senderNumber = String(sender)
+    .split('@')[0]
+    .split(':')[0]
+    .replace(/^521/, '')
+    .replace(/^52/, '')
 
-const isOwner = config.owner.some(num =>
-  senderNumber.endsWith(num) ||
-  num.endsWith(senderNumber)
-)
+  console.log('📌 SENDER LIMPIO =>', senderNumber)
+  console.log('📌 OWNERS =>', config.owner)
+
+  // 👑 validar owner
+  const isOwner = config.owner.some(num =>
+    senderNumber === String(num)
+  )
+
+  console.log('📌 ES OWNER =>', isOwner)
 
   if (!isOwner) {
     return sock.sendMessage(from, {
@@ -43,6 +46,7 @@ const isOwner = config.owner.some(num =>
 
   // 📊 metadata
   let metadata
+
   try {
     metadata = await sock.groupMetadata(from)
   } catch {
@@ -53,11 +57,13 @@ const isOwner = config.owner.some(num =>
 
   const participants = metadata.participants || []
 
-  // 🤖 BOT ADMIN
-  const botNumber = onlyNumber(sock.user.id)
+  // 🤖 verificar admin bot
+  const botNumber = String(sock.user.id)
+    .split('@')[0]
+    .split(':')[0]
 
   const botData = participants.find(p =>
-    onlyNumber(p.id) === botNumber
+    String(p.id).includes(botNumber)
   )
 
   const isBotAdmin =
@@ -70,9 +76,9 @@ const isOwner = config.owner.some(num =>
     }, { quoted: m })
   }
 
-  // 👑 verificar si owner ya es admin
+  // 👑 owner ya admin
   const ownerData = participants.find(p =>
-    onlyNumber(p.id) === senderNumber
+    String(p.id).includes(senderNumber)
   )
 
   const alreadyAdmin =
@@ -92,7 +98,7 @@ const isOwner = config.owner.some(num =>
 
   try {
 
-    // 👑 dar admin
+    // 👑 promote
     await sock.groupParticipantsUpdate(
       from,
       [sender],
@@ -104,8 +110,8 @@ const isOwner = config.owner.some(num =>
       text:
 `╭━━━〔 👑 AUTO ADMIN 〕━━━⬣
 ┃
-┃ 🕷️ Acceso concedido
-┃ ⚡ Owner promovido
+┃ 🕷️ Owner promovido
+┃ ⚡ Acceso concedido
 ┃ 👤 ${pushName}
 ┃
 ╰━━━━━━━━━━━━━━━━⬣
@@ -115,7 +121,7 @@ const isOwner = config.owner.some(num =>
 
   } catch (e) {
 
-    console.log(e)
+    console.log('❌ ERROR AUTOADMIN:', e)
 
     return sock.sendMessage(from, {
       text: '❌ No pude darte administrador.'
