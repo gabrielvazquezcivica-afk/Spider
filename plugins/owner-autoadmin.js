@@ -9,6 +9,7 @@ const handler = async ({
   pushName
 }) => {
 
+  // 🚫 evitar mensajes del bot
   if (m.key.fromMe) return
 
   // ❌ solo grupos
@@ -18,7 +19,7 @@ const handler = async ({
     }, { quoted: m })
   }
 
-  // 👑 detectar owner por LID
+  // 👑 validar owner por LID
   const senderLid = sender.split('@')[0]
 
   const isOwner = config.ownerLid.includes(senderLid)
@@ -42,26 +43,10 @@ const handler = async ({
 
   const participants = metadata.participants || []
 
-  // 🤖 verificar admin bot
-  const botJid = sock.user.id
-
-const botData = participants.find(p =>
-  p.id === botJid
-)
-
-const isBotAdmin =
-  botData?.admin === 'admin' ||
-  botData?.admin === 'superadmin'
-
-  if (!isBotAdmin) {
-    return sock.sendMessage(from, {
-      text: '⚠️ El bot necesita ser administrador.'
-    }, { quoted: m })
-  }
-
-  // 👑 usuario ya admin
+  // 👑 buscar usuario
   const userData = participants.find(p => p.id === sender)
 
+  // 👑 ya admin
   const alreadyAdmin =
     userData?.admin === 'admin' ||
     userData?.admin === 'superadmin'
@@ -102,7 +87,7 @@ const isBotAdmin =
 
   } catch (e) {
 
-    console.log(e)
+    console.log('❌ ERROR AUTOADMIN:', e)
 
     return sock.sendMessage(from, {
       text: '❌ No pude darte administrador.'
