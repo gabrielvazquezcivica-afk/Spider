@@ -2,7 +2,7 @@ let started = false
 
 export const handler = async () => {}
 
-// ───── QUOTED SISTEMA (CHAPPIEBOT) ─────      
+// ───── QUOTED SISTEMA (CHAPPIEBOT ─────      
 const sistema = (titulo = 'ChappieBot 🏜️') => ({      
   key: {      
     fromMe: false,      
@@ -27,38 +27,45 @@ handler.before = async (m, { sock }) => {
 
   const botName = sock.user?.name || 'ChappieBot'
 
-  /* ───── DETECTAR CAMBIOS DE ADMINISTRADORES ───── */
+  // ✅ DETECTAR CAMBIOS DE ADMIN (PROMOVER / QUITAR)
   sock.ev.on('group-participants.update', async (update) => {
     try {
       const { id, participants, action, author } = update
       if (!id || !id.endsWith('@g.us')) return
-      // SOLO detectamos promover / degradar, lo demás (agregar/eliminar/entrar/salir) está fuera
+      // SOLO promover y degradar, ignora lo demás
       if (!['promote', 'demote'].includes(action)) return
 
-      const user = participants?.[0]
-      if (typeof user !== 'string' || typeof author !== 'string') return
+      const usuario = participants?.[0]
+      if (!usuario) return
 
-      const text =
-        action === 'promote'
-          ? `👑 Administrador asignado\n\n👤 @${user.split('@')[0]}\n👮 Por: @${author.split('@')[0]}`
-          : `👤 Administrador removido\n\n👤 @${user.split('@')[0]}\n👮 Por: @${author.split('@')[0]}`
+      let texto = ''
+      let menciones = [usuario]
 
-      await sock.sendMessage(
-        id,
-        {
-          text: text + `\n\n> ${botName}`,
-          mentions: [user, author]
-        },
-        { quoted: sistema() }
-      )
+      if (action === 'promote') {
+        texto = `👑 Administrador asignado\n\n👤 @${usuario.split('@')[0]}`
+      } else if (action === 'demote') {
+        texto = `👤 Administrador removido\n\n👤 @${usuario.split('@')[0]}`
+      }
+
+      // Quien lo hizo
+      if (author) {
+        texto += `\n👮 Por: @${author.split('@')[0]}`
+        menciones.push(author)
+      }
+
+      await sock.sendMessage(id, {
+        text: texto + `\n\n> ${botName}`,
+        mentions: menciones
+      }, { quoted: sistema() })
+
     } catch (e) {
-      console.log('AUTO-DETECT ADMIN ERROR:', e)
+      console.log('❌ ERROR ADMIN:', e)
     }
   })
 
-  /* ───── DETECTAR CAMBIOS GENERALES DEL GRUPO ───── */
-  sock.ev.on('groups.update', async (updates) => {
-    for (const g of updates) {
+  // ✅ DETECTAR CAMBIOS DEL GRUPO (NOMBRE, DESCRIPCIÓN, FOTO, ABRIR/CERRAR, ETC)
+  sock.ev.on('groups.update', async (actualizaciones) => {
+    for (const grupo of actualizaciones) {
       try {
         const {
           id,
@@ -68,66 +75,61 @@ handler.before = async (m, { sock }) => {
           restrict,
           inviteCode,
           picture,
-          author,
-          participants
-        } = g
+          author
+        } = grupo
 
         if (!id || !id.endsWith('@g.us')) continue
 
-        let actor = author || participants?.[0] || null
-        let text = ''
-        let mentions = []
+        let quienCambio = author || null
+        let texto = ''
+        let menciones = []
 
-        // 📌 Cambio de nombre
+        // 📌 Nombre cambiado
         if (subject) {
-          text = `✏️ Nombre del grupo cambiado\n📌 Nuevo: ${subject}`
+          texto = `✏️ Nombre del grupo actualizado\n📌 Nuevo: ${subject}`
         }
-        // 📝 Cambio de descripción
+        // 📝 Descripción cambiada
         else if (desc !== undefined) {
-          text = '📝 Descripción del grupo modificada'
+          texto = '📝 Descripción del grupo modificada'
         }
         // 🔒 Grupo cerrado / abierto
         else if (announce === true) {
-          text = '🔒 El grupo fue cerrado\n(solo administradores pueden enviar mensajes)'
+          texto = '🔒 Grupo CERRADO\n(solo administradores pueden escribir)'
         }
         else if (announce === false) {
-          text = '🔓 El grupo fue abierto\n(todos pueden enviar mensajes)'
+          texto = '🔓 Grupo ABIERTO\n(todos pueden escribir)'
         }
-        // 🔐 Configuración de edición
+        // 🔐 Configuración restringida / libre
         else if (restrict === true) {
-          text = '🔐 Configuración restringida\n(solo admins pueden editar datos)'
+          texto = '🔐 Configuración restringida\n(solo admins pueden editar datos)'
         }
         else if (restrict === false) {
-          text = '🔓 Configuración libre\n(todos pueden editar datos)'
+          texto = '🔓 Configuración libre\n(todos pueden editar datos)'
         }
-        // 🖼️ Foto del grupo
+        // 🖼️ Foto cambiada
         else if (picture) {
-          text = '🖼️ Foto del grupo actualizada'
+          texto = '🖼️ Foto del grupo actualizada'
         }
-        // 🔗 Código de invitación reiniciado
+        // 🔗 Enlace reiniciado
         else if (inviteCode) {
-          text = '🔗 Código de invitación del grupo reiniciado'
+          texto = '🔗 Enlace de invitación reiniciado'
         }
 
-        if (!text) continue
+        if (!texto) continue
 
-        // Agregar quién realizó el cambio
-        if (actor && typeof actor === 'string') {
-          text += `\n\n👮 Por: @${actor.split('@')[0]}`
-          mentions.push(actor)
+        // Agregar quién lo hizo
+        if (quienCambio) {
+          texto += `\n\n👮 Por: @${quienCambio.split('@')[0]}`
+          menciones.push(quienCambio)
         }
 
-        await sock.sendMessage(
-          id,
-          {
-            text: text + `\n\n> ${botName}`,
-            mentions
-          },
-          { quoted: sistema() }
-        )
+        await sock.sendMessage(id, {
+          text: texto + `\n\n> ${botName}`,
+          mentions: menciones
+        }, { quoted: sistema() })
 
       } catch (e) {
-        console.log('AUTO-DETECT GROUP UPDATE ERROR:', e)
+        console.log('❌ ERROR GRUPO:', e)
       }
     }
   })
