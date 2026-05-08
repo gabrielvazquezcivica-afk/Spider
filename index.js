@@ -87,7 +87,6 @@ async function start() {
 
     await loadPlugins()
 
-    const groupCache = new Map()
     const startTime = Date.now()
 
     sock.ev.on('messages.upsert', async ({ messages, type }) => {
@@ -123,19 +122,18 @@ async function start() {
                 let groupMetadata = null
                 let participants = []
 
+                // 🔥 SIN CACHE (IMPORTANTE PARA ADMIN REAL)
                 if (isGroup) {
-                    if (!groupCache.has(from)) {
+                    try {
                         groupMetadata = await sock.groupMetadata(from)
-                        groupCache.set(from, groupMetadata)
-                    } else {
-                        groupMetadata = groupCache.get(from)
+                        participants = groupMetadata.participants
+                        groupName = groupMetadata.subject
+                    } catch {
+                        participants = []
                     }
-
-                    groupName = groupMetadata.subject
-                    participants = groupMetadata.participants
                 }
 
-                // 🔒 MODODADMIN (SIN ROMPER NADA)
+                // 🔒 MODODADMIN
                 const modoadmin = getModoadmin()
                 const isBlockedGroup = isGroup && modoadmin[from]
 
@@ -158,10 +156,11 @@ async function start() {
                     if (handler.group && !isGroup) continue
                     if (handler.private && isGroup) continue
 
-                    // 🔥 BLOQUEO GLOBAL SOLO COMANDOS NORMALES
+                    // 🔥 BLOQUEO MODODADMIN (SOLO COMANDOS NORMALES)
                     const isGroupCommand = handler.group === true
 
                     if (isBlockedGroup && !isGroupCommand) {
+
                         const user = participants.find(p => p.id === sender)
 
                         const isAdmin =
@@ -172,7 +171,11 @@ async function start() {
                     }
 
                     if (handler.admin) {
-                        const isAdmin = participants.find(p => p.id === sender)?.admin
+                        const user = participants.find(p => p.id === sender)
+                        const isAdmin =
+                            user?.admin === 'admin' ||
+                            user?.admin === 'superadmin'
+
                         if (!isAdmin) continue
                     }
 
