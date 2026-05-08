@@ -155,6 +155,7 @@ export async function before({
         } catch {}
 
         const groupName = metadata.subject || 'Grupo'
+        const members = metadata.participants?.length || 0
 
         for (const user of group.participants) {
 
@@ -182,6 +183,7 @@ welcomeDB[id] ||
 ┃
 ┃ 🕸️ Nuevo usuario detectado
 ┃ 👤 @user
+┃ 👥 Miembros: @members
 ┃
 ┃ ⚡ Bienvenido a @group
 ╰━━━━━━━━━━━━━━━━⬣`
@@ -189,6 +191,7 @@ welcomeDB[id] ||
                 text = text
                     .replace(/@user/g, `@${user.split('@')[0]}`)
                     .replace(/@group/g, groupName)
+                    .replace(/@members/g, members)
 
                 await sock.sendMessage(id,{
                     image:{ url:image },
@@ -213,6 +216,7 @@ byeDB[id] ||
 ┃
 ┃ ☠️ Usuario desconectado
 ┃ 👤 @user
+┃ 👥 Miembros: @members
 ┃
 ┃ 🕷️ Salió de @group
 ╰━━━━━━━━━━━━━━━━⬣`
@@ -220,6 +224,7 @@ byeDB[id] ||
                 text = text
                     .replace(/@user/g, `@${user.split('@')[0]}`)
                     .replace(/@group/g, groupName)
+                    .replace(/@members/g, members)
 
                 await sock.sendMessage(id,{
                     image:{ url:image },
@@ -236,4 +241,4 @@ byeDB[id] ||
             }
         }
     }
-                                    }
+                    }
