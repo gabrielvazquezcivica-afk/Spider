@@ -74,6 +74,15 @@ Ejemplo:
 
   const userNum = onlyNumber(userRaw)
 
+  // 👑 protección dueño del grupo
+  const groupOwner = onlyNumber(metadata.owner || '')
+
+  if (groupOwner && userNum === groupOwner) {
+    return sock.sendMessage(from, {
+      text: '👑 No puedes expulsar al dueño del grupo.'
+    }, { quoted: m })
+  }
+
   // ⚡ reacción
   await sock.sendMessage(from, {
     react: { text: '🕸️', key: m.key }
@@ -96,7 +105,7 @@ Ejemplo:
 ┃ ☠️ Enemigo eliminado
 ┃ 👤 Usuario: @${userNum}
 ┃ 🕸️ Por:
-┃ @${pushName}
+┃ ${pushName}
 ╰━━━━━━━━━━━━━━━━⬣
 
 > SPIDER BOT`,
