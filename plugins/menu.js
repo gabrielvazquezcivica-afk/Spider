@@ -27,7 +27,7 @@ const handler = async (ctx) => {
     rpg: '💰',
     stickers: '🖼️',
     nsfw: '🔞',
-    'on-off: '🔴🟢'
+    'on-off': '🔴🟢'
   }
 
   const cmdEmojiByTag = {
