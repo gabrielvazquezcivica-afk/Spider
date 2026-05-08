@@ -1,3 +1,5 @@
+import config from '../config.js'
+
 function normalizeJid(u) {
   return typeof u === 'string' ? u : u?.id
 }
@@ -75,7 +77,7 @@ Ejemplo:
   const userNum = onlyNumber(userRaw)
 
   // 👑 owners protegidos
-  const owners = (global.config.owner || []).map(n =>
+  const owners = (config.owner || []).map(n =>
     onlyNumber(n)
   )
 
