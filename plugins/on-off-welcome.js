@@ -34,10 +34,10 @@ const BOT_IMAGE =
 
 // 🎵 AUDIOS
 const welcomeAudio =
-'https://files.catbox.moe/5f7w3v.mp3'
+'https://files.catbox.moe/1j6hx2.mp3'
 
 const byeAudio =
-'https://files.catbox.moe/6l9w9y.mp3'
+'https://files.catbox.moe/swqi7e.mp3'
 
 const handler = async ({
     sock,
