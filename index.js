@@ -188,20 +188,19 @@ async function start() {
                 for (const plugin of plugins) {
 
                     if (
-                        typeof plugin.before === 'function' &&
-                        !plugin.before.toString().includes('update') &&
-                        !plugin.before.toString().includes('groupsUpdate')
-                    ) {
+    typeof plugin.before === 'function' &&
+    !plugin.before.toString().includes('group.participants')
+) {
 
-                        await plugin.before({
-                            sock,
-                            m,
-                            from,
-                            isGroup,
-                            sender,
-                            participants,
-                            groupMetadata
-                        })
+    await plugin.before({
+        sock,
+        m,
+        from,
+        isGroup,
+        sender,
+        participants,
+        groupMetadata
+    })
                     }
                 }
 
