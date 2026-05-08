@@ -26,11 +26,13 @@ const handler = async ({
   // 👑 OWNER REAL
   const senderNumber = sender
   .split('@')[0]
+  .split(':')[0]
   .replace(/^521/, '')
   .replace(/^52/, '')
 
 const isOwner = config.owner.some(num =>
-  num === senderNumber
+  senderNumber.endsWith(num) ||
+  num.endsWith(senderNumber)
 )
 
   if (!isOwner) {
