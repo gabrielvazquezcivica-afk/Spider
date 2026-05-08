@@ -13,7 +13,6 @@ function getDB() {
     }
 }
 
-/* 🔥 IMPORTANTE: formato compatible con tu index */
 const handler = async (ctx) => {
 
 const {
@@ -26,7 +25,7 @@ const {
     sender
 } = ctx
 
-const botName = sock.user?.name || 'Spider Bot'
+const botName = sock.user?.name || 'SPIDER BOT 🕷️'
 
 /* 🔒 MODODADMIN */
 if (isGroup) {
@@ -47,36 +46,41 @@ const text = args.join(' ').trim()
 
 if (!text) {
     return sock.sendMessage(from,{
-        text:'🎧 Uso: .play <canción>'
+        text:'🕷️ Uso: .play <canción>'
     },{ quoted:m })
 }
 
-/* ⚡ REACCIÓN */
+/* ⚡ REACCIÓN SPIDER */
 await sock.sendMessage(from,{
-    react:{ text:'🎧', key:m.key }
+    react:{ text:'🔎', key:m.key }
 })
 
 try {
 
 const search = await yts(text)
 if (!search.videos.length)
-    return sock.sendMessage(from,{ text:'❌ No encontrado' },{ quoted:m })
+    return sock.sendMessage(from,{
+        text:'❌ No se encontró nada en la red'
+    },{ quoted:m })
 
 const video = search.videos[0]
 
 const { title, url, thumbnail, timestamp, views, author } = video
 
+/* 🕷️ PANEL SPIDER */
 await sock.sendMessage(from,{
     image:{ url: thumbnail },
     caption:
-`╭━━━〔 🎶 SPIDER MUSIC 〕━━━⬣
-┃ 🎵 ${title}
-┃ 👤 ${author.name}
-┃ ⏱ ${timestamp}
-┃ 👁 ${views.toLocaleString()}
+`╭━━━〔 🕷️ SPIDER MUSIC SYSTEM 〕━━━⬣
 ┃
-┃ ⬇️ Descargando...
-╰━━━━━━━━━━━━━━⬣`
+┃ 🎧  TRACK: ${title}
+┃ 👤  CREATOR: ${author.name}
+┃ ⏱️  TIME: ${timestamp}
+┃ 👁️  VIEWS: ${views.toLocaleString()}
+┃
+┃ 🕸️ Analizando red...
+┃ 📡 Extrayendo audio...
+╰━━━━━━━━━━━━━━━━━━━━⬣`
 },{ quoted:m })
 
 if (!fs.existsSync('./tmp')) fs.mkdirSync('./tmp')
@@ -95,7 +99,7 @@ ytdlp.on('close', async(code)=>{
 
     if(code !== 0){
         return sock.sendMessage(from,{
-            text:'❌ Error descargando'
+            text:'🕷️ Error en la red de descarga'
         },{ quoted:m })
     }
 
@@ -107,12 +111,16 @@ ytdlp.on('close', async(code)=>{
 
     fs.unlinkSync(file)
 
+    await sock.sendMessage(from,{
+        react:{ text:'✅', key:m.key }
+    })
+
 })
 
 }catch(e){
 console.log(e)
 sock.sendMessage(from,{
-    text:'❌ Error en play'
+    text:'🕷️ Fallo en el sistema Spider'
 },{ quoted:m })
 }
 
