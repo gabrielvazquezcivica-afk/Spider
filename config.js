@@ -6,13 +6,19 @@ const config = {
     // 👑 Nombre del dueño principal
     ownerName: 'SoyGabo',
 
-    // 📱 Owners del bot (puedes agregar varios)
+    // 📱 owners normales
     owner: [
-        '13652994839', // principal
-        '18252500344', // owner 2
+        '13652994839',
+        '18252500344'
     ],
 
-    // ⚙️ Prefijo
+    // 🆔 IDs LID
+    ownerLid: [
+        '99326118375528',
+        '150904481304607'
+    ],
+
+    // ⚙️ prefijo
     prefix: '.'
 
 }
