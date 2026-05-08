@@ -47,7 +47,7 @@ const handler = async (ctx) => {
   const tagOrder = [
     'informacion',
     'on-off',
-    'descargas',
+    'grupo',
     'juegos',
     'descargas',
     'search',
