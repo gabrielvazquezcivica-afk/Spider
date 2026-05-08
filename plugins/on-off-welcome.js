@@ -137,6 +137,11 @@ export async function before({
     update
 }) {
 
+    // 🔥 FIX
+    if (!Array.isArray(update)) {
+        update = [update]
+    }
+
     const db = getDB()
 
     const welcomeDB = getTextDB(welcomePath)
@@ -241,4 +246,4 @@ byeDB[id] ||
             }
         }
     }
-                    }
+}
