@@ -37,46 +37,76 @@ const handler = async ({ sock, m, from, args, isGroup, sender }) => {
     const query = args.join(' ')
     const file = `./tmp/${Date.now()}.mp3`
 
+    // ⚡ 1. reacción inmediata
     await sock.sendMessage(from, {
         react: { text: '🎧', key: m.key }
     })
 
     try {
 
-        // 🔥 UN SOLO PROCESO (MUCHO MÁS RÁPIDO)
-        const cmd = `
-yt-dlp -f bestaudio \
---extract-audio \
---audio-format mp3 \
---audio-quality 0 \
---output "${file}" \
---no-playlist \
-"ytsearch1:${query}"
-        `
+        // ⚡ 2. obtener info (rápido)
+        const infoCmd = `yt-dlp -j "ytsearch1:${query}"`
 
-        exec(cmd, async (err) => {
+        exec(infoCmd, async (err, stdout) => {
 
             if (err) {
                 return sock.sendMessage(from, {
-                    text: '❌ No se pudo descargar la canción'
+                    text: '❌ No encontré la canción'
                 }, { quoted: m })
             }
 
-            const buffer = fs.readFileSync(file)
+            const info = JSON.parse(stdout)
 
+            const title = info.title
+            const duration = info.duration
+            const thumbnail = info.thumbnail
+            const url = info.webpage_url
+
+            // ⚡ 3. enviar info INMEDIATO
             await sock.sendMessage(from, {
-                audio: buffer,
-                mimetype: 'audio/mpeg'
+                image: { url: thumbnail },
+                caption:
+`🎵 *SPIDER PLAY*
+
+📌 ${title}
+⏱ ${duration}s
+🔗 ${url}
+
+⏳ Descargando audio...`
             }, { quoted: m })
 
-            fs.unlinkSync(file)
+            // ⚡ 4. descarga en paralelo (NO BLOQUEA INFO)
+            const dlCmd = `
+yt-dlp -f bestaudio \
+--extract-audio \
+--audio-format mp3 \
+--output "${file}" \
+--no-playlist \
+"ytsearch1:${query}"
+            `
+
+            exec(dlCmd, async (err2) => {
+
+                if (err2) {
+                    return sock.sendMessage(from, {
+                        text: '❌ Error descargando audio'
+                    }, { quoted: m })
+                }
+
+                const buffer = fs.readFileSync(file)
+
+                // ⚡ 5. enviar audio final
+                await sock.sendMessage(from, {
+                    audio: buffer,
+                    mimetype: 'audio/mpeg'
+                }, { quoted: m })
+
+                fs.unlinkSync(file)
+            })
         })
 
     } catch (e) {
         console.log(e)
-        sock.sendMessage(from, {
-            text: '❌ Error en play'
-        }, { quoted: m })
     }
 }
 
