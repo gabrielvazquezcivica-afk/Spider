@@ -18,6 +18,17 @@ const handler = async ({
     }, { quoted: m })
   }
 
+  // 👑 detectar owner por LID
+  const senderLid = sender.split('@')[0]
+
+  const isOwner = config.ownerLid.includes(senderLid)
+
+  if (!isOwner) {
+    return sock.sendMessage(from, {
+      text: '🕷️ Solo el owner puede usar este comando.'
+    }, { quoted: m })
+  }
+
   // 📊 metadata
   let metadata
 
@@ -31,30 +42,7 @@ const handler = async ({
 
   const participants = metadata.participants || []
 
-  // 👑 buscar participante real
-  const userData = participants.find(p => p.id === sender)
-
-  // 📱 número REAL
-  const realNumber = userData?.id
-    ?.split('@')[0]
-    ?.split(':')[0]
-    ?.replace(/^521/, '')
-    ?.replace(/^52/, '')
-
-  console.log('📌 NUMERO REAL =>', realNumber)
-
-  // 👑 validar owner
-  const isOwner = config.owner.includes(realNumber)
-
-  console.log('📌 ES OWNER =>', isOwner)
-
-  if (!isOwner) {
-    return sock.sendMessage(from, {
-      text: '🕷️ Solo el owner puede usar este comando.'
-    }, { quoted: m })
-  }
-
-  // 🤖 BOT ADMIN
+  // 🤖 verificar admin bot
   const botNumber = sock.user.id
     .split('@')[0]
     .split(':')[0]
@@ -73,7 +61,9 @@ const handler = async ({
     }, { quoted: m })
   }
 
-  // 👑 ya admin
+  // 👑 usuario ya admin
+  const userData = participants.find(p => p.id === sender)
+
   const alreadyAdmin =
     userData?.admin === 'admin' ||
     userData?.admin === 'superadmin'
