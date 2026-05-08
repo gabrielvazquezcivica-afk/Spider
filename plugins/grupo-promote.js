@@ -81,7 +81,7 @@ Ejemplo:
 ┃ 👑 Nuevo administrador
 ┃ 👤 Usuario: @${userNum}
 ┃ 🕸️ promovido por:
-┃ @${pushName}
+┃ ${pushName}
 ╰━━━━━━━━━━━━━━━━⬣
 
 > SPIDER BOT`,
