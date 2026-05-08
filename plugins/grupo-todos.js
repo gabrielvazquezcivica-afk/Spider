@@ -18,7 +18,7 @@ const handler = async ({ sock, m, from }) => {
   const participants = metadata.participants
   const sender = m.key.participant || m.key.remoteJid
 
-  // 🔥 MISMA LÓGICA QUE TU .n (LA QUE SÍ FUNCIONA)
+  // 🔥 MISMA LÓGICA QUE TU .n
   const isAdmin = participants.some(p =>
     p.id === sender && (p.admin === 'admin' || p.admin === 'superadmin')
   )
@@ -34,7 +34,7 @@ const handler = async ({ sock, m, from }) => {
   const total = participants.length
 
   const mentionText = participants
-    .map(p => `🕷️ @${p.id.split('@')[0]}`)
+    .map((p, i) => `┃ 🕷️ ${i + 1}. @${p.id.split('@')[0]}`)
     .join('\n')
 
   await sock.sendMessage(from, {
@@ -42,17 +42,19 @@ const handler = async ({ sock, m, from }) => {
   })
 
   const text =
-`🕷️━━━━━━━━━━━━━━━🕷️
-      *SPIDER BROADCAST*
-🕸️━━━━━━━━━━━━━━━🕸️
+`╭━━━〔 🕷️ SPIDER SYSTEM 〕━━━⬣
+┃
+┃ 📡 INVOCANDO MIEMBROS
+┃ 🏷️ Grupo: ${groupName}
+┃ 👥 Total: ${total}
+┃
+╰━━━━━━━━━━━━━━━━⬣
 
-🏷️ Grupo: ${groupName}
-👥 Miembros: ${total}
-
-🕷️ MENCIONES:
+╭━━━〔 👥 USUARIOS 〕━━━⬣
 ${mentionText}
+╰━━━━━━━━━━━━━━━━⬣
 
-🕷️━━━━━━━━━━━━━━━🕷️`
+> 🕸️ SPIDER BOT`
 
   await sock.sendMessage(from, {
     text,
