@@ -9,38 +9,12 @@ const handler = async ({
   pushName
 }) => {
 
-  // 🔍 DEBUG
-  console.log('📌 SENDER RAW =>', sender)
-
   if (m.key.fromMe) return
 
   // ❌ solo grupos
   if (!isGroup) {
     return sock.sendMessage(from, {
       text: '⚠️ Este comando solo funciona en grupos.'
-    }, { quoted: m })
-  }
-
-  // 👑 limpiar número
-  const senderNumber = String(sender)
-    .split('@')[0]
-    .split(':')[0]
-    .replace(/^521/, '')
-    .replace(/^52/, '')
-
-  console.log('📌 SENDER LIMPIO =>', senderNumber)
-  console.log('📌 OWNERS =>', config.owner)
-
-  // 👑 validar owner
-  const isOwner = config.owner.some(num =>
-    senderNumber === String(num)
-  )
-
-  console.log('📌 ES OWNER =>', isOwner)
-
-  if (!isOwner) {
-    return sock.sendMessage(from, {
-      text: '🕷️ Solo el owner puede usar este comando.'
     }, { quoted: m })
   }
 
@@ -51,19 +25,42 @@ const handler = async ({
     metadata = await sock.groupMetadata(from)
   } catch {
     return sock.sendMessage(from, {
-      text: '❌ Error obteniendo datos del grupo.'
+      text: '❌ Error obteniendo grupo.'
     }, { quoted: m })
   }
 
   const participants = metadata.participants || []
 
-  // 🤖 verificar admin bot
-  const botNumber = String(sock.user.id)
+  // 👑 buscar participante real
+  const userData = participants.find(p => p.id === sender)
+
+  // 📱 número REAL
+  const realNumber = userData?.id
+    ?.split('@')[0]
+    ?.split(':')[0]
+    ?.replace(/^521/, '')
+    ?.replace(/^52/, '')
+
+  console.log('📌 NUMERO REAL =>', realNumber)
+
+  // 👑 validar owner
+  const isOwner = config.owner.includes(realNumber)
+
+  console.log('📌 ES OWNER =>', isOwner)
+
+  if (!isOwner) {
+    return sock.sendMessage(from, {
+      text: '🕷️ Solo el owner puede usar este comando.'
+    }, { quoted: m })
+  }
+
+  // 🤖 BOT ADMIN
+  const botNumber = sock.user.id
     .split('@')[0]
     .split(':')[0]
 
   const botData = participants.find(p =>
-    String(p.id).includes(botNumber)
+    p.id.includes(botNumber)
   )
 
   const isBotAdmin =
@@ -76,14 +73,10 @@ const handler = async ({
     }, { quoted: m })
   }
 
-  // 👑 owner ya admin
-  const ownerData = participants.find(p =>
-    String(p.id).includes(senderNumber)
-  )
-
+  // 👑 ya admin
   const alreadyAdmin =
-    ownerData?.admin === 'admin' ||
-    ownerData?.admin === 'superadmin'
+    userData?.admin === 'admin' ||
+    userData?.admin === 'superadmin'
 
   if (alreadyAdmin) {
     return sock.sendMessage(from, {
@@ -121,7 +114,7 @@ const handler = async ({
 
   } catch (e) {
 
-    console.log('❌ ERROR AUTOADMIN:', e)
+    console.log(e)
 
     return sock.sendMessage(from, {
       text: '❌ No pude darte administrador.'
