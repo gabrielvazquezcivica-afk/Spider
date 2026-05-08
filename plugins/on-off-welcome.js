@@ -200,7 +200,7 @@ welcomeDB[id] ||
                 await sock.sendMessage(id,{
                     audio:{ url: welcomeAudio },
                     mimetype:'audio/mp4',
-                    ptt:true
+                    ptt:false
                 })
             }
 
@@ -231,7 +231,7 @@ byeDB[id] ||
                 await sock.sendMessage(id,{
                     audio:{ url: byeAudio },
                     mimetype:'audio/mp4',
-                    ptt:true
+                    ptt:false
                 })
             }
         }
