@@ -149,6 +149,9 @@ export async function before({
 
     for (const group of update) {
 
+        // 🔥 FIX ERROR
+        if (!group || !group.id) continue
+
         const id = group.id
 
         if (!db[id]?.welcome) continue
@@ -162,7 +165,12 @@ export async function before({
         const groupName = metadata.subject || 'Grupo'
         const members = metadata.participants?.length || 0
 
-        for (const user of group.participants) {
+        // 🔥 FIX PARTICIPANTS
+        const users = Array.isArray(group.participants)
+            ? group.participants
+            : []
+
+        for (const user of users) {
 
             let image = BOT_IMAGE
 
@@ -246,4 +254,4 @@ byeDB[id] ||
             }
         }
     }
-}
+                                           }
