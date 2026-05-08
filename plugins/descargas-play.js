@@ -4,7 +4,6 @@ import fs from 'fs'
 
 const path = './data/modoadmin.json'
 
-// 📥 DB modoadmin
 function getDB() {
     try {
         if (!fs.existsSync(path)) return {}
@@ -14,11 +13,22 @@ function getDB() {
     }
 }
 
-export const handler = async (m, { sock, from, args, reply, isGroup, participants, sender }) => {
+/* 🔥 IMPORTANTE: formato compatible con tu index */
+const handler = async (ctx) => {
+
+const {
+    sock,
+    m,
+    from,
+    args,
+    isGroup,
+    participants,
+    sender
+} = ctx
 
 const botName = sock.user?.name || 'Spider Bot'
 
-/* 🔒 MODODADMIN (MISMO SISTEMA SHIP) */
+/* 🔒 MODODADMIN */
 if (isGroup) {
 
     const db = getDB()
@@ -36,45 +46,43 @@ if (isGroup) {
 const text = args.join(' ').trim()
 
 if (!text) {
-    return reply('🎧 Uso: .play <canción>')
+    return sock.sendMessage(from,{
+        text:'🎧 Uso: .play <canción>'
+    },{ quoted:m })
 }
 
-/* ⚡ REACCIÓN INMEDIATA */
+/* ⚡ REACCIÓN */
 await sock.sendMessage(from,{
     react:{ text:'🎧', key:m.key }
 })
 
 try {
 
-/* 🔎 SEARCH RÁPIDO */
 const search = await yts(text)
-if (!search.videos.length) return reply('❌ No encontré resultados')
+if (!search.videos.length)
+    return sock.sendMessage(from,{ text:'❌ No encontrado' },{ quoted:m })
 
 const video = search.videos[0]
+
 const { title, url, thumbnail, timestamp, views, author } = video
 
-/* 📢 INFO INMEDIATA */
 await sock.sendMessage(from,{
     image:{ url: thumbnail },
     caption:
-`╭━━━〔 🎶 ${botName} 〕━━━⬣
+`╭━━━〔 🎶 SPIDER MUSIC 〕━━━⬣
 ┃ 🎵 ${title}
 ┃ 👤 ${author.name}
 ┃ ⏱ ${timestamp}
 ┃ 👁 ${views.toLocaleString()}
 ┃
-┃ ⬇️ Descargando audio...
+┃ ⬇️ Descargando...
 ╰━━━━━━━━━━━━━━⬣`
 },{ quoted:m })
 
-/* 📁 TMP */
-if (!fs.existsSync('./tmp')) {
-    fs.mkdirSync('./tmp')
-}
+if (!fs.existsSync('./tmp')) fs.mkdirSync('./tmp')
 
 const file = `./tmp/${Date.now()}.m4a`
 
-/* 🚀 DESCARGA RÁPIDA */
 const ytdlp = spawn('yt-dlp',[
     '-f','bestaudio[ext=m4a]/bestaudio',
     '--no-playlist',
@@ -86,33 +94,26 @@ const ytdlp = spawn('yt-dlp',[
 ytdlp.on('close', async(code)=>{
 
     if(code !== 0){
-        return reply('❌ Error descargando audio')
-    }
-
-    try {
-
-        await sock.sendMessage(from,{
-            audio: { url: file },
-            mimetype:'audio/mp4',
-            ptt:false
+        return sock.sendMessage(from,{
+            text:'❌ Error descargando'
         },{ quoted:m })
-
-        fs.unlinkSync(file)
-
-        await sock.sendMessage(from,{
-            react:{ text:'✅', key:m.key }
-        })
-
-    } catch (err) {
-        console.log('SEND ERROR:', err)
-        reply('❌ Error enviando audio')
     }
+
+    await sock.sendMessage(from,{
+        audio:{ url:file },
+        mimetype:'audio/mp4',
+        ptt:false
+    },{ quoted:m })
+
+    fs.unlinkSync(file)
 
 })
 
 }catch(e){
-console.log('PLAY ERROR:',e)
-reply('❌ Error en el play')
+console.log(e)
+sock.sendMessage(from,{
+    text:'❌ Error en play'
+},{ quoted:m })
 }
 
 }
