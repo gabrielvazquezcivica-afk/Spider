@@ -24,11 +24,14 @@ const handler = async ({
   }
 
   // 👑 OWNER REAL
-  const senderNumber = onlyNumber(sender)
+  const senderNumber = sender
+  .split('@')[0]
+  .replace(/^521/, '')
+  .replace(/^52/, '')
 
-  const isOwner = config.owner.some(num =>
-    senderNumber.endsWith(num)
-  )
+const isOwner = config.owner.some(num =>
+  num === senderNumber
+)
 
   if (!isOwner) {
     return sock.sendMessage(from, {
