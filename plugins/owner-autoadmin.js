@@ -1,3 +1,5 @@
+import config from '../config.js'
+
 function onlyNumber(jid = '') {
   return jid.replace(/[^0-9]/g, '')
 }
@@ -24,7 +26,7 @@ const handler = async ({
   // 👑 OWNER REAL
   const senderNumber = onlyNumber(sender)
 
-  const isOwner = global.config.owner.some(num =>
+  const isOwner = config.owner.some(num =>
     senderNumber.endsWith(num)
   )
 
