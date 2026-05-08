@@ -37,7 +37,13 @@ async function loadPlugins() {
             const module = await import(`file://${path.join(pluginsPath, file)}?update=${Date.now()}`)
             const handler = module.default
 
+            // ✅ AGARRAR before()
             if (typeof handler === 'function') {
+
+                if (module.before) {
+                    handler.before = module.before
+                }
+
                 plugins.push(handler)
             }
 
@@ -89,6 +95,31 @@ async function start() {
 
     const startTime = Date.now()
 
+    // 🕷️ WELCOME/BYE
+    sock.ev.on('group-participants.update', async (update) => {
+
+        try {
+
+            for (const plugin of plugins) {
+
+                if (typeof plugin.before === 'function') {
+
+                    await plugin.before({
+                        sock,
+                        update: [update]
+                    })
+                }
+            }
+
+        } catch (err) {
+
+            console.log(
+                chalk.red('Error welcome/bye:'),
+                err
+            )
+        }
+    })
+
     sock.ev.on('messages.upsert', async ({ messages, type }) => {
         if (type !== 'notify') return
 
@@ -122,7 +153,7 @@ async function start() {
                 let groupMetadata = null
                 let participants = []
 
-                // 🔥 SIN CACHE (IMPORTANTE PARA ADMIN REAL)
+                // 🔥 SIN CACHE
                 if (isGroup) {
                     try {
                         groupMetadata = await sock.groupMetadata(from)
@@ -156,7 +187,7 @@ async function start() {
                     if (handler.group && !isGroup) continue
                     if (handler.private && isGroup) continue
 
-                    // 🔥 BLOQUEO MODODADMIN (SOLO COMANDOS NORMALES)
+                    // 🔥 BLOQUEO MODODADMIN
                     const isGroupCommand = handler.group === true
 
                     if (isBlockedGroup && !isGroupCommand) {
@@ -171,6 +202,7 @@ async function start() {
                     }
 
                     if (handler.admin) {
+
                         const user = participants.find(p => p.id === sender)
 
                         const isAdmin =
