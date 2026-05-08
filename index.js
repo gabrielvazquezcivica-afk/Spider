@@ -162,17 +162,20 @@ async function start() {
                 // 🔥 BEFORE GLOBAL
                 for (const plugin of plugins) {
 
-                    if (typeof plugin.before === 'function') {
+                    if (
+    typeof plugin.before === 'function' &&
+    !plugin.before.toString().includes('update')
+) {
 
-                        await plugin.before({
-                            sock,
-                            m,
-                            from,
-                            isGroup,
-                            sender,
-                            participants,
-                            groupMetadata
-                        })
+    await plugin.before({
+        sock,
+        m,
+        from,
+        isGroup,
+        sender,
+        participants,
+        groupMetadata
+    })
                     }
                 }
 
