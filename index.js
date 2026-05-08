@@ -95,7 +95,7 @@ async function start() {
 
     const startTime = Date.now()
 
-    // 🕷️ WELCOME/BYE
+    // 🕷️ WELCOME/BYE + AUTODETECT
     sock.ev.on('group-participants.update', async (update) => {
 
         try {
@@ -106,7 +106,7 @@ async function start() {
 
                     await plugin.before({
                         sock,
-                        update: [update]
+                        update
                     })
                 }
             }
@@ -115,6 +115,31 @@ async function start() {
 
             console.log(
                 chalk.red('Error welcome/bye:'),
+                err
+            )
+        }
+    })
+
+    // 🕷️ DETECTAR CAMBIOS DEL GRUPO
+    sock.ev.on('groups.update', async (update) => {
+
+        try {
+
+            for (const plugin of plugins) {
+
+                if (typeof plugin.before === 'function') {
+
+                    await plugin.before({
+                        sock,
+                        groupsUpdate: update
+                    })
+                }
+            }
+
+        } catch (err) {
+
+            console.log(
+                chalk.red('Error autodetect:'),
                 err
             )
         }
@@ -163,19 +188,20 @@ async function start() {
                 for (const plugin of plugins) {
 
                     if (
-    typeof plugin.before === 'function' &&
-    !plugin.before.toString().includes('update')
-) {
+                        typeof plugin.before === 'function' &&
+                        !plugin.before.toString().includes('update') &&
+                        !plugin.before.toString().includes('groupsUpdate')
+                    ) {
 
-    await plugin.before({
-        sock,
-        m,
-        from,
-        isGroup,
-        sender,
-        participants,
-        groupMetadata
-    })
+                        await plugin.before({
+                            sock,
+                            m,
+                            from,
+                            isGroup,
+                            sender,
+                            participants,
+                            groupMetadata
+                        })
                     }
                 }
 
