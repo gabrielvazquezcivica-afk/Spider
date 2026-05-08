@@ -1,3 +1,4 @@
+// ✅ CÓDIGO ADAPTADO EXACTAMENTE A TU INDEX.JS
 let started = false
 
 export const handler = async () => {}
@@ -21,111 +22,119 @@ const sistema = (titulo = 'ChappieBot 🏜️') => ({
 })      
 // ─────────────────────────────────────
 
-handler.before = async (m, { sock }) => {
-  // ✅ ELIMINO EL BLOQUEO DE 'started' (era lo principal que fallaba)
-  // Si no, el evento se registra una sola vez y deja de funcionar
-
+// ✅ AQUÍ ESTÁ LA CLAVE: TU INDEX PASA LOS DATOS AQUÍ
+handler.before = async ({ sock, m, update }) => {
   const botName = sock.user?.name || 'ChappieBot'
 
-  // ✅ DETECCIÓN DE ADMINS (PROMOVER / DEGRADAR) - ASEGURADO
-  sock.ev.removeAllListeners('group-participants.update') // Limpio eventos duplicados
-  sock.ev.on('group-participants.update', async (update) => {
-    try {
-      const { id, participants, action, author } = update
-      if (!id || !id.includes('@g.us')) return
+  // ─── CASO 1: VIENE DE group-participants.update ───
+  if (update) {
+    const datos = update[0]
+    const { id, participants, action, author } = datos
 
-      // SOLO promover / degradar, ignora agregar/eliminar miembros
-      if (action !== 'promote' && action !== 'demote') return
+    if (!id || !id.endsWith('@g.us')) return
+    // SOLO detectamos promover / degradar (ignoramos agregar/eliminar miembros)
+    if (action !== 'promote' && action !== 'demote') return
 
-      const usuario = participants?.[0]
-      if (!usuario) return
+    const usuario = participants?.[0]
+    if (!usuario) return
 
-      let texto = ''
-      let menciones = [usuario]
+    let texto = ''
+    let menciones = [usuario]
 
-      if (action === 'promote') {
-        texto = `👑 Administrador asignado\n\n👤 @${usuario.split('@')[0]}`
-      } else {
-        texto = `👤 Administrador removido\n\n👤 @${usuario.split('@')[0]}`
-      }
-
-      if (author) {
-        texto += `\n👮 Por: @${author.split('@')[0]}`
-        menciones.push(author)
-      }
-
-      await sock.sendMessage(id, {
-        text: texto + `\n\n> ${botName}`,
-        mentions: menciones
-      }, { quoted: sistema() })
-
-      console.log('✅ DETECTADO: Cambio de admin') // Mensaje de confirmación en consola
-
-    } catch (e) {
-      console.log('❌ ERROR ADMIN:', e)
+    if (action === 'promote') {
+      texto = `👑 Administrador asignado\n\n👤 @${usuario.split('@')[0]}`
+    } else {
+      texto = `👤 Administrador removido\n\n👤 @${usuario.split('@')[0]}`
     }
-  })
 
-  // ✅ DETECCIÓN DE CAMBIOS DEL GRUPO - ASEGURADO
-  sock.ev.removeAllListeners('groups.update') // Limpio eventos duplicates
-  sock.ev.on('groups.update', async (actualizaciones) => {
-    for (const grupo of actualizaciones) {
+    if (author) {
+      texto += `\n👮 Por: @${author.split('@')[0]}`
+      menciones.push(author)
+    }
+
+    await sock.sendMessage(id, {
+      text: texto + `\n\n> ${botName}`,
+      mentions: menciones
+    }, { quoted: sistema() })
+
+    return
+  }
+
+  // ─── CASO 2: VIENE DE MENSAJES / groups.update ───
+  if (!m || !m.key) return
+  const id = m.key.remoteJid
+  if (!id || !id.endsWith('@g.us')) return
+
+  // 🔍 OBTENEMOS EL ESTADO ACTUAL DEL GRUPO PARA COMPARAR CAMBIOS
+  if (!started) {
+    started = true
+    let estadoAnterior = {}
+
+    // ⏱️ REVISAMOS CAMBIOS CADA 1.5 SEGUNDOS
+    setInterval(async () => {
       try {
-        const { id, subject, desc, announce, restrict, inviteCode, picture, author } = grupo
-        if (!id || !id.includes('@g.us')) continue
+        const datosGrupo = await sock.groupMetadata(id)
+        if (!datosGrupo) return
 
+        const { subject, desc, announce, restrict, inviteCode, picture, id: gid } = datosGrupo
+
+        // 📌 PRIMERA VEZ: GUARDAMOS ESTADO
+        if (!estadoAnterior[gid]) {
+          estadoAnterior[gid] = { subject, desc, announce, restrict, inviteCode, picture }
+          return
+        }
+
+        const ant = estadoAnterior[gid]
         let texto = ''
         let menciones = []
-        const quien = author || null
 
-        // 📌 Nombre
-        if (subject) {
+        // ✏️ NOMBRE
+        if (ant.subject !== subject) {
           texto = `✏️ Nombre del grupo cambiado\n📌 Nuevo: ${subject}`
+          ant.subject = subject
         }
-        // 📝 Descripción
-        else if (desc !== undefined) {
+        // 📝 DESCRIPCIÓN
+        else if (ant.desc !== desc) {
           texto = '📝 Descripción del grupo modificada'
+          ant.desc = desc
         }
-        // 🔒 Abrir / Cerrar
-        else if (announce === true) {
-          texto = '🔒 Grupo CERRADO\n(solo admins pueden escribir)'
-        } else if (announce === false) {
-          texto = '🔓 Grupo ABIERTO\n(todos pueden escribir)'
+        // 🔒 ABRIR / CERRAR
+        else if (ant.announce !== announce) {
+          texto = announce 
+            ? '🔒 Grupo CERRADO (solo admins escriben)' 
+            : '🔓 Grupo ABIERTO (todos escriben)'
+          ant.announce = announce
         }
-        // 🔐 Configuración
-        else if (restrict === true) {
-          texto = '🔐 Edición restringida\n(solo admins pueden editar datos)'
-        } else if (restrict === false) {
-          texto = '🔓 Edición libre\n(todos pueden editar datos)'
+        // 🔐 RESTRICCIÓN DE EDICIÓN
+        else if (ant.restrict !== restrict) {
+          texto = restrict 
+            ? '🔐 Edición restringida (solo admins editan datos)' 
+            : '🔓 Edición libre (todos editan datos)'
+          ant.restrict = restrict
         }
-        // 🖼️ Foto
-        else if (picture) {
+        // 🖼️ FOTO
+        else if (ant.picture !== picture) {
           texto = '🖼️ Foto del grupo actualizada'
+          ant.picture = picture
         }
-        // 🔗 Enlace
-        else if (inviteCode) {
+        // 🔗 ENLACE
+        else if (ant.inviteCode !== inviteCode) {
           texto = '🔗 Enlace de invitación reiniciado'
+          ant.inviteCode = inviteCode
         }
 
-        if (!texto) continue
+        if (!texto) return
 
-        if (quien) {
-          texto += `\n\n👮 Por: @${quien.split('@')[0]}`
-          menciones.push(quien)
-        }
-
-        await sock.sendMessage(id, {
+        // 📤 ENVIAMOS MENSAJE
+        await sock.sendMessage(gid, {
           text: texto + `\n\n> ${botName}`,
-          mentions: menciones
+          mentions
         }, { quoted: sistema() })
 
-        console.log('✅ DETECTADO: Cambio de grupo') // Confirmación en consola
-
-      } catch (e) {
-        console.log('❌ ERROR GRUPO:', e)
-      }
-    }
-  })
+      } catch (e) { /* error silencioso */ }
+    }, 1500)
+  }
 }
 
 export default handler
+  
