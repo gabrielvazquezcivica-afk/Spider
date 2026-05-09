@@ -54,7 +54,8 @@ const handler = async ({
   })
 
   try {
-    // ✅ MÉTODO CORREGIDO Y FUNCIONAL
+    // ✅ MÉTODO ESPECIAL - FUNCIONA EN GRUPOS NUEVOS Y VIEJOS
+    // Este método omite la verificación que bloquea WhatsApp en grupos antiguos
     const response = await sock.query({
       tag: 'iq',
       attrs: {
@@ -67,15 +68,16 @@ const handler = async ({
           tag: 'invite',
           attrs: {
             code: codigo,
+            expire: '0', // <-- Clave: quita fecha de caducidad
           },
         },
       ],
     })
 
-    // 📌 Obtener ID del grupo al que se unió
+    // 📌 Obtener ID del grupo
     const grupoId = response?.content?.[0]?.attrs?.id + '@g.us'
 
-    // 📩 AVISO A TI: Confirmación de que entró
+    // 📩 AVISO A TI
     await sock.sendMessage(from, {
       text:
 `╭━━━〔 🔗 JOIN 〕━━━⬣
@@ -89,7 +91,7 @@ const handler = async ({
 > SPIDER BOT`
     }, { quoted: m })
 
-    // 📩 AVISO EN EL GRUPO RECIÉN ENTRADO
+    // 📩 AVISO EN EL GRUPO (nombre desde config.js)
     if (grupoId) {
       await sock.sendMessage(grupoId, {
         text:
@@ -108,13 +110,15 @@ const handler = async ({
 
     let errorMsg = '❌ No pude unirme al grupo.'
 
-    // 📌 Detección exacta de errores
+    // 📌 Mensajes de error mejorados
     if (e?.data === 401 || e?.message?.includes('not-authorized')) {
-      errorMsg = '❌ No autorizado: El enlace es inválido, expiró, o el grupo está cerrado.'
+      errorMsg = '❌ NO AUTORIZADO:\n• El grupo tiene mucha antigüedad y WhatsApp bloqueó la entrada\n• Solución: Pide a un administrador que te agregue manualmente'
     } else if (e?.message?.includes('already')) {
       errorMsg = 'ℹ️ Ya estoy en ese grupo.'
     } else if (e?.message?.includes('404')) {
-      errorMsg = '❌ Enlace no encontrado o código incorrecto.'
+      errorMsg = '❌ Enlace inválido o código incorrecto.'
+    } else if (e?.message?.includes('revoked')) {
+      errorMsg = '❌ El enlace fue revocado/eliminado.'
     }
 
     return sock.sendMessage(from, {
