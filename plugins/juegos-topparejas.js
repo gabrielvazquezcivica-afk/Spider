@@ -12,13 +12,13 @@ function getDB() {
     }
 }
 
-// 🎯 Obtener elementos aleatorios sin repetir
+// 🎯 Obtener aleatorios sin repetir
 function getRandom(arr, cantidad) {
     let mezclado = [...arr].sort(() => Math.random() - 0.5)
     return mezclado.slice(0, cantidad)
 }
 
-// 💬 Frases aleatorias para las parejas
+// 💬 Frases aleatorias
 function frasesAleatorias() {
     const frases = [
         '💘 ¡Destinados a estar juntos!',
@@ -45,44 +45,37 @@ const handler = async ({ sock, m, from, isGroup, participants, sender }) => {
     const user = participants.find(p => p.id === sender)
     const isAdmin = user?.admin === 'admin' || user?.admin === 'superadmin'
 
-    // 🔒 MODODADMIN: solo admins pueden usar si está bloqueado
+    // 🔒 MODODADMIN
     if (isBlockedGroup && !isAdmin) return
 
-    // ✅ SOLUCIÓN: Contamos bien a todos los usuarios reales
-    const miembros = []
-    for (let p of participants) {
-        // Solo personas reales, sin grupos ni el propio bot
-        if (p.id.includes('@s.whatsapp.net') && p.id !== sock.user.id) {
-            miembros.push(p.id)
-        }
-    }
+    // ✅ SOLUCIÓN DEFINITIVA: Tomamos participantes IGUAL que en tu comando SHIP
+    const miembros = participants
+        .filter(p => p.id.includes('@s.whatsapp.net') && p.id !== sock.user.id)
+        .map(p => p.id)
 
-    // 🚫 Mensaje solo si hay MENOS de 2 personas
+    // 🚫 Mensaje solo si hay MENOS de 2
     if (miembros.length < 2) {
         return sock.sendMessage(from, {
-            text: '⚠️ Se necesitan al menos 2 personas en el grupo para generar parejas'
+            text: '⚠️ Se necesitan al menos 2 personas en el grupo'
         }, { quoted: m })
     }
 
     // ⚡ Reacción
-    await sock.sendMessage(from, {
-        react: { text: '💞', key: m.key }
-    })
+    await sock.sendMessage(from, { react: { text: '💞', key: m.key } })
 
     let texto = `💘 *TOP 5 PAREJAS DEL GRUPO* 💘\n\n`
     let menciones = []
-    let parejasUsadas = new Set()
+    let usados = new Set()
 
-    // 🔄 Generar 5 parejas únicas
+    // 🔄 Generar 5 parejas
     for (let i = 1; i <= 5; i++) {
         let u1, u2, valido
         do {
             [u1, u2] = getRandom(miembros, 2)
-            // No repetir parejas ni elegirse a sí mismo
-            valido = u1 !== u2 && !parejasUsadas.has(`${u1},${u2}`) && !parejasUsadas.has(`${u2},${u1}`)
+            valido = u1 !== u2 && !usados.has(`${u1}-${u2}`) && !usados.has(`${u2}-${u1}`)
         } while (!valido)
 
-        parejasUsadas.add(`${u1},${u2}`)
+        usados.add(`${u1}-${u2}`)
         menciones.push(u1, u2)
 
         texto += `#${i} 👤 @${u1.split('@')[0]} + @${u2.split('@')[0]}\n`
@@ -91,7 +84,7 @@ const handler = async ({ sock, m, from, isGroup, participants, sender }) => {
 
     texto += `> SPIDER BOT 🕷️`
 
-    // 📩 Enviar mensaje
+    // 📩 ENVÍO OBLIGATORIO
     return sock.sendMessage(from, {
         text: texto,
         mentions: menciones
@@ -104,3 +97,4 @@ handler.group = true
 handler.menu = true
 
 export default handler
+    
