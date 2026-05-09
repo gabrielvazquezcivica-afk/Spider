@@ -2,7 +2,7 @@ const handler = async ({ sock, m, from }) => {
 
   if (!from.endsWith('@g.us')) {
     return sock.sendMessage(from, {
-      text: '⚠️ Solo funciona en grupos'
+      text: '┌─ ⚠️ ─┐\n│ Solo grupos │\n└───────┘'
     }, { quoted: m })
   }
 
@@ -11,21 +11,21 @@ const handler = async ({ sock, m, from }) => {
     metadata = await sock.groupMetadata(from)
   } catch {
     return sock.sendMessage(from, {
-      text: '❌ Error al obtener el grupo'
+      text: '┌─ ❌ ─┐\n│ Error grupo │\n└───────┘'
     }, { quoted: m })
   }
 
   const participants = metadata.participants
   const sender = m.key.participant || m.key.remoteJid
 
-  // 🔥 MISMA LÓGICA QUE TU .n
+  // 🔥 
   const isAdmin = participants.some(p =>
     p.id === sender && (p.admin === 'admin' || p.admin === 'superadmin')
   )
 
   if (!isAdmin) {
     return sock.sendMessage(from, {
-      text: '⚠️ Solo administradores pueden usar este comando'
+      text: '┌─ 🚫 ─┐\n│ Solo admins │\n└───────┘'
     }, { quoted: m })
   }
 
@@ -34,25 +34,22 @@ const handler = async ({ sock, m, from }) => {
   const total = participants.length
 
   const mentionText = participants
-    .map((p, i) => `┃ 🕷️ ${i + 1}. @${p.id.split('@')[0]}`)
-    .join('\n')
+    .map((p, i) => `• @${p.id.split('@')[0]}`)
+    .join(' ')
 
   await sock.sendMessage(from, {
     react: { text: '🕸️', key: m.key }
   })
 
   const text =
-`╭━━━〔 🕷️ SPIDER SYSTEM 〕━━━⬣
-┃
-┃ 📡 INVOCANDO MIEMBROS
-┃ 🏷️ Grupo: ${groupName}
-┃ 👥 Total: ${total}
-┃
-╰━━━━━━━━━━━━━━━━⬣
-
-╭━━━〔 👥 USUARIOS 〕━━━⬣
-${mentionText}
-╰━━━━━━━━━━━━━━━━⬣
+`┌──────────────┐
+│ 🕷️ INVITANDO A TODOS
+├──────────────┤
+│ 📡 ${groupName}
+│ 👥 Total: ${total}
+├──────────────┤
+│ ${mentionText}
+└──────────────┘
 
 > 🕸️ SPIDER BOT`
 
