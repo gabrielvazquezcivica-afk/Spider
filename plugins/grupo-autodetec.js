@@ -31,10 +31,7 @@ const handler = async ({
 
     // 🔐 solo admins
     const user = participants.find(p => p.id === sender)
-
-    const isAdmin =
-        user?.admin === 'admin' ||
-        user?.admin === 'superadmin'
+    const isAdmin = user?.admin === 'admin' || user?.admin === 'superadmin'
 
     if (!isAdmin) {
         return sock.sendMessage(from, {
@@ -43,12 +40,7 @@ const handler = async ({
     }
 
     const db = getDB()
-
-    if (!db[from]) {
-        db[from] = {
-            enabled: false
-        }
-    }
+    if (!db[from]) db[from] = { enabled: false }
 
     const option = args[0]?.toLowerCase()
 
@@ -65,41 +57,25 @@ const handler = async ({
 
     // 🟢 ON
     if (option === 'on') {
-
         if (db[from].enabled) {
-            return sock.sendMessage(from, {
-                text: '⚠️ El AutoDetect ya estaba activado'
-            }, { quoted: m })
+            return sock.sendMessage(from, { text: '⚠️ El AutoDetect ya estaba activado' }, { quoted: m })
         }
-
         db[from].enabled = true
         saveDB(db)
-
-        return sock.sendMessage(from, {
-            text: '🕸️ AutoDetect activado\n🔎 Se notificarán todos los cambios del grupo'
-        }, { quoted: m })
+        return sock.sendMessage(from, { text: '🕸️ AutoDetect activado\n🔎 Se notificarán todos los cambios del grupo' }, { quoted: m })
     }
 
     // 🔴 OFF
     if (option === 'off') {
-
         if (!db[from].enabled) {
-            return sock.sendMessage(from, {
-                text: '⚠️ El AutoDetect ya estaba desactivado'
-            }, { quoted: m })
+            return sock.sendMessage(from, { text: '⚠️ El AutoDetect ya estaba desactivado' }, { quoted: m })
         }
-
         db[from].enabled = false
         saveDB(db)
-
-        return sock.sendMessage(from, {
-            text: '🕷️ AutoDetect desactivado'
-        }, { quoted: m })
+        return sock.sendMessage(from, { text: '🕷️ AutoDetect desactivado' }, { quoted: m })
     }
 
-    return sock.sendMessage(from, {
-        text: '⚠️ Usa solamente on/off'
-    }, { quoted: m })
+    return sock.sendMessage(from, { text: '⚠️ Usa solamente on/off' }, { quoted: m })
 }
 
 handler.command = ['autodetect']
@@ -109,146 +85,156 @@ handler.menu = true
 
 export default handler
 
-// 🕸️ DETECTOR DE CAMBIOS (VERSIÓN CORREGIDA)
-export async function before({
-    sock,
-    groupsUpdate
-}) {
+// 🕸️ DETECTOR DIRECTO - NO DEPENDE DE TU INDEX
+export async function before({ sock }) {
+    // ⚡ CONECTAMOS DIRECTO AL EVENTO (ESTO ES LO QUE FALTABA)
+    sock.ev.on('groups.update', async (actualizaciones) => {
 
-    // ❌ Si no hay datos, salimos
-    if (!groupsUpdate || groupsUpdate.length === 0) return
+        if (!actualizaciones || actualizaciones.length === 0) return
 
-    // 📌 Extraemos los datos correctamente
-    const update = groupsUpdate[0]
-    const groupId = update.id + '@g.us'
+        const db = getDB()
+        const botId = sock.user.id.split(':')[0] + '@s.whatsapp.net'
 
-    const db = getDB()
-    if (!db[groupId]?.enabled) return
+        for (const update of actualizaciones) {
+            const groupId = update.id + '@g.us'
 
-    // ❌ Ignorar cambios hechos por el propio bot
-    const botNumber = sock.user.id.split(':')[0] + '@s.whatsapp.net'
-    if (update.author === botNumber || update.author === sock.user.id) return
+            // ❌ SI ESTÁ DESACTIVADO EN ESTE GRUPO -> SALIR
+            if (!db[groupId]?.enabled) continue
 
-    let mensaje = ''
-    const autor = update.author ? update.author.split('@')[0] : 'Desconocido'
+            // ❌ IGNORAR CAMBIOS HECHOS POR EL BOT
+            if (update.author === botId || update.author === sock.user.id) continue
 
-    try {
+            let mensaje = ''
+            const autor = update.author ? update.author.split('@')[0] : 'Desconocido'
 
-        // ─── DETECTAR TODOS LOS CAMBIOS ───
+            try {
 
-        // 📛 Cambio de NOMBRE
-        if (update.subject) {
-            mensaje = `╭━━━〔 🔔 CAMBIO DETECTADO 〕━━━⬣
+                // ─── DETECTAR TODOS LOS CAMBIOS ───
+
+                // 📛 CAMBIO DE NOMBRE
+                if (update.subject) {
+                    mensaje = `╭━━━〔 🔔 CAMBIO DETECTADO 〕━━━⬣
 ┃
 ┃ 📛 NOMBRE DEL GRUPO ACTUALIZADO
 ┃ 👤 Modificado por: @${autor}
 ┃ ✏️ Nuevo: ${update.subject}
 ┃
 ╰━━━━━━━━━━━━━━━━━━━━⬣`
-        }
+                }
 
-        // 📝 Cambio de DESCRIPCIÓN
-        else if (update.desc) {
-            mensaje = `╭━━━〔 🔔 CAMBIO DETECTADO 〕━━━⬣
+                // 📝 CAMBIO DE DESCRIPCIÓN
+                else if (update.desc !== undefined) {
+                    mensaje = `╭━━━〔 🔔 CAMBIO DETECTADO 〕━━━⬣
 ┃
 ┃ 📝 DESCRIPCIÓN MODIFICADA
 ┃ 👤 Hecho por: @${autor}
 ┃
 ╰━━━━━━━━━━━━━━━━━━━━⬣`
-        }
+                }
 
-        // 🖼️ Cambio de FOTO
-        else if (update.imgUrl !== undefined) {
-            mensaje = `╭━━━〔 🔔 CAMBIO DETECTADO 〕━━━⬣
+                // 🖼️ CAMBIO DE FOTO
+                else if (update.imgUrl !== undefined) {
+                    mensaje = `╭━━━〔 🔔 CAMBIO DETECTADO 〕━━━⬣
 ┃
 ┃ 🖼️ FOTO DEL GRUPO CAMBIADA
 ┃ 👤 Modificada por: @${autor}
 ┃
 ╰━━━━━━━━━━━━━━━━━━━━⬣`
-        }
+                }
 
-        // 🔒 Cambio a SOLO ADMINS PUEDEN ESCRIBIR
-        else if (update.announce === true) {
-            mensaje = `╭━━━〔 🔔 CAMBIO DETECTADO 〕━━━⬣
+                // 🔒 SOLO ADMINS PUEDEN ESCRIBIR
+                else if (update.announce === true) {
+                    mensaje = `╭━━━〔 🔔 CAMBIO DETECTADO 〕━━━⬣
 ┃
 ┃ 🔒 MODO RESTRINGIDO ACTIVADO
 ┃ 🛡️ Solo administradores pueden escribir
 ┃ 👤 Hecho por: @${autor}
 ┃
 ╰━━━━━━━━━━━━━━━━━━━━⬣`
-        }
+                }
 
-        // 🔓 Cambio a TODOS PUEDEN ESCRIBIR
-        else if (update.announce === false) {
-            mensaje = `╭━━━〔 🔔 CAMBIO DETECTADO 〕━━━⬣
+                // 🔓 TODOS PUEDEN ESCRIBIR
+                else if (update.announce === false) {
+                    mensaje = `╭━━━〔 🔔 CAMBIO DETECTADO 〕━━━⬣
 ┃
 ┃ 🔓 GRUPO ABIERTO
 ┃ ✍️ Todos los participantes pueden escribir
 ┃ 👤 Hecho por: @${autor}
 ┃
 ╰━━━━━━━━━━━━━━━━━━━━⬣`
-        }
+                }
 
-        // 🛡️ Cambio RESTRICCIÓN DE EDICIÓN
-        else if (update.restrict === true) {
-            mensaje = `╭━━━〔 🔔 CAMBIO DETECTADO 〕━━━⬣
+                // 🛡️ SOLO ADMINS EDITAN DATOS
+                else if (update.restrict === true) {
+                    mensaje = `╭━━━〔 🔔 CAMBIO DETECTADO 〕━━━⬣
 ┃
 ┃ 🛡️ RESTRICCIÓN ACTIVADA
-┃ ✏️ Solo admins pueden editar datos del grupo
+┃ ✏️ Solo admins pueden editar datos
 ┃ 👤 Hecho por: @${autor}
 ┃
 ╰━━━━━━━━━━━━━━━━━━━━⬣`
-        }
-        else if (update.restrict === false) {
-            mensaje = `╭━━━〔 🔔 CAMBIO DETECTADO 〕━━━⬣
+                }
+                else if (update.restrict === false) {
+                    mensaje = `╭━━━〔 🔔 CAMBIO DETECTADO 〕━━━⬣
 ┃
 ┃ ♻️ RESTRICCIÓN DESACTIVADA
-┃ ✏️ Todos pueden editar datos del grupo
+┃ ✏️ Todos pueden editar datos
 ┃ 👤 Hecho por: @${autor}
 ┃
 ╰━━━━━━━━━━━━━━━━━━━━⬣`
-        }
+                }
 
-        // ⏳ Cambio MENSAJES TEMPORALES
-        else if (update.duration !== undefined) {
-            let tiempo = 'Desactivados'
-            if (update.duration === 86400) tiempo = '24 Horas'
-            if (update.duration === 604800) tiempo = '7 Días'
-            if (update.duration === 7776000) tiempo = '90 Días'
+                // ⏳ MENSAJES TEMPORALES
+                else if (update.duration !== undefined) {
+                    const tiempo = update.duration === 86400 ? '24 Horas' :
+                                   update.duration === 604800 ? '7 Días' :
+                                   update.duration === 7776000 ? '90 Días' : 'Desactivados'
 
-            mensaje = `╭━━━〔 🔔 CAMBIO DETECTADO 〕━━━⬣
+                    mensaje = `╭━━━〔 🔔 CAMBIO DETECTADO 〕━━━⬣
 ┃
 ┃ ⏳ MENSAJES TEMPORALES
-┃ ⏱️ Tiempo: ${tiempo}
+┃ ⏱️ Duración: ${tiempo}
 ┃ 👤 Hecho por: @${autor}
 ┃
 ╰━━━━━━━━━━━━━━━━━━━━⬣`
-        }
+                }
 
-        // 👑 PROMOCIÓN / DEGRADACIÓN DE ADMINS
-        else if (update.promote || update.demote) {
-            const accion = update.promote ? 'PROMOVIDO A ADMIN' : 'DEGRADADO DE ADMIN'
-            const usuario = update.promote ? update.promote[0] : update.demote[0]
-            const numUser = usuario.split('@')[0]
-
-            mensaje = `╭━━━〔 🔔 CAMBIO DETECTADO 〕━━━⬣
+                // 👑 PROMOCIÓN A ADMIN
+                else if (update.promote && update.promote.length > 0) {
+                    const usuario = update.promote[0].split('@')[0]
+                    mensaje = `╭━━━〔 🔔 CAMBIO DETECTADO 〕━━━⬣
 ┃
-┃ 👑 USUARIO ${accion}
-┃ 👤 Modificado: @${numUser}
+┃ 👑 USUARIO PROMOVIDO A ADMIN
+┃ 👤 Nuevo admin: @${usuario}
 ┃ 🛡️ Hecho por: @${autor}
 ┃
 ╰━━━━━━━━━━━━━━━━━━━━⬣`
-        }
+                }
 
-        // 📩 Si hay mensaje, lo enviamos
-        if (mensaje) {
-            await sock.sendMessage(groupId, {
-                text: mensaje,
-                mentions: update.author ? [update.author, ...(update.promote || update.demote || [])] : []
-            })
-        }
+                // 📉 DEGRADACIÓN DE ADMIN
+                else if (update.demote && update.demote.length > 0) {
+                    const usuario = update.demote[0].split('@')[0]
+                    mensaje = `╭━━━〔 🔔 CAMBIO DETECTADO 〕━━━⬣
+┃
+┃ 📉 USUARIO DEGRADADO DE ADMIN
+┃ 👤 Usuario: @${usuario}
+┃ 🛡️ Hecho por: @${autor}
+┃
+╰━━━━━━━━━━━━━━━━━━━━⬣`
+                }
 
-    } catch (e) {
-        console.log('❌ Error AutoDetect:', e)
+                // 📩 ENVIAR AVISO SI HAY CAMBIO
+                if (mensaje) {
+                    await sock.sendMessage(groupId, {
+                        text: mensaje,
+                        mentions: [update.author, ...(update.promote || []), ...(update.demote || [])]
+                    })
+                }
+
+            } catch (err) {
+                console.log('❌ ERROR AUTODETECT:', err)
+            }
+        }
+    })
     }
-        }
+                            
