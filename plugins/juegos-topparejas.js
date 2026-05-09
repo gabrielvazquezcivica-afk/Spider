@@ -48,12 +48,16 @@ const handler = async ({ sock, m, from, isGroup, participants, sender }) => {
     // 🔒 MODODADMIN: solo admins pueden usar si está bloqueado
     if (isBlockedGroup && !isAdmin) return
 
-    // ✅ CORREGIDO: Obtener todos los miembros reales
-    const miembros = participants
-        .filter(p => p.id.endsWith('@s.whatsapp.net') && p.id !== sock.user.id)
-        .map(p => p.id)
+    // ✅ SOLUCIÓN: Contamos bien a todos los usuarios reales
+    const miembros = []
+    for (let p of participants) {
+        // Solo personas reales, sin grupos ni el propio bot
+        if (p.id.includes('@s.whatsapp.net') && p.id !== sock.user.id) {
+            miembros.push(p.id)
+        }
+    }
 
-    // 🚫 Si hay menos de 2 personas, avisar
+    // 🚫 Mensaje solo si hay MENOS de 2 personas
     if (miembros.length < 2) {
         return sock.sendMessage(from, {
             text: '⚠️ Se necesitan al menos 2 personas en el grupo para generar parejas'
@@ -74,10 +78,11 @@ const handler = async ({ sock, m, from, isGroup, participants, sender }) => {
         let u1, u2, valido
         do {
             [u1, u2] = getRandom(miembros, 2)
-            valido = u1 !== u2 && !parejasUsadas.has(`${u1}-${u2}`)
+            // No repetir parejas ni elegirse a sí mismo
+            valido = u1 !== u2 && !parejasUsadas.has(`${u1},${u2}`) && !parejasUsadas.has(`${u2},${u1}`)
         } while (!valido)
 
-        parejasUsadas.add(`${u1}-${u2}`)
+        parejasUsadas.add(`${u1},${u2}`)
         menciones.push(u1, u2)
 
         texto += `#${i} 👤 @${u1.split('@')[0]} + @${u2.split('@')[0]}\n`
@@ -86,7 +91,7 @@ const handler = async ({ sock, m, from, isGroup, participants, sender }) => {
 
     texto += `> SPIDER BOT 🕷️`
 
-    // 📩 Enviar mensaje CORRECTAMENTE
+    // 📩 Enviar mensaje
     return sock.sendMessage(from, {
         text: texto,
         mentions: menciones
@@ -99,4 +104,3 @@ handler.group = true
 handler.menu = true
 
 export default handler
-    
