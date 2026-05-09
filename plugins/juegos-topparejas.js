@@ -12,83 +12,110 @@ function getDB() {
     }
 }
 
-// 🎯 Obtener aleatorios sin repetir
-function getRandom(arr, cantidad) {
-    let mezclado = [...arr].sort(() => Math.random() - 0.5)
-    return mezclado.slice(0, cantidad)
+// 💘 frases random
+const frases = [
+    '💘 Amor secreto detectado',
+    '🕸️ Spider encontró química',
+    '💞 Se ven bien juntos',
+    '🔥 Pareja explosiva',
+    '😍 Hay tensión romántica',
+    '💖 Compatibilidad alta',
+    '🫶 Destinados a estar juntos',
+    '💋 Ya casi se besan',
+    '🥰 Conexión perfecta',
+    '❤️ Spider aprueba esta pareja'
+]
+
+// 🔀 random
+function random(arr) {
+    return arr[Math.floor(Math.random() * arr.length)]
 }
 
-// 💬 Frases aleatorias
-function frasesAleatorias() {
-    const frases = [
-        '💘 ¡Destinados a estar juntos!',
-        '💖 Tienen mucha química',
-        '💞 Se complementan muy bien',
-        '❤️ Amor verdadero',
-        '💕 La pareja ideal',
-        '💓 Conexión especial',
-        '💗 Hechos el uno para el otro',
-        '💝 ¡Qué bonita combinación!',
-        '💟 Nacieron para encontrarse',
-        '♥️ Compatibilidad al 100%'
-    ]
-    return frases[Math.floor(Math.random() * frases.length)]
+// 🔀 mezclar usuarios
+function shuffle(array) {
+    return array.sort(() => Math.random() - 0.5)
 }
 
-const handler = async ({ sock, m, from, isGroup, participants, sender }) => {
+const handler = async ({
+    sock,
+    m,
+    from,
+    isGroup,
+    participants,
+    sender
+}) => {
 
     if (!isGroup) return
 
     const db = getDB()
     const isBlockedGroup = db[from]
 
-    const user = participants.find(p => p.id === sender)
-    const isAdmin = user?.admin === 'admin' || user?.admin === 'superadmin'
+    const user = participants.find(
+        p => p.id === sender
+    )
+
+    const isAdmin =
+        user?.admin === 'admin' ||
+        user?.admin === 'superadmin'
 
     // 🔒 MODODADMIN
     if (isBlockedGroup && !isAdmin) return
 
-    // ✅ SOLUCIÓN DEFINITIVA: Tomamos participantes IGUAL que en tu comando SHIP
-    const miembros = participants
-        .filter(p => p.id.includes('@s.whatsapp.net') && p.id !== sock.user.id)
+    // 👥 usuarios reales
+    const users = participants
         .map(p => p.id)
+        .filter(x => x)
 
-    // 🚫 Mensaje solo si hay MENOS de 2
-    if (miembros.length < 2) {
-        return sock.sendMessage(from, {
-            text: '⚠️ Se necesitan al menos 2 personas en el grupo'
-        }, { quoted: m })
+    // 🔥 mezclar
+    const mixed = shuffle(users)
+
+    // 💘 sacar 5 parejas
+    const parejas = []
+
+    for (let i = 0; i < 5; i++) {
+
+        const user1 = mixed[i * 2]
+        const user2 = mixed[(i * 2) + 1]
+
+        if (!user1 || !user2) continue
+
+        parejas.push({
+            user1,
+            user2,
+            frase: random(frases)
+        })
     }
 
-    // ⚡ Reacción
-    await sock.sendMessage(from, { react: { text: '💞', key: m.key } })
+    await sock.sendMessage(from,{
+        react:{
+            text:'💘',
+            key:m.key
+        }
+    })
 
-    let texto = `💘 *TOP 5 PAREJAS DEL GRUPO* 💘\n\n`
-    let menciones = []
-    let usados = new Set()
+    let text =
+`💘 TOP PAREJAS SPIDER 💘
 
-    // 🔄 Generar 5 parejas
-    for (let i = 1; i <= 5; i++) {
-        let u1, u2, valido
-        do {
-            [u1, u2] = getRandom(miembros, 2)
-            valido = u1 !== u2 && !usados.has(`${u1}-${u2}`) && !usados.has(`${u2}-${u1}`)
-        } while (!valido)
+`
 
-        usados.add(`${u1}-${u2}`)
-        menciones.push(u1, u2)
+    const mentions = []
 
-        texto += `#${i} 👤 @${u1.split('@')[0]} + @${u2.split('@')[0]}\n`
-        texto += `   ${frasesAleatorias()}\n\n`
-    }
+    parejas.forEach((p, i) => {
 
-    texto += `> SPIDER BOT 🕷️`
+        mentions.push(p.user1)
+        mentions.push(p.user2)
 
-    // 📩 ENVÍO OBLIGATORIO
-    return sock.sendMessage(from, {
-        text: texto,
-        mentions: menciones
-    }, { quoted: m })
+        text +=
+`${i + 1}. @${p.user1.split('@')[0]} 💞 @${p.user2.split('@')[0]}
+${p.frase}
+
+`
+    })
+
+    return sock.sendMessage(from,{
+        text,
+        mentions
+    },{ quoted:m })
 }
 
 handler.command = ['topparejas']
@@ -97,4 +124,3 @@ handler.group = true
 handler.menu = true
 
 export default handler
-    
