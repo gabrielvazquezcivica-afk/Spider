@@ -131,6 +131,9 @@ async function start() {
         const isGroup = from.endsWith('@g.us')
         const sender = m.key.participant || from
 
+        // ✅ AGREGADO: MARCAR MENSAJE COMO LEÍDO (VISTO)
+        await sock.readMessages([m.key])
+
         // ➕ 
         const bloqueado = await verificarMuteados({ sock, m, from, sender, isGroup })
         if (bloqueado) return // 🛑 SI ESTÁ MUTEADO, NO HACE NADA MÁS
@@ -238,4 +241,4 @@ async function start() {
 }
 
 start()
-                    
+        
