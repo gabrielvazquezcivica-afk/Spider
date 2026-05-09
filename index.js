@@ -37,13 +37,8 @@ async function loadPlugins() {
             const module = await import(`file://${path.join(pluginsPath, file)}?update=${Date.now()}`)
             const handler = module.default
 
-            // ✅ AGARRAR before()
             if (typeof handler === 'function') {
-
-                if (module.before) {
-                    handler.before = module.before
-                }
-
+                if (module.before) handler.before = module.before
                 plugins.push(handler)
             }
 
@@ -95,53 +90,29 @@ async function start() {
 
     const startTime = Date.now()
 
-    // 🕷️ WELCOME/BYE + AUTODETECT
+    // 🕷️ WELCOME/BYE + AUTODETECT (se mantiene igual, no son mensajes normales)
     sock.ev.on('group-participants.update', async (update) => {
-
         try {
-
             for (const plugin of plugins) {
-
                 if (typeof plugin.before === 'function') {
-
-                    await plugin.before({
-                        sock,
-                        update
-                    })
+                    await plugin.before({ sock, update })
                 }
             }
-
         } catch (err) {
-
-            console.log(
-                chalk.red('Error welcome/bye:'),
-                err
-            )
+            console.log(chalk.red('Error welcome/bye:'), err)
         }
     })
 
     // 🕷️ DETECTAR CAMBIOS DEL GRUPO
     sock.ev.on('groups.update', async (update) => {
-
         try {
-
             for (const plugin of plugins) {
-
                 if (typeof plugin.before === 'function') {
-
-                    await plugin.before({
-                        sock,
-                        groupsUpdate: update
-                    })
+                    await plugin.before({ sock, groupsUpdate: update })
                 }
             }
-
         } catch (err) {
-
-            console.log(
-                chalk.red('Error autodetect:'),
-                err
-            )
+            console.log(chalk.red('Error autodetect:'), err)
         }
     })
 
@@ -154,19 +125,21 @@ async function start() {
         const msgTime = (m.messageTimestamp || 0) * 1000
         if (msgTime < startTime) return
 
+        // ⚡ SOLO SEGUIMOS SI EL MENSAJE EMPIEZA CON EL PREFIJO
+        const msg =
+            m.message.conversation ||
+            m.message.extendedTextMessage?.text ||
+            m.message.imageMessage?.caption ||
+            m.message.videoMessage?.caption ||
+            ''
+
+        if (!msg || !msg.startsWith(config.prefix)) return // <--- CORAZÓN DEL CAMBIO
+
         setImmediate(async () => {
             try {
-
                 const from = m.key.remoteJid
                 const isGroup = from.endsWith('@g.us')
                 const sender = m.key.participant || from
-
-                const msg =
-                    m.message.conversation ||
-                    m.message.extendedTextMessage?.text ||
-                    m.message.imageMessage?.caption ||
-                    m.message.videoMessage?.caption ||
-                    ''
 
                 let pushName = m.pushName || 'Usuario'
                 let groupName = 'Privado'
@@ -184,28 +157,7 @@ async function start() {
                     }
                 }
 
-                // 🔥 BEFORE GLOBAL
-                for (const plugin of plugins) {
-
-                    if (
-    typeof plugin.before === 'function' &&
-    !plugin.before.toString().includes('group.participants')
-) {
-
-    await plugin.before({
-        sock,
-        m,
-        from,
-        isGroup,
-        sender,
-        participants,
-        groupMetadata
-    })
-                    }
-                }
-
-                if (!msg) return
-                if (!msg.startsWith(config.prefix)) return
+                // 🚀 YA NO EJECUTA before() EN CADA MENSAJE, SOLO CUANDO ES COMANDO
 
                 const args = msg.slice(config.prefix.length).trim().split(/ +/)
                 const command = args.shift().toLowerCase()
@@ -221,7 +173,6 @@ async function start() {
                 )
 
                 for (const handler of plugins) {
-
                     if (!handler.command) continue
 
                     const commands = Array.isArray(handler.command)
@@ -237,24 +188,14 @@ async function start() {
                     const isGroupCommand = handler.group === true
 
                     if (isBlockedGroup && !isGroupCommand) {
-
                         const user = participants.find(p => p.id === sender)
-
-                        const isAdmin =
-                            user?.admin === 'admin' ||
-                            user?.admin === 'superadmin'
-
+                        const isAdmin = user?.admin === 'admin' || user?.admin === 'superadmin'
                         if (!isAdmin) return
                     }
 
                     if (handler.admin) {
-
                         const user = participants.find(p => p.id === sender)
-
-                        const isAdmin =
-                            user?.admin === 'admin' ||
-                            user?.admin === 'superadmin'
-
+                        const isAdmin = user?.admin === 'admin' || user?.admin === 'superadmin'
                         if (!isAdmin) continue
                     }
 
@@ -291,3 +232,4 @@ async function start() {
 }
 
 start()
+                    
