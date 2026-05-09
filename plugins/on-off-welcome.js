@@ -34,7 +34,7 @@ const BOT_IMAGE =
 
 // 🎵 AUDIOS
 const welcomeAudio =
-'https://files.catbox.moe/t73rbs.mp3'
+'https://files.catbox.moe/9nyxfb.mp3'
 
 const byeAudio =
 'https://files.catbox.moe/swqi7e.mp3'
