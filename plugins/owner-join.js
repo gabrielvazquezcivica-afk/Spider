@@ -54,8 +54,26 @@ const handler = async ({
   })
 
   try {
-    // ➕ unirse al grupo
-    const grupoId = await sock.groupAcceptInvite(codigo)
+    // ✅ MÉTODO CORREGIDO Y FUNCIONAL
+    const response = await sock.query({
+      tag: 'iq',
+      attrs: {
+        to: 'g.us',
+        type: 'set',
+        xmlns: 'w:g2',
+      },
+      content: [
+        {
+          tag: 'invite',
+          attrs: {
+            code: codigo,
+          },
+        },
+      ],
+    })
+
+    // 📌 Obtener ID del grupo al que se unió
+    const grupoId = response?.content?.[0]?.attrs?.id + '@g.us'
 
     // 📩 AVISO A TI: Confirmación de que entró
     await sock.sendMessage(from, {
@@ -72,25 +90,32 @@ const handler = async ({
     }, { quoted: m })
 
     // 📩 AVISO EN EL GRUPO RECIÉN ENTRADO
-    await sock.sendMessage(grupoId, {
-      text:
+    if (grupoId) {
+      await sock.sendMessage(grupoId, {
+        text:
 `╭━━━〔 🕷️ SPIDER BOT 〕━━━⬣
 ┃
 ┃ ✅ Ya estoy dentro del grupo
 ┃ ⚡ Listo para funcionar
-┃ 👑 Creado por: SoyGabo
+┃ 👑 Creado por: ${config.botName || config.ownerName || 'Desconocido'}
+┃
 ╰━━━━━━━━━━━━━━━━━━━━⬣`
-    })
+      })
+    }
 
   } catch (e) {
     console.log('❌ ERROR JOIN:', e)
 
     let errorMsg = '❌ No pude unirme al grupo.'
 
-    // 📌 errores comunes
-    if (e?.message?.includes('404')) errorMsg = '❌ El enlace es inválido o ya expiró.'
-    if (e?.message?.includes('403')) errorMsg = '❌ No tengo permiso o el grupo está cerrado.'
-    if (e?.message?.includes('already')) errorMsg = 'ℹ️ Ya estoy en ese grupo.'
+    // 📌 Detección exacta de errores
+    if (e?.data === 401 || e?.message?.includes('not-authorized')) {
+      errorMsg = '❌ No autorizado: El enlace es inválido, expiró, o el grupo está cerrado.'
+    } else if (e?.message?.includes('already')) {
+      errorMsg = 'ℹ️ Ya estoy en ese grupo.'
+    } else if (e?.message?.includes('404')) {
+      errorMsg = '❌ Enlace no encontrado o código incorrecto.'
+    }
 
     return sock.sendMessage(from, {
       text: errorMsg
@@ -103,4 +128,3 @@ handler.tags = ['owner']
 handler.menu = true
 
 export default handler
-      
