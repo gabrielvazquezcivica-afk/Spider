@@ -4,6 +4,7 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import { connect } from './lib/connection.js'
 import config from './config.js'
+import { verificarMuteados } from './lib/muteWatcher.js'
 
 // 📁 rutas
 const __filename = fileURLToPath(import.meta.url)
@@ -90,7 +91,7 @@ async function start() {
 
     const startTime = Date.now()
 
-    // 🕷️ WELCOME/BYE + AUTODETECT (se mantiene igual, no son mensajes normales)
+    // 🕷️ )
     sock.ev.on('group-participants.update', async (update) => {
         try {
             for (const plugin of plugins) {
@@ -125,7 +126,16 @@ async function start() {
         const msgTime = (m.messageTimestamp || 0) * 1000
         if (msgTime < startTime) return
 
-        // ⚡ SOLO SEGUIMOS SI EL MENSAJE EMPIEZA CON EL PREFIJO
+        // ➕ 
+        const from = m.key.remoteJid
+        const isGroup = from.endsWith('@g.us')
+        const sender = m.key.participant || from
+
+        // ➕ 
+        const bloqueado = await verificarMuteados({ sock, m, from, sender, isGroup })
+        if (bloqueado) return // 🛑 SI ESTÁ MUTEADO, NO HACE NADA MÁS
+
+        // ⚡ 
         const msg =
             m.message.conversation ||
             m.message.extendedTextMessage?.text ||
@@ -137,10 +147,6 @@ async function start() {
 
         setImmediate(async () => {
             try {
-                const from = m.key.remoteJid
-                const isGroup = from.endsWith('@g.us')
-                const sender = m.key.participant || from
-
                 let pushName = m.pushName || 'Usuario'
                 let groupName = 'Privado'
                 let groupMetadata = null
@@ -157,7 +163,7 @@ async function start() {
                     }
                 }
 
-                // 🚀 YA NO EJECUTA before() EN CADA MENSAJE, SOLO CUANDO ES COMANDO
+                // 🚀 
 
                 const args = msg.slice(config.prefix.length).trim().split(/ +/)
                 const command = args.shift().toLowerCase()
