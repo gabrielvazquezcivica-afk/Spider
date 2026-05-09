@@ -78,8 +78,7 @@ const handler = async ({
 ┃
 ┃ ✅ Ya estoy dentro del grupo
 ┃ ⚡ Listo para funcionar
-┃ 👑 Creado por: Gabriel Vázquez
-┃
+┃ 👑 Creado por: SoyGabo
 ╰━━━━━━━━━━━━━━━━━━━━⬣`
     })
 
