@@ -1,25 +1,27 @@
 const handler = async ({ sock, m, from }) => {
     const start = Date.now()
 
-    // ⚡ reacción instantánea (latencia real)
+    // ⚡ Reacción inicial
     await sock.sendMessage(from, {
-        react: { text: '🏓', key: m.key }
+        react: { text: '⚡', key: m.key }
     })
 
     const speed = Date.now() - start
 
-    // 🚀 respuesta final
+    // 🚀 Respuesta con diseño renovado
     await sock.sendMessage(from, {
-        text: `🏓 *Pong*
-
-⚡ Velocidad: ${speed} ms
-🚀 Estado: ${speed < 200 ? 'Rápido' : speed < 500 ? 'Normal' : 'Lento'}
-
-> SPIDER BOT`
+        text: `╭━━━━━━━━━━━━━┓
+┃  ⚡ *P O N G*  ⚡
+┣━━━━━━━━━━━━━┫
+┃ 📶 Velocidad: *${speed} ms*
+┃ 🚀 Estado: ${speed < 200 ? '✅ RÁPIDO' : speed < 500 ? '⚖️ NORMAL' : '⚠️ LENTO'}
+┣━━━━━━━━━━━━━┫
+┃ 🔹 *SPIDER BOT* 🔹
+╰━━━━━━━━━━━━━┛`
     }, { quoted: m })
 }
 
-// ⚙️ configuración del comando
+// ⚙️ Configuración del comando
 handler.command = ['p']
 handler.help = ['p']
 handler.tags = ['informacion']
