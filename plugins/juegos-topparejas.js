@@ -43,20 +43,17 @@ const handler = async ({ sock, m, from, isGroup, participants, sender }) => {
     const isBlockedGroup = db[from]
 
     const user = participants.find(p => p.id === sender)
+    const isAdmin = user?.admin === 'admin' || user?.admin === 'superadmin'
 
-    const isAdmin =
-        user?.admin === 'admin' ||
-        user?.admin === 'superadmin'
-
-    // 🔒 MODODADMIN: solo admins pueden usar comandos normales
+    // 🔒 MODODADMIN: solo admins pueden usar si está bloqueado
     if (isBlockedGroup && !isAdmin) return
 
-    // 📌 Filtramos solo usuarios normales (sin bots)
+    // ✅ CORREGIDO: Obtener todos los miembros reales
     const miembros = participants
-        .filter(u => !u.id.includes('@g.us') && u.id !== sock.user.id)
-        .map(u => u.id)
+        .filter(p => p.id.endsWith('@s.whatsapp.net') && p.id !== sock.user.id)
+        .map(p => p.id)
 
-    // 🚫 Si hay menos de 2 personas, no se puede
+    // 🚫 Si hay menos de 2 personas, avisar
     if (miembros.length < 2) {
         return sock.sendMessage(from, {
             text: '⚠️ Se necesitan al menos 2 personas en el grupo para generar parejas'
@@ -70,17 +67,15 @@ const handler = async ({ sock, m, from, isGroup, participants, sender }) => {
 
     let texto = `💘 *TOP 5 PAREJAS DEL GRUPO* 💘\n\n`
     let menciones = []
-    let parejasUsadas = new Set() // Evitar parejas repetidas
+    let parejasUsadas = new Set()
 
     // 🔄 Generar 5 parejas únicas
     for (let i = 1; i <= 5; i++) {
-        let u1, u2, parejaValida
-
-        // Buscar pareja que no se haya usado ni sea la misma persona
+        let u1, u2, valido
         do {
             [u1, u2] = getRandom(miembros, 2)
-            parejaValida = u1 !== u2 && !parejasUsadas.has(`${u1}-${u2}`) && !parejasUsadas.has(`${u2}-${u1}`)
-        } while (!parejaValida)
+            valido = u1 !== u2 && !parejasUsadas.has(`${u1}-${u2}`)
+        } while (!valido)
 
         parejasUsadas.add(`${u1}-${u2}`)
         menciones.push(u1, u2)
@@ -91,6 +86,7 @@ const handler = async ({ sock, m, from, isGroup, participants, sender }) => {
 
     texto += `> SPIDER BOT 🕷️`
 
+    // 📩 Enviar mensaje CORRECTAMENTE
     return sock.sendMessage(from, {
         text: texto,
         mentions: menciones
@@ -103,4 +99,4 @@ handler.group = true
 handler.menu = true
 
 export default handler
-      
+    
