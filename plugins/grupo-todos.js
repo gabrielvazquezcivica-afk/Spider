@@ -18,7 +18,7 @@ const handler = async ({ sock, m, from }) => {
   const participants = metadata.participants
   const sender = m.key.participant || m.key.remoteJid
 
-  // 🔥 
+  // 🔥 MISMA LÓGICA QUE TU .n
   const isAdmin = participants.some(p =>
     p.id === sender && (p.admin === 'admin' || p.admin === 'superadmin')
   )
@@ -33,23 +33,24 @@ const handler = async ({ sock, m, from }) => {
   const groupName = metadata.subject
   const total = participants.length
 
+  // ✅ MENCIONES EN LISTA VERTICAL
   const mentionText = participants
-    .map((p, i) => `• @${p.id.split('@')[0]}`)
-    .join(' ')
+    .map((p, i) => `│ • @${p.id.split('@')[0]}`)
+    .join('\n')
 
   await sock.sendMessage(from, {
     react: { text: '🕸️', key: m.key }
   })
 
   const text =
-`┌──────────────┐
+`┌──────────────────┐
 │ 🕷️ INVITANDO A TODOS
-├──────────────┤
+├──────────────────┤
 │ 📡 ${groupName}
 │ 👥 Total: ${total}
-├──────────────┤
-│ ${mentionText}
-└──────────────┘
+├──────────────────┤
+${mentionText}
+└──────────────────┘
 
 > 🕸️ SPIDER BOT`
 
