@@ -46,7 +46,7 @@ const text = args.join(' ').trim()
 
 if (!text) {
     return sock.sendMessage(from,{
-        text:'🕷️ Uso: .play <canción>'
+        text:'🕷️ 𝐔𝐬𝐨 𝐜𝐨𝐫𝐫𝐞𝐜𝐭𝐨: .𝐩𝐥𝐚𝐲 <𝐧𝐨𝐦𝐛𝐫𝐞 𝐝𝐞 𝐥𝐚 𝐜𝐚𝐧𝐜𝐢𝐨́𝐧>'
     },{ quoted:m })
 }
 
@@ -60,27 +60,37 @@ try {
 const search = await yts(text)
 if (!search.videos.length)
     return sock.sendMessage(from,{
-        text:'❌ No se encontró nada en la red'
+        text:'❌ 𝐍𝐨 𝐬𝐞 𝐞𝐧𝐜𝐨𝐧𝐭𝐫𝐚𝐫𝐨𝐧 𝐫𝐞𝐬𝐮𝐥𝐭𝐚𝐝𝐨𝐬 𝐞𝐧 𝐥𝐚 𝐫𝐞𝐝'
     },{ quoted:m })
 
 const video = search.videos[0]
 
 const { title, url, thumbnail, timestamp, views, author } = video
 
-/* 🕷️ PANEL SPIDER */
+/* 🕷️ PANEL SPIDER (DISEÑO NUEVO) */
 await sock.sendMessage(from,{
     image:{ url: thumbnail },
     caption:
-`╭━━━〔 🕷️ SPIDER MUSIC SYSTEM 〕━━━⬣
-┃
-┃ 🎧  TRACK: ${title}
-┃ 👤  CREATOR: ${author.name}
-┃ ⏱️  TIME: ${timestamp}
-┃ 👁️  VIEWS: ${views.toLocaleString()}
-┃
-┃ 🕸️ Analizando red...
-┃ 📡 Extrayendo audio...
-╰━━━━━━━━━━━━━━━━━━━━⬣`
+`╔══════════════════════╗
+║   🕷️ 𝐒𝐏𝐈𝐃𝐄𝐑 𝐌𝐔𝐒𝐈𝐂   🕷️
+╚══════════════════════╝
+
+🎵 𝐓𝐢𝐭𝐮𝐥𝐨:
+└─ ${title}
+
+👤 𝐀𝐮𝐭𝐨𝐫:
+└─ ${author.name || 'Desconocido'}
+
+⏱️ 𝐃𝐮𝐫𝐚𝐜𝐢𝐨́𝐧:
+└─ ${timestamp}
+
+👁️ 𝐕𝐢𝐬𝐭𝐚𝐬:
+└─ ${views.toLocaleString()}
+
+━━━━━━━━━━━━━━━━━━━━━
+🔍 𝐁𝐮𝐬𝐜𝐚𝐧𝐝𝐨...
+📡 𝐄𝐱𝐭𝐫𝐚𝐲𝐞𝐧𝐝𝐨 𝐚𝐮𝐝𝐢𝐨...
+━━━━━━━━━━━━━━━━━━━━━`
 },{ quoted:m })
 
 if (!fs.existsSync('./tmp')) fs.mkdirSync('./tmp')
@@ -99,7 +109,7 @@ ytdlp.on('close', async(code)=>{
 
     if(code !== 0){
         return sock.sendMessage(from,{
-            text:'🕷️ Error en la red de descarga'
+            text:'🕷️ 𝐄𝐫𝐫𝐨𝐫: 𝐅𝐚𝐥𝐥𝐨 𝐞𝐧 𝐥𝐚 𝐝𝐞𝐬𝐜𝐚𝐫𝐠𝐚'
         },{ quoted:m })
     }
 
@@ -120,7 +130,7 @@ ytdlp.on('close', async(code)=>{
 }catch(e){
 console.log(e)
 sock.sendMessage(from,{
-    text:'🕷️ Fallo en el sistema Spider'
+    text:'🕷️ 𝐒𝐢𝐬𝐭𝐞𝐦𝐚 𝐒𝐩𝐢𝐝𝐞𝐫: 𝐄𝐫𝐫𝐨𝐫 𝐢𝐧𝐭𝐞𝐫𝐧𝐨'
 },{ quoted:m })
 }
 
