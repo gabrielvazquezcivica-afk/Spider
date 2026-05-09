@@ -1,5 +1,10 @@
 import config from '../config.js'
 
+// ───── HELPERS ─────
+function onlyNumber (jid = '') {
+  return jid?.toString().replace(/[^0-9]/g, '')
+}
+
 const handler = async ({
   sock,
   m,
@@ -14,7 +19,7 @@ const handler = async ({
   if (m.key.fromMe) return
 
   // 👑 validar owner por LID
-  const senderLid = sender.split('@')[0]
+  const senderLid = onlyNumber(sender)
   const isOwner = config.ownerLid.includes(senderLid)
 
   if (!isOwner) {
@@ -23,61 +28,49 @@ const handler = async ({
     }, { quoted: m })
   }
 
-  // 📥 obtener enlace
-  const link = args[0]
-
-  if (!link) {
+  // 📥 verificar argumento
+  if (!args[0]) {
     return sock.sendMessage(from, {
-      text: '⚠️ Envía el enlace del grupo.\nEjemplo: !join https://chat.whatsapp.com/XXXXXX'
+      text:
+`╭━━━〔 🔗 JOIN 〕━━━⬣
+┃
+┃ 📌 Uso correcto:
+┃ !join <enlace del grupo>
+┃
+┃ 🔗 Ejemplo:
+┃ !join https://chat.whatsapp.com/XXXXXXX
+┃
+╰━━━━━━━━━━━━━━━━⬣`
     }, { quoted: m })
   }
 
-  // 🔗 validar que sea enlace de WhatsApp
-  if (!link.includes('chat.whatsapp.com/')) {
+  const link = args[0]
+  // 🔗 extraer código del enlace
+  const match = link.match(/chat\.whatsapp\.com\/([0-9A-Za-z]+)/i)
+
+  if (!match) {
     return sock.sendMessage(from, {
       text: '❌ Enlace inválido, asegúrate de que sea de WhatsApp.'
     }, { quoted: m })
   }
 
-  // 🔑 extraer código de invitación
-  const codigo = link.split('chat.whatsapp.com/')[1]?.trim()
+  const codigo = match[1]
 
-  if (!codigo) {
-    return sock.sendMessage(from, {
-      text: '❌ No se pudo obtener el código del enlace.'
-    }, { quoted: m })
-  }
-
-  // ⚡ reacción
+  // ⏳ reacción proceso
   await sock.sendMessage(from, {
-    react: { text: '🔗', key: m.key }
+    react: { text: '⏳', key: m.key }
   })
 
   try {
-    // ✅ MÉTODO ESPECIAL - FUNCIONA EN GRUPOS NUEVOS Y VIEJOS
-    // Este método omite la verificación que bloquea WhatsApp en grupos antiguos
-    const response = await sock.query({
-      tag: 'iq',
-      attrs: {
-        to: 'g.us',
-        type: 'set',
-        xmlns: 'w:g2',
-      },
-      content: [
-        {
-          tag: 'invite',
-          attrs: {
-            code: codigo,
-            expire: '0', // <-- Clave: quita fecha de caducidad
-          },
-        },
-      ],
+    // ✅ MÉTODO QUE FUNCIONA EN CUALQUIER GRUPO
+    await sock.groupAcceptInvite(codigo)
+
+    // ✅ reacción éxito
+    await sock.sendMessage(from, {
+      react: { text: '✅', key: m.key }
     })
 
-    // 📌 Obtener ID del grupo
-    const grupoId = response?.content?.[0]?.attrs?.id + '@g.us'
-
-    // 📩 AVISO A TI
+    // 📩 AVISO DE CONFIRMACIÓN (ESTILO SPIDER BOT)
     await sock.sendMessage(from, {
       text:
 `╭━━━〔 🔗 JOIN 〕━━━⬣
@@ -86,44 +79,42 @@ const handler = async ({
 ┃ ⚡ Enlace procesado exitosamente
 ┃ 👤 ${pushName}
 ┃
-╰━━━━━━━━━━━━━━━━⬣
-
-> SPIDER BOT`
+╰━━━━━━━━━━━━━━━━⬣`
     }, { quoted: m })
-
-    // 📩 AVISO EN EL GRUPO (nombre desde config.js)
-    if (grupoId) {
-      await sock.sendMessage(grupoId, {
-        text:
-`╭━━━〔 🕷️ SPIDER BOT 〕━━━⬣
-┃
-┃ ✅ Ya estoy dentro del grupo
-┃ ⚡ Listo para funcionar
-┃ 👑 Creado por: ${config.botName || config.ownerName || 'Desconocido'}
-┃
-╰━━━━━━━━━━━━━━━━━━━━⬣`
-      })
-    }
 
   } catch (e) {
     console.log('❌ ERROR JOIN:', e)
 
-    let errorMsg = '❌ No pude unirme al grupo.'
+    // ❌ reacción error
+    await sock.sendMessage(from, {
+      react: { text: '❌', key: m.key }
+    })
 
-    // 📌 Mensajes de error mejorados
-    if (e?.data === 401 || e?.message?.includes('not-authorized')) {
-      errorMsg = '❌ NO AUTORIZADO:\n• El grupo tiene mucha antigüedad y WhatsApp bloqueó la entrada\n• Solución: Pide a un administrador que te agregue manualmente'
-    } else if (e?.message?.includes('already')) {
-      errorMsg = 'ℹ️ Ya estoy en ese grupo.'
-    } else if (e?.message?.includes('404')) {
-      errorMsg = '❌ Enlace inválido o código incorrecto.'
-    } else if (e?.message?.includes('revoked')) {
-      errorMsg = '❌ El enlace fue revocado/eliminado.'
+    // 📌 mensajes de error detallados
+    let errorMsg =
+`╭━━━〔 ❌ ERROR JOIN 〕━━━⬣
+┃
+┃ ⚠️ No pude unirme al grupo
+┃
+┃ 📌 Posibles causas:
+┃ • Enlace expirado o inválido
+┃ • Ya estoy dentro del grupo
+┃ • WhatsApp bloqueó la entrada
+┃ • Grupo muy antiguo con restricciones
+┃
+╰━━━━━━━━━━━━━━━━━━━━⬣`
+
+    if (e?.message?.includes('already')) {
+      errorMsg =
+`╭━━━〔 ℹ️ AVISO 〕━━━⬣
+┃
+┃ ✅ Ya estoy en ese grupo
+┃ ⚡ No es necesario unirme otra vez
+┃
+╰━━━━━━━━━━━━━━━━⬣`
     }
 
-    return sock.sendMessage(from, {
-      text: errorMsg
-    }, { quoted: m })
+    return sock.sendMessage(from, { text: errorMsg }, { quoted: m })
   }
 }
 
