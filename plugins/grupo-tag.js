@@ -1,7 +1,7 @@
 import { downloadContentFromMessage } from '@whiskeysockets/baileys'
 
 function footer() {
-  return `\n\n> SPIDER BOT`
+  return `\n\n> 𝐒𝐏𝐈𝐃𝐄𝐑 𝐁𝐎𝐓`
 }
 
 const handler = async ({ sock, m, from }) => {
