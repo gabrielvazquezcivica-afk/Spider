@@ -37,9 +37,16 @@ const handler = async ({
         },{ quoted:m })
     }
 
+    // 🤖 ID DEL BOT
+    const botNumber =
+        sock.user.id.split(':')[0] + '@s.whatsapp.net'
+
     // 👥 usuarios válidos
     const users = participants
-        .filter(p => p.id !== sender)
+        .filter(p =>
+            p.id !== sender &&
+            p.id !== botNumber
+        )
         .map(p => p.id)
 
     if (!users.length) {
