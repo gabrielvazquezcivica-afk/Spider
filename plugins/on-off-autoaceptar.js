@@ -102,7 +102,7 @@ const handler = async ({
 }
 
 handler.command = ['autoaceptar']
-handler.tags = ['grupo']
+handler.tags = ['on-off']
 handler.group = true
 handler.menu = true
 
