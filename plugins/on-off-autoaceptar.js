@@ -12,7 +12,7 @@ function getDB() {
     }
 }
 
-// 💾 SAVE
+// 💾 guardar
 function saveDB(data) {
     fs.writeFileSync(path, JSON.stringify(data, null, 2))
 }
@@ -46,7 +46,7 @@ const handler = async ({
 
     if (!db[from]) {
         db[from] = {
-            enabled:false
+            enabled: false
         }
     }
 
@@ -110,49 +110,41 @@ export default handler
 
 // 🕷️ AUTOACEPTAR SOLICITUDES
 export async function before({
-    sock,
-    update
+    sock
 }) {
 
-    if (!Array.isArray(update)) {
-        update = [update]
-    }
+    sock.ev.on('group.join-request', async (data) => {
 
-    const db = getDB()
+        try {
 
-    for (const group of update) {
+            const db = getDB()
 
-        if (!group || !group.id) continue
+            const groupId = data.id
 
-        const id = group.id
+            if (!db[groupId]?.enabled) return
 
-        if (!db[id]?.enabled) continue
+            const users = Array.isArray(data.participants)
+                ? data.participants
+                : []
 
-        // 🔥 solicitudes
-        const users = Array.isArray(group.participants)
-            ? group.participants
-            : []
-
-        for (const user of users) {
-
-            try {
+            for (const user of users) {
 
                 // ✅ aceptar solicitud
                 await sock.groupRequestParticipantsUpdate(
-                    id,
+                    groupId,
                     [user],
                     'approve'
                 )
 
                 // 📢 aviso
-                await sock.sendMessage(id,{
+                await sock.sendMessage(groupId,{
                     text:`✅ @${user.split('@')[0]} fue aceptado correctamente`,
                     mentions:[user]
                 })
-
-            } catch (err) {
-                console.log('Error autoaceptar:', err)
             }
+
+        } catch (err) {
+            console.log('AUTOACEPTAR ERROR:', err)
         }
-    }
-              }
+    })
+}
