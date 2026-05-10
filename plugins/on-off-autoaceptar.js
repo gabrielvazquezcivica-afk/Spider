@@ -5,16 +5,25 @@ const path = './data/autoaceptar.json'
 // 📥 DB
 function getDB() {
     try {
+
         if (!fs.existsSync(path)) return {}
-        return JSON.parse(fs.readFileSync(path, 'utf-8'))
+
+        return JSON.parse(
+            fs.readFileSync(path, 'utf-8')
+        )
+
     } catch {
+
         return {}
     }
 }
 
-// 💾 guardar
+// 💾 SAVE
 function saveDB(data) {
-    fs.writeFileSync(path, JSON.stringify(data, null, 2))
+    fs.writeFileSync(
+        path,
+        JSON.stringify(data, null, 2)
+    )
 }
 
 const handler = async ({
@@ -22,21 +31,24 @@ const handler = async ({
     m,
     from,
     args,
-    isGroup,
     participants,
-    sender
+    sender,
+    isGroup
 }) => {
 
     if (!isGroup) return
 
     // 🔐 SOLO ADMINS
-    const user = participants.find(p => p.id === sender)
+    const user = participants.find(
+        p => p.id === sender
+    )
 
     const isAdmin =
         user?.admin === 'admin' ||
         user?.admin === 'superadmin'
 
     if (!isAdmin) {
+
         return sock.sendMessage(from,{
             text:'⚠️ Solo administradores pueden usar este comando'
         },{ quoted:m })
@@ -45,14 +57,18 @@ const handler = async ({
     const db = getDB()
 
     if (!db[from]) {
+
         db[from] = {
-            enabled: false
+            enabled:false
         }
     }
 
-    const option = args[0]?.toLowerCase()
+    const option =
+        args[0]?.toLowerCase()
 
+    // ❓ AYUDA
     if (!option) {
+
         return sock.sendMessage(from,{
             text:
 `🕷️ Uso correcto:
@@ -66,12 +82,14 @@ const handler = async ({
     if (option === 'on') {
 
         if (db[from].enabled) {
+
             return sock.sendMessage(from,{
                 text:'⚠️ El autoaceptar ya estaba activado'
             },{ quoted:m })
         }
 
         db[from].enabled = true
+
         saveDB(db)
 
         return sock.sendMessage(from,{
@@ -83,12 +101,14 @@ const handler = async ({
     if (option === 'off') {
 
         if (!db[from].enabled) {
+
             return sock.sendMessage(from,{
                 text:'⚠️ El autoaceptar ya estaba desactivado'
             },{ quoted:m })
         }
 
         db[from].enabled = false
+
         saveDB(db)
 
         return sock.sendMessage(from,{
@@ -113,38 +133,76 @@ export async function before({
     sock
 }) {
 
-    sock.ev.on('group.join-request', async (data) => {
+    // 🔥 evitar duplicados
+    if (global.autoAceptarLoaded) return
+    global.autoAceptarLoaded = true
+
+    // 🔄 revisar solicitudes cada 10 segundos
+    setInterval(async () => {
 
         try {
 
             const db = getDB()
 
-            const groupId = data.id
+            const groups =
+                Object.keys(db)
 
-            if (!db[groupId]?.enabled) return
+            for (const groupId of groups) {
 
-            const users = Array.isArray(data.participants)
-                ? data.participants
-                : []
+                if (!db[groupId]?.enabled)
+                    continue
 
-            for (const user of users) {
+                try {
 
-                // ✅ aceptar solicitud
-                await sock.groupRequestParticipantsUpdate(
-                    groupId,
-                    [user],
-                    'approve'
-                )
+                    // 📥 solicitudes pendientes
+                    const requests =
+                        await sock.groupRequestParticipantsList(groupId)
 
-                // 📢 aviso
-                await sock.sendMessage(groupId,{
-                    text:`✅ @${user.split('@')[0]} fue aceptado correctamente`,
-                    mentions:[user]
-                })
+                    if (!requests?.length)
+                        continue
+
+                    for (const user of requests) {
+
+                        const jid =
+                            user.jid || user.id
+
+                        if (!jid) continue
+
+                        // ✅ aprobar solicitud
+                        await sock.groupRequestParticipantsUpdate(
+                            groupId,
+                            [jid],
+                            'approve'
+                        )
+
+                        // 📢 aviso
+                        await sock.sendMessage(groupId,{
+                            text:`@${jid.split('@')[0]} fue aceptado correctamente`,
+                            mentions:[jid]
+                        })
+
+                        console.log(
+                            '🕸️ Usuario aceptado:',
+                            jid
+                        )
+                    }
+
+                } catch (err) {
+
+                    console.log(
+                        'AUTOACEPTAR GROUP ERROR:',
+                        err
+                    )
+                }
             }
 
         } catch (err) {
-            console.log('AUTOACEPTAR ERROR:', err)
+
+            console.log(
+                'AUTOACEPTAR ERROR:',
+                err
+            )
         }
-    })
-}
+
+    }, 10000)
+                        }
