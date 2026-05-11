@@ -1,17 +1,8 @@
 import fs from 'fs'
 import path from 'path'
-import { exec } from 'child_process'
-import ffmpeg from 'fluent-ffmpeg'
-import pkg from 'wa-sticker-formatter'
-
-const { Sticker, StickerTypes } = pkg
-
-const tempDir = './tmp'
-
-// 📁 CREAR TMP
-if (!fs.existsSync(tempDir)) {
-    fs.mkdirSync(tempDir)
-}
+import os from 'os'
+import { spawn } from 'child_process'
+import { downloadContentFromMessage } from '@whiskeysockets/baileys'
 
 const handler = async ({
     sock,
@@ -43,150 +34,186 @@ const handler = async ({
         user?.admin === 'admin' ||
         user?.admin === 'superadmin'
 
+    // 🔥 SILENCIOSO
     if (isBlockedGroup && !isAdmin) return
 
+    /* ───── MEDIA ───── */
     const quoted =
-        m.message?.extendedTextMessage?.contextInfo?.quotedMessage
+        m.message?.extendedTextMessage?.contextInfo ||
+        m.message?.imageMessage?.contextInfo ||
+        m.message?.videoMessage?.contextInfo
 
-    if (!quoted) {
+    const qmsg = quoted?.quotedMessage
+
+    const msg =
+        m.message?.imageMessage ||
+        m.message?.videoMessage ||
+        qmsg?.imageMessage ||
+        qmsg?.videoMessage ||
+        qmsg?.viewOnceMessageV2?.message?.imageMessage ||
+        qmsg?.viewOnceMessageV2?.message?.videoMessage
+
+    if (!msg) {
 
         return sock.sendMessage(from,{
             text:'⚠️ Responde a una imagen o video'
         },{ quoted:m })
     }
 
-    const isImage =
-        quoted.imageMessage
+    const isVideo = !!msg.seconds
 
-    const isVideo =
-        quoted.videoMessage
-
-    if (!isImage && !isVideo) {
+    // 🎥 MAX 10S
+    if (isVideo && msg.seconds > 10) {
 
         return sock.sendMessage(from,{
-            text:'⚠️ Solo imágenes o videos'
+            text:'⚠️ El video debe durar máximo 10 segundos'
         },{ quoted:m })
     }
 
-    // 🎥 LIMIT VIDEO
-    if (
-        isVideo &&
-        quoted.videoMessage.seconds > 10
-    ) {
-
-        return sock.sendMessage(from,{
-            text:'⚠️ El video máximo es de 10 segundos'
-        },{ quoted:m })
-    }
+    let input
+    let output
 
     try {
 
+        // ⏳ REACCIÓN
         await sock.sendMessage(from,{
             react:{
-                text:'🕸️',
+                text:'⏳',
                 key:m.key
             }
         })
 
-        const media = await sock.downloadMediaMessage({
-            key: m.message.extendedTextMessage.contextInfo.stanzaId
-                ? {
-                    remoteJid: from,
-                    id: m.message.extendedTextMessage.contextInfo.stanzaId,
-                    participant:
-                        m.message.extendedTextMessage.contextInfo.participant
+        /* ───── DESCARGAR ───── */
+        const type = isVideo
+            ? 'video'
+            : 'image'
+
+        const stream =
+            await downloadContentFromMessage(
+                msg,
+                type
+            )
+
+        let buffer = Buffer.alloc(0)
+
+        for await (const chunk of stream) {
+
+            buffer = Buffer.concat([
+                buffer,
+                chunk
+            ])
+        }
+
+        const tmp = os.tmpdir()
+
+        input = path.join(
+            tmp,
+            `stk_${Date.now()}.${
+                isVideo ? 'mp4' : 'jpg'
+            }`
+        )
+
+        output = path.join(
+            tmp,
+            `stk_${Date.now()}.webp`
+        )
+
+        fs.writeFileSync(input, buffer)
+
+        /* ───── FFMPEG ───── */
+        await new Promise((resolve, reject) => {
+
+            const args = isVideo
+
+                ? [
+                    '-i', input,
+                    '-vf',
+                    'scale=512:512:force_original_aspect_ratio=decrease,' +
+                    'pad=512:512:-1:-1:color=0x00000000,' +
+                    'fps=15,format=rgba',
+                    '-loop', '0',
+                    '-t', '10',
+                    '-preset', 'default',
+                    '-an',
+                    '-vsync', '0',
+                    output
+                ]
+
+                : [
+                    '-i', input,
+                    '-vf',
+                    'scale=512:512:force_original_aspect_ratio=decrease,' +
+                    'pad=512:512:-1:-1:color=0x00000000',
+                    output
+                ]
+
+            const ffmpeg =
+                spawn('ffmpeg', args)
+
+            ffmpeg.on(
+                'error',
+                reject
+            )
+
+            ffmpeg.on(
+                'close',
+                code => {
+
+                    if (code === 0)
+                        resolve()
+
+                    else
+                        reject(
+                            new Error(
+                                'FFmpeg error'
+                            )
+                        )
                 }
-                : m.key,
-            message: quoted
+            )
         })
 
-        const input =
-            path.join(
-                tempDir,
-                `${Date.now()}`
-            )
+        // 🕷️ ENVIAR
+        await sock.sendMessage(from,{
+            sticker:
+                fs.readFileSync(output)
+        },{ quoted:m })
 
-        const output =
-            path.join(
-                tempDir,
-                `${Date.now()}.webp`
-            )
-
-        // 🖼️ IMAGE
-        if (isImage) {
-
-            fs.writeFileSync(
-                `${input}.jpg`,
-                media
-            )
-
-            const sticker = new Sticker(
-                fs.readFileSync(`${input}.jpg`),
-                {
-                    pack: 'SPIDER BOT',
-                    author: '🕷️',
-                    type: StickerTypes.FULL,
-                    quality: 100
-                }
-            )
-
-            const buffer =
-                await sticker.toBuffer()
-
-            await sock.sendMessage(from,{
-                sticker: buffer
-            },{ quoted:m })
-
-            fs.unlinkSync(`${input}.jpg`)
-        }
-
-        // 🎥 VIDEO
-        if (isVideo) {
-
-            fs.writeFileSync(
-                `${input}.mp4`,
-                media
-            )
-
-            await new Promise((resolve, reject) => {
-
-                ffmpeg(`${input}.mp4`)
-                    .outputOptions([
-                        '-vcodec libwebp',
-                        '-vf scale=512:512:force_original_aspect_ratio=decrease,fps=15,pad=512:512:-1:-1:color=white@0.0',
-                        '-loop 0',
-                        '-ss 00:00:00',
-                        '-t 00:00:10',
-                        '-preset default',
-                        '-an',
-                        '-vsync 0'
-                    ])
-                    .save(output)
-                    .on('end', resolve)
-                    .on('error', reject)
-            })
-
-            await sock.sendMessage(from,{
-                sticker: fs.readFileSync(output)
-            },{ quoted:m })
-
-            fs.unlinkSync(`${input}.mp4`)
-            fs.unlinkSync(output)
-        }
+        // ✅ REACCIÓN
+        await sock.sendMessage(from,{
+            react:{
+                text:'✅',
+                key:m.key
+            }
+        })
 
     } catch (err) {
 
-        console.log(err)
+        console.log(
+            'STICKER ERROR:',
+            err
+        )
 
         sock.sendMessage(from,{
             text:'❌ Error creando sticker'
         },{ quoted:m })
+
+    } finally {
+
+        try {
+            if (input)
+                fs.unlinkSync(input)
+        } catch {}
+
+        try {
+            if (output)
+                fs.unlinkSync(output)
+        } catch {}
     }
 }
 
 handler.command = ['s']
 handler.tags = ['stickers']
-handler.group = true
 handler.menu = true
+handler.group = true
 
 export default handler
