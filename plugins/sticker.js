@@ -34,7 +34,6 @@ const handler = async ({
         user?.admin === 'admin' ||
         user?.admin === 'superadmin'
 
-    // 🔥 SILENCIOSO
     if (isBlockedGroup && !isAdmin) return
 
     /* ───── MEDIA ───── */
@@ -75,7 +74,7 @@ const handler = async ({
 
     try {
 
-        // ⏳ REACCIÓN
+        // ⏳
         await sock.sendMessage(from,{
             react:{
                 text:'⏳',
@@ -83,10 +82,8 @@ const handler = async ({
             }
         })
 
-        /* ───── DESCARGAR ───── */
-        const type = isVideo
-            ? 'video'
-            : 'image'
+        // 📥 DESCARGAR
+        const type = isVideo ? 'video' : 'image'
 
         const stream =
             await downloadContentFromMessage(
@@ -120,20 +117,20 @@ const handler = async ({
 
         fs.writeFileSync(input, buffer)
 
-        /* ───── FFMPEG ───── */
+        // ⚡ FFMPEG RÁPIDO
         await new Promise((resolve, reject) => {
 
             const args = isVideo
 
                 ? [
                     '-i', input,
+                    '-vcodec', 'libwebp',
                     '-vf',
-                    'scale=512:512:force_original_aspect_ratio=decrease,' +
-                    'pad=512:512:-1:-1:color=0x00000000,' +
-                    'fps=15,format=rgba',
+                    'scale=512:512:force_original_aspect_ratio=decrease,fps=12,pad=512:512:-1:-1:color=0x00000000',
                     '-loop', '0',
+                    '-ss', '00:00:00',
                     '-t', '10',
-                    '-preset', 'default',
+                    '-preset', 'ultrafast',
                     '-an',
                     '-vsync', '0',
                     output
@@ -142,8 +139,7 @@ const handler = async ({
                 : [
                     '-i', input,
                     '-vf',
-                    'scale=512:512:force_original_aspect_ratio=decrease,' +
-                    'pad=512:512:-1:-1:color=0x00000000',
+                    'scale=512:512:force_original_aspect_ratio=decrease,pad=512:512:-1:-1:color=0x00000000',
                     output
                 ]
 
@@ -172,13 +168,13 @@ const handler = async ({
             )
         })
 
-        // 🕷️ ENVIAR
+        // 🕷️ STICKER ANIMADO
         await sock.sendMessage(from,{
             sticker:
                 fs.readFileSync(output)
         },{ quoted:m })
 
-        // ✅ REACCIÓN
+        // ✅
         await sock.sendMessage(from,{
             react:{
                 text:'✅',
