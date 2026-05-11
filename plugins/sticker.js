@@ -34,6 +34,7 @@ const handler = async ({
         user?.admin === 'admin' ||
         user?.admin === 'superadmin'
 
+    // 🔥 SILENCIOSO
     if (isBlockedGroup && !isAdmin) return
 
     /* ───── MEDIA ───── */
@@ -74,7 +75,7 @@ const handler = async ({
 
     try {
 
-        // ⏳
+        // ⏳ REACCIÓN
         await sock.sendMessage(from,{
             react:{
                 text:'⏳',
@@ -83,7 +84,9 @@ const handler = async ({
         })
 
         // 📥 DESCARGAR
-        const type = isVideo ? 'video' : 'image'
+        const type = isVideo
+            ? 'video'
+            : 'image'
 
         const stream =
             await downloadContentFromMessage(
@@ -117,42 +120,40 @@ const handler = async ({
 
         fs.writeFileSync(input, buffer)
 
-        // ⚡ FFMPEG RÁPIDO
+        // ⚡ FFMPEG
         await new Promise((resolve, reject) => {
 
             const args = isVideo
-
-? [
-    '-i', input,
-    '-vf',
-    'scale=320:320:force_original_aspect_ratio=decrease,fps=10',
-    '-vcodec', 'libwebp',
-    '-lossless', '1',
-    '-loop', '0',
-    '-preset', 'default',
-    '-an',
-    '-vsync', '0',
-    '-t', '6',
-    output
-]
-
-: [
-    '-i', input,
-    '-vf',
-    'scale=512:512:force_original_aspect_ratio=decrease',
-    '-vcodec', 'libwebp',
-    output
-]
-
+                ? [
+                    '-i', input,
+                    '-vf',
+                    'scale=320:320:force_original_aspect_ratio=decrease,fps=10',
+                    '-vcodec', 'libwebp',
+                    '-lossless', '1',
+                    '-loop', '0',
+                    '-preset', 'default',
+                    '-an',
+                    '-vsync', '0',
+                    '-t', '6',
+                    output
+                ]
                 : [
                     '-i', input,
                     '-vf',
-                    'scale=512:512:force_original_aspect_ratio=decrease,pad=512:512:-1:-1:color=0x00000000',
+                    'scale=512:512:force_original_aspect_ratio=decrease',
+                    '-vcodec', 'libwebp',
                     output
                 ]
 
             const ffmpeg =
                 spawn('ffmpeg', args)
+
+            ffmpeg.stderr.on('data', data => {
+                console.log(
+                    'FFMPEG:',
+                    data.toString()
+                )
+            })
 
             ffmpeg.on(
                 'error',
@@ -176,13 +177,13 @@ const handler = async ({
             )
         })
 
-        // 🕷️ STICKER ANIMADO
+        // 🕷️ ENVIAR STICKER
         await sock.sendMessage(from,{
             sticker:
                 fs.readFileSync(output)
         },{ quoted:m })
 
-        // ✅
+        // ✅ REACCIÓN
         await sock.sendMessage(from,{
             react:{
                 text:'✅',
@@ -197,7 +198,7 @@ const handler = async ({
             err
         )
 
-        sock.sendMessage(from,{
+        await sock.sendMessage(from,{
             text:'❌ Error creando sticker'
         },{ quoted:m })
 
