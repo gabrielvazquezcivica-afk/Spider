@@ -8,7 +8,6 @@ const handler = async ({
     sock,
     m,
     from,
-    isGroup,
     participants,
     sender
 }) => {
@@ -17,7 +16,6 @@ const handler = async ({
     let isBlockedGroup = false
 
     try {
-
         const db = JSON.parse(
             fs.readFileSync('./data/modoadmin.json')
         )
@@ -34,10 +32,10 @@ const handler = async ({
         user?.admin === 'admin' ||
         user?.admin === 'superadmin'
 
-    // 🔥 SILENCIOSO
+    // 🔥 silencioso
     if (isBlockedGroup && !isAdmin) return
 
-    /* ───── MEDIA ───── */
+    // 📥 quoted
     const quoted =
         m.message?.extendedTextMessage?.contextInfo ||
         m.message?.imageMessage?.contextInfo ||
@@ -45,7 +43,7 @@ const handler = async ({
 
     const qmsg = quoted?.quotedMessage
 
-    const msg =
+    const media =
         m.message?.imageMessage ||
         m.message?.videoMessage ||
         qmsg?.imageMessage ||
@@ -53,64 +51,52 @@ const handler = async ({
         qmsg?.viewOnceMessageV2?.message?.imageMessage ||
         qmsg?.viewOnceMessageV2?.message?.videoMessage
 
-    if (!msg) {
-
-        return sock.sendMessage(from,{
-            text:'⚠️ Responde a una imagen o video'
-        },{ quoted:m })
+    if (!media) {
+        return sock.sendMessage(from, {
+            text: '⚠️ Responde a una imagen o video'
+        }, { quoted: m })
     }
 
-    const isVideo = !!msg.seconds
+    const isVideo = !!media.seconds
 
-    // 🎥 MAX 10S
-    if (isVideo && msg.seconds > 10) {
-
-        return sock.sendMessage(from,{
-            text:'⚠️ El video debe durar máximo 10 segundos'
-        },{ quoted:m })
+    if (isVideo && media.seconds > 10) {
+        return sock.sendMessage(from, {
+            text: '⚠️ El video debe durar máximo 10 segundos'
+        }, { quoted: m })
     }
 
-    let input
-    let output
+    let input = ''
+    let output = ''
 
     try {
 
-        // ⏳ REACCIÓN
-        await sock.sendMessage(from,{
-            react:{
-                text:'⏳',
-                key:m.key
+        // ⏳ reacción
+        await sock.sendMessage(from, {
+            react: {
+                text: '⏳',
+                key: m.key
             }
         })
 
-        // 📥 DESCARGAR
-        const type = isVideo
-            ? 'video'
-            : 'image'
+        // 📥 descargar
+        const type = isVideo ? 'video' : 'image'
 
-        const stream =
-            await downloadContentFromMessage(
-                msg,
-                type
-            )
+        const stream = await downloadContentFromMessage(
+            media,
+            type
+        )
 
         let buffer = Buffer.alloc(0)
 
         for await (const chunk of stream) {
-
-            buffer = Buffer.concat([
-                buffer,
-                chunk
-            ])
+            buffer = Buffer.concat([buffer, chunk])
         }
 
         const tmp = os.tmpdir()
 
         input = path.join(
             tmp,
-            `stk_${Date.now()}.${
-                isVideo ? 'mp4' : 'jpg'
-            }`
+            `stk_${Date.now()}.${isVideo ? 'mp4' : 'jpg'}`
         )
 
         output = path.join(
@@ -120,7 +106,7 @@ const handler = async ({
 
         fs.writeFileSync(input, buffer)
 
-        // ⚡ FFMPEG
+        // ⚡ ffmpeg
         await new Promise((resolve, reject) => {
 
             const args = isVideo
@@ -129,10 +115,7 @@ const handler = async ({
                     '-vf',
                     'scale=512:512:force_original_aspect_ratio=decrease:flags=lanczos,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=white@0.0,fps=15',
                     '-c:v', 'libwebp',
-                    '-fs', '1M',
-                    '-lossless', '1',
                     '-loop', '0',
-                    '-preset', 'default',
                     '-an',
                     '-vsync', '0',
                     '-t', '6',
@@ -146,8 +129,7 @@ const handler = async ({
                     output
                 ]
 
-            const ffmpeg =
-                spawn('ffmpeg', args)
+            const ffmpeg = spawn('ffmpeg', args)
 
             ffmpeg.stderr.on('data', data => {
                 console.log(
@@ -156,39 +138,27 @@ const handler = async ({
                 )
             })
 
-            ffmpeg.on(
-                'error',
-                reject
-            )
+            ffmpeg.on('error', reject)
 
-            ffmpeg.on(
-                'close',
-                code => {
+            ffmpeg.on('close', code => {
 
-                    if (code === 0)
-                        resolve()
-
-                    else
-                        reject(
-                            new Error(
-                                'FFmpeg error'
-                            )
-                        )
-                }
-            )
+                if (code === 0) resolve()
+                else reject(
+                    new Error('FFmpeg error')
+                )
+            })
         })
 
-        // 🕷️ ENVIAR STICKER
-        await sock.sendMessage(from,{
-            sticker:
-                fs.readFileSync(output)
-        },{ quoted:m })
+        // 🕷️ enviar
+        await sock.sendMessage(from, {
+            sticker: fs.readFileSync(output)
+        }, { quoted: m })
 
-        // ✅ REACCIÓN
-        await sock.sendMessage(from,{
-            react:{
-                text:'✅',
-                key:m.key
+        // ✅ reacción
+        await sock.sendMessage(from, {
+            react: {
+                text: '✅',
+                key: m.key
             }
         })
 
@@ -199,23 +169,25 @@ const handler = async ({
             err
         )
 
-        await sock.sendMessage(from,{
-            text:'❌ Error creando sticker'
-        },{ quoted:m })
+        await sock.sendMessage(from, {
+            text: '❌ Error creando sticker'
+        }, { quoted: m })
 
     } finally {
 
         try {
-            if (input)
-                fs.unlinkSync(input)
+            if (input) fs.unlinkSync(input)
         } catch {}
 
         try {
-            if (output)
-                fs.unlinkSync(output)
+            if (output) fs.unlinkSync(output)
         } catch {}
     }
 }
 
 handler.command = ['s']
-handler.tags = ['stickers
+handler.tags = ['stickers']
+handler.menu = true
+handler.group = true
+
+export default handler
