@@ -1,172 +1,198 @@
 import fs from 'fs'
 import path from 'path'
 import os from 'os'
+import axios from 'axios'
 import { spawn } from 'child_process'
 
-const handler = async ({
-    sock,
-    m,
-    from,
-    args,
-    participants,
-    sender
-}) => {
+/* ───── PNG → STICKER ───── */
+async function createSticker(buffer) {
 
-    // 🔒 MODODADMIN
-    let isBlockedGroup = false
+  const tmpIn = path.join(
+    os.tmpdir(),
+    `brat_${Date.now()}.png`
+  )
 
-    try {
+  const tmpOut = path.join(
+    os.tmpdir(),
+    `brat_${Date.now()}.webp`
+  )
 
-        const db = JSON.parse(
-            fs.readFileSync('./data/modoadmin.json')
-        )
+  fs.writeFileSync(tmpIn, buffer)
 
-        isBlockedGroup = db[from]
+  await new Promise((resolve, reject) => {
 
-    } catch {}
+    const ff = spawn('ffmpeg', [
 
-    const user = participants?.find(
-        p => p.id === sender
+      '-i', tmpIn,
+
+      '-vf',
+      'scale=512:512:force_original_aspect_ratio=decrease,' +
+      'pad=512:512:(ow-iw)/2:(oh-ih)/2:color=white',
+
+      '-vcodec', 'libwebp',
+      '-lossless', '1',
+      '-qscale', '1',
+      '-preset', 'picture',
+      '-loop', '0',
+      '-an',
+      '-vsync', '0',
+      '-y',
+
+      tmpOut
+    ])
+
+    ff.stderr.on('data', () => {})
+
+    ff.on(
+      'close',
+      code => {
+
+        if (code === 0)
+          resolve()
+
+        else
+          reject(
+            new Error(
+              'FFmpeg fallo'
+            )
+          )
+      }
     )
 
-    const isAdmin =
-        user?.admin === 'admin' ||
-        user?.admin === 'superadmin'
+    ff.on(
+      'error',
+      reject
+    )
+  })
 
-    // 🔥 silencioso
-    if (isBlockedGroup && !isAdmin) return
+  const result = fs.readFileSync(tmpOut)
 
-    const text = args.join(' ').trim()
+  try {
+    fs.unlinkSync(tmpIn)
+  } catch {}
 
-    if (!text) {
-        return sock.sendMessage(from,{
-            text:
-`⚠️ Escribe un texto
+  try {
+    fs.unlinkSync(tmpOut)
+  } catch {}
+
+  return result
+}
+
+/* ───── COMANDO ───── */
+const handler = async ({
+  sock,
+  m,
+  from,
+  args,
+  isGroup,
+  sender,
+  participants
+}) => {
+
+  // 🔒 MODODADMIN
+  let isBlockedGroup = false
+
+  try {
+
+    const db = JSON.parse(
+      fs.readFileSync(
+        './data/modoadmin.json'
+      )
+    )
+
+    isBlockedGroup = db[from]
+
+  } catch {}
+
+  const user = participants?.find(
+    p => p.id === sender
+  )
+
+  const isAdmin =
+    user?.admin === 'admin' ||
+    user?.admin === 'superadmin'
+
+  // 🔥 silencioso
+  if (isBlockedGroup && !isAdmin) return
+
+  const text = args.join(' ').trim()
+
+  if (!text) {
+
+    return sock.sendMessage(from,{
+      text:
+`❌ Escribe un texto
 
 Ejemplo:
 .brat Hola mundo`
-        },{ quoted:m })
+    },{ quoted:m })
+  }
+
+  // 🎨 reacción
+  await sock.sendMessage(from,{
+    react:{
+      text:'🎨',
+      key:m.key
     }
+  })
 
-    // 🔥 dividir texto en líneas
-    const words = text.split(' ')
-    const lines = []
+  try {
 
-    let current = ''
-
-    for (const word of words) {
-
-        if ((current + ' ' + word).length > 10) {
-
-            lines.push(current.trim())
-            current = word
-
-        } else {
-
-            current += ' ' + word
-        }
-    }
-
-    if (current) {
-        lines.push(current.trim())
-    }
-
-    // 🔥 saltos de línea
-    const finalText = lines.join('\n')
-
-    const tmp = os.tmpdir()
-
-    const output = path.join(
-        tmp,
-        `brat_${Date.now()}.webp`
+    // 🔥 API brat
+    const res = await axios.get(
+      'https://kepolu-brat.hf.space/brat',
+      {
+        params:{
+          q:text
+        },
+        responseType:'arraybuffer'
+      }
     )
 
-    try {
-
-        // 🕸️ reacción
-        await sock.sendMessage(from,{
-            react:{
-                text:'🕸️',
-                key:m.key
-            }
-        })
-
-        // ⚡ crear brat
-        await new Promise((resolve, reject) => {
-
-            const ffmpeg = spawn('ffmpeg',[
-                '-f','lavfi',
-                '-i',
-                'color=c=white:s=512x512:d=1',
-                '-vf',
-`drawtext=
-text='${finalText.replace(/\n/g,'\\n').replace(/'/g,"\\'")}':
-fontcolor=black:
-fontsize=68:
-line_spacing=15:
-x=35:
-y=90`,
-                '-frames:v','1',
-                '-vcodec','libwebp',
-                output
-            ])
-
-            ffmpeg.on(
-                'error',
-                reject
-            )
-
-            ffmpeg.on(
-                'close',
-                code => {
-
-                    if (code === 0)
-                        resolve()
-
-                    else
-                        reject(
-                            new Error(
-                                'FFmpeg error'
-                            )
-                        )
-                }
-            )
-        })
-
-        // 🕷️ enviar
-        await sock.sendMessage(from,{
-            sticker:fs.readFileSync(output)
-        },{ quoted:m })
-
-        // ✅ reacción
-        await sock.sendMessage(from,{
-            react:{
-                text:'✅',
-                key:m.key
-            }
-        })
-
-    } catch (err) {
-
-        console.log(
-            'BRAT ERROR:',
-            err
-        )
-
-        await sock.sendMessage(from,{
-            text:'❌ Error creando brat'
-        },{ quoted:m })
-
-    } finally {
-
-        try {
-            fs.unlinkSync(output)
-        } catch {}
+    if (
+      !res.data ||
+      !res.data.byteLength
+    ) {
+      throw new Error(
+        'Imagen vacía'
+      )
     }
+
+    // 🖼️ sticker
+    const sticker =
+      await createSticker(
+        res.data
+      )
+
+    // 🕷️ enviar
+    await sock.sendMessage(from,{
+      sticker
+    },{ quoted:m })
+
+    // ✅ reacción
+    await sock.sendMessage(from,{
+      react:{
+        text:'✅',
+        key:m.key
+      }
+    })
+
+  } catch (e) {
+
+    console.log(
+      'BRAT ERROR:',
+      e
+    )
+
+    await sock.sendMessage(from,{
+      text:'❌ Error al generar brat'
+    },{ quoted:m })
+  }
 }
 
 handler.command = ['brat']
 handler.tags = ['stickers']
+handler.help = ['brat <texto>']
 handler.menu = true
 handler.group = true
 
