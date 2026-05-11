@@ -39,17 +39,16 @@ const handler = async ({
     const text = args.join(' ').trim()
 
     if (!text) {
-        return sock.sendMessage(from, {
-            text: '⚠️ Escribe un texto\n\nEjemplo:\n.brat Hola'
-        }, { quoted: m })
+        return sock.sendMessage(from,{
+            text:
+`⚠️ Escribe un texto
+
+Ejemplo:
+.brat Hola`
+        },{ quoted:m })
     }
 
     const tmp = os.tmpdir()
-
-    const input = path.join(
-        tmp,
-        `brat_${Date.now()}.png`
-    )
 
     const output = path.join(
         tmp,
@@ -58,54 +57,27 @@ const handler = async ({
 
     try {
 
-        // ⏳ reacción
-        await sock.sendMessage(from, {
-            react: {
-                text: '🕸️',
-                key: m.key
+        // 🕸️ reacción
+        await sock.sendMessage(from,{
+            react:{
+                text:'🕸️',
+                key:m.key
             }
         })
 
-        // 🖼️ crear svg
-        const svg = `
-<svg width="512" height="512" xmlns="http://www.w3.org/2000/svg">
-<style>
-.text {
-    fill: black;
-    font-size: 72px;
-    font-family: Arial, sans-serif;
-    font-weight: bold;
-}
-</style>
-
-<rect width="100%" height="100%" fill="white"/>
-
-<text
-x="30"
-y="120"
-class="text"
->
-${text}
-</text>
-</svg>
-`
-
-        fs.writeFileSync(input, svg)
-
-        // ⚡ convertir a webp
+        // ⚡ crear sticker
         await new Promise((resolve, reject) => {
 
-            const ffmpeg = spawn(
-                'ffmpeg',
-                [
-                    '-i', input,
-                    '-vf',
-                    'scale=512:512',
-                    '-vcodec',
-                    'libwebp',
-                    output
-                ]
-            )
+            const ffmpeg = spawn('ffmpeg',[
+                '-f','lavfi',
+                '-i',
+                `color=c=white:s=512x512:d=1`,
+                '-vf',
+                `drawtext=text='${text.replace(/'/g,"\\'")}':fontcolor=black:fontsize=72:x=35:y=120`,
+                '-frames:v','1',
+                '-vcodec','libwebp',
+                output
+            ])
 
             ffmpeg.on(
                 'error',
@@ -129,16 +101,16 @@ ${text}
             )
         })
 
-        // 🕷️ enviar sticker
-        await sock.sendMessage(from, {
-            sticker: fs.readFileSync(output)
-        }, { quoted: m })
+        // 🕷️ enviar
+        await sock.sendMessage(from,{
+            sticker:fs.readFileSync(output)
+        },{ quoted:m })
 
         // ✅ reacción
-        await sock.sendMessage(from, {
-            react: {
-                text: '✅',
-                key: m.key
+        await sock.sendMessage(from,{
+            react:{
+                text:'✅',
+                key:m.key
             }
         })
 
@@ -149,15 +121,11 @@ ${text}
             err
         )
 
-        await sock.sendMessage(from, {
-            text: '❌ Error creando brat'
-        }, { quoted: m })
+        await sock.sendMessage(from,{
+            text:'❌ Error creando brat'
+        },{ quoted:m })
 
     } finally {
-
-        try {
-            fs.unlinkSync(input)
-        } catch {}
 
         try {
             fs.unlinkSync(output)
