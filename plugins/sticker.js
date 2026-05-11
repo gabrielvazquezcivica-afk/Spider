@@ -59,6 +59,7 @@ const handler = async ({
 
     const isVideo = !!media.seconds
 
+    // 🎥 máximo 10s
     if (isVideo && media.seconds > 10) {
         return sock.sendMessage(from, {
             text: '⚠️ El video debe durar máximo 10 segundos'
@@ -78,7 +79,7 @@ const handler = async ({
             }
         })
 
-        // 📥 descargar
+        // 📥 descargar media
         const type = isVideo ? 'video' : 'image'
 
         const stream = await downloadContentFromMessage(
@@ -106,30 +107,36 @@ const handler = async ({
 
         fs.writeFileSync(input, buffer)
 
-        // ⚡ ffmpeg
+        // ⚡ FFMPEG
         await new Promise((resolve, reject) => {
 
             const args = isVideo
-                ? [
-                    '-i', input,
-                    '-vf',
-                    'scale=512:512:force_original_aspect_ratio=decrease:flags=lanczos,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=white@0.0,fps=15',
-                    '-c:v', 'libwebp',
-                    '-loop', '0',
-                    '-an',
-                    '-vsync', '0',
-                    '-t', '6',
-                    output
-                ]
-                : [
-                    '-i', input,
-                    '-vf',
-                    'scale=512:512:force_original_aspect_ratio=decrease:flags=lanczos,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=white@0.0',
-                    '-c:v', 'libwebp',
-                    output
-                ]
+            ? [
+                '-i', input,
+                '-vcodec', 'libwebp',
+                '-vf',
+                'scale=512:512:force_original_aspect_ratio=decrease:flags=lanczos,fps=15,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=0x00000000',
+                '-loop', '0',
+                '-ss', '00:00:00',
+                '-t', '06',
+                '-preset', 'picture',
+                '-an',
+                '-vsync', '0',
+                '-s', '512:512',
+                output
+            ]
+            : [
+                '-i', input,
+                '-vf',
+                'scale=512:512:force_original_aspect_ratio=decrease:flags=lanczos,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=0x00000000',
+                '-vcodec', 'libwebp',
+                output
+            ]
 
-            const ffmpeg = spawn('ffmpeg', args)
+            const ffmpeg = spawn(
+                'ffmpeg',
+                args
+            )
 
             ffmpeg.stderr.on('data', data => {
                 console.log(
@@ -138,18 +145,29 @@ const handler = async ({
                 )
             })
 
-            ffmpeg.on('error', reject)
+            ffmpeg.on(
+                'error',
+                reject
+            )
 
-            ffmpeg.on('close', code => {
+            ffmpeg.on(
+                'close',
+                code => {
 
-                if (code === 0) resolve()
-                else reject(
-                    new Error('FFmpeg error')
-                )
-            })
+                    if (code === 0)
+                        resolve()
+
+                    else
+                        reject(
+                            new Error(
+                                'FFmpeg error'
+                            )
+                        )
+                }
+            )
         })
 
-        // 🕷️ enviar
+        // 🕷️ enviar sticker
         await sock.sendMessage(from, {
             sticker: fs.readFileSync(output)
         }, { quoted: m })
@@ -176,11 +194,13 @@ const handler = async ({
     } finally {
 
         try {
-            if (input) fs.unlinkSync(input)
+            if (input)
+                fs.unlinkSync(input)
         } catch {}
 
         try {
-            if (output) fs.unlinkSync(output)
+            if (output)
+                fs.unlinkSync(output)
         } catch {}
     }
 }
