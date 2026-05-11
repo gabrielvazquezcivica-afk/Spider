@@ -127,8 +127,9 @@ const handler = async ({
                 ? [
                     '-i', input,
                     '-vf',
-                    'scale=320:320:force_original_aspect_ratio=decrease,fps=10',
-                    '-vcodec', 'libwebp',
+                    'scale=512:512:force_original_aspect_ratio=decrease:flags=lanczos,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=white@0.0,fps=15',
+                    '-c:v', 'libwebp',
+                    '-fs', '1M',
                     '-lossless', '1',
                     '-loop', '0',
                     '-preset', 'default',
@@ -140,8 +141,8 @@ const handler = async ({
                 : [
                     '-i', input,
                     '-vf',
-                    'scale=512:512:force_original_aspect_ratio=decrease',
-                    '-vcodec', 'libwebp',
+                    'scale=512:512:force_original_aspect_ratio=decrease:flags=lanczos,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=white@0.0',
+                    '-c:v', 'libwebp',
                     output
                 ]
 
@@ -217,8 +218,4 @@ const handler = async ({
 }
 
 handler.command = ['s']
-handler.tags = ['stickers']
-handler.menu = true
-handler.group = true
-
-export default handler
+handler.tags = ['stickers
