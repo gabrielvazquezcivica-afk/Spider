@@ -19,6 +19,17 @@ function getDB() {
     }
 }
 
+const reactions = [
+    '🕷️',
+    '🔥',
+    '💀',
+    '⚡',
+    '👑',
+    '🤣',
+    '😈',
+    '🥵'
+]
+
 const handler = async ({
     sock,
     m,
@@ -62,8 +73,16 @@ const handler = async ({
         },{ quoted:m })
     }
 
-    // 🔥 RANDOM 10
-    const randomUsers = participants
+    // 🔥 REACCIÓN RANDOM
+    const react =
+        reactions[
+            Math.floor(
+                Math.random() * reactions.length
+            )
+        ]
+
+    // 🔥 RANDOM USERS
+    const randomUsers = [...participants]
         .sort(() => Math.random() - 0.5)
         .slice(0, 10)
 
@@ -87,10 +106,19 @@ const handler = async ({
     text +=
 '╰━━━━━━━━━━━━━━━━⬣'
 
-    await sock.sendMessage(from,{
+    // 📩 ENVIAR MENSAJE
+    const msg = await sock.sendMessage(from,{
         text,
         mentions
     },{ quoted:m })
+
+    // 🔥 REACCIONAR AL MENSAJE ENVIADO
+    await sock.sendMessage(from,{
+        react:{
+            text: react,
+            key: msg.key
+        }
+    })
 }
 
 handler.command = ['top']
