@@ -6,8 +6,7 @@ const path = './data/modoadmin.json'
 function getDB() {
     try {
 
-        if (!fs.existsSync(path))
-            return {}
+        if (!fs.existsSync(path)) return {}
 
         return JSON.parse(
             fs.readFileSync(path, 'utf-8')
@@ -19,33 +18,30 @@ function getDB() {
     }
 }
 
-const reactions = [
-    '🕷️',
-    '🔥',
-    '💀',
-    '⚡',
-    '👑',
-    '🤣',
-    '😈',
-    '🥵'
-]
+function shuffle(array) {
+    return array.sort(() => Math.random() - 0.5)
+}
 
 const handler = async ({
     sock,
     m,
     from,
+    args,
     isGroup,
     participants,
-    args,
     sender
 }) => {
 
-    if (!isGroup) return
+    if (!isGroup) {
+        return sock.sendMessage(from,{
+            text:'⚠️ Solo funciona en grupos'
+        },{ quoted:m })
+    }
 
+    // 🔒 MODODADMIN
     const db = getDB()
     const isBlockedGroup = db[from]
 
-    // 🔐 ADMIN
     const user = participants.find(
         p => p.id === sender
     )
@@ -54,71 +50,53 @@ const handler = async ({
         user?.admin === 'admin' ||
         user?.admin === 'superadmin'
 
-    // 🔥 MODODADMIN
-    if (isBlockedGroup && !isAdmin)
-        return
+    if (isBlockedGroup && !isAdmin) return
 
-    const tema = args.join(' ')
+    const categoria = args.join(' ')
 
-    if (!tema) {
+    if (!categoria) {
 
         return sock.sendMessage(from,{
             text:
-`⚠️ Usa el comando así:
+`🕷️ Ejemplos:
 
-.top infieles
-.top pajeros
-.top chismosos
-.top dormidos`
+.top memes
+.top feos
+.top inteligentes
+.top dormilones`
         },{ quoted:m })
     }
 
-    // 🔥 REACCIÓN RANDOM
-    const react =
-        reactions[
-            Math.floor(
-                Math.random() * reactions.length
-            )
-        ]
-
-    // 🔥 RANDOM USERS
-    const randomUsers = [...participants]
-        .sort(() => Math.random() - 0.5)
-        .slice(0, 10)
-
-    const mentions =
-        randomUsers.map(u => u.id)
-
-    let text =
-`╭━━━〔 🕷️ SPIDER TOP 〕━━━⬣
-┃
-┃ 🏆 TOP ${tema.toUpperCase()}
-┃
-`
-
-    randomUsers.forEach((u, i) => {
-
-        text +=
-`┃ ${i + 1}. @${u.id.split('@')[0]}
-`
-    })
-
-    text +=
-'╰━━━━━━━━━━━━━━━━⬣'
-
-    // 📩 ENVIAR MENSAJE
-    const msg = await sock.sendMessage(from,{
-        text,
-        mentions
-    },{ quoted:m })
-
-    // 🔥 REACCIONAR AL MENSAJE ENVIADO
+    // 🔥 REACCIÓN
     await sock.sendMessage(from,{
         react:{
-            text: react,
-            key: msg.key
+            text:'🕸️',
+            key:m.key
         }
     })
+
+    // 🔥 RANDOM USERS
+    const users = shuffle(
+        participants.map(p => p.id)
+    ).slice(0, 10)
+
+    let text =
+`╭━━━〔 🕷️ TOP ${categoria.toUpperCase()} 🕷️ 〕━━━⬣
+
+`
+
+    users.forEach((user, i) => {
+
+        text +=
+`${i + 1}. @${user.split('@')[0]}\n`
+    })
+
+    text += '\n╰━━━━━━━━━━━━━━━━⬣'
+
+    await sock.sendMessage(from,{
+        text,
+        mentions: users
+    },{ quoted:m })
 }
 
 handler.command = ['top']
