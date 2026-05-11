@@ -122,19 +122,27 @@ const handler = async ({
 
             const args = isVideo
 
-                ? [
-                    '-i', input,
-                    '-vcodec', 'libwebp',
-                    '-vf',
-                    'scale=512:512:force_original_aspect_ratio=decrease,fps=12,pad=512:512:-1:-1:color=0x00000000',
-                    '-loop', '0',
-                    '-ss', '00:00:00',
-                    '-t', '10',
-                    '-preset', 'ultrafast',
-                    '-an',
-                    '-vsync', '0',
-                    output
-                ]
+? [
+    '-i', input,
+    '-vf',
+    'scale=320:320:force_original_aspect_ratio=decrease,fps=10',
+    '-vcodec', 'libwebp',
+    '-lossless', '1',
+    '-loop', '0',
+    '-preset', 'default',
+    '-an',
+    '-vsync', '0',
+    '-t', '6',
+    output
+]
+
+: [
+    '-i', input,
+    '-vf',
+    'scale=512:512:force_original_aspect_ratio=decrease',
+    '-vcodec', 'libwebp',
+    output
+]
 
                 : [
                     '-i', input,
