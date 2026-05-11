@@ -115,7 +115,7 @@ const handler = async ({
                 '-i', input,
                 '-vcodec', 'libwebp',
                 '-vf',
-                'scale=512:512:force_original_aspect_ratio=decrease:flags=lanczos,fps=15,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=0x00000000',
+                'scale=512:512:force_original_aspect_ratio=decrease:flags=lanczos,fps=15,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=white@0.0',
                 '-loop', '0',
                 '-ss', '00:00:00',
                 '-t', '06',
@@ -128,7 +128,7 @@ const handler = async ({
             : [
                 '-i', input,
                 '-vf',
-                'scale=512:512:force_original_aspect_ratio=decrease:flags=lanczos,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=0x00000000',
+                'scale=512:512:force_original_aspect_ratio=decrease:flags=lanczos,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=white@0.0',
                 '-vcodec', 'libwebp',
                 output
             ]
@@ -137,13 +137,6 @@ const handler = async ({
                 'ffmpeg',
                 args
             )
-
-            ffmpeg.stderr.on('data', data => {
-                console.log(
-                    'FFMPEG:',
-                    data.toString()
-                )
-            })
 
             ffmpeg.on(
                 'error',
