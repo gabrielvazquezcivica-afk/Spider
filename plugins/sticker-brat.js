@@ -44,9 +44,35 @@ const handler = async ({
 `⚠️ Escribe un texto
 
 Ejemplo:
-.brat Hola`
+.brat Hola mundo`
         },{ quoted:m })
     }
+
+    // 🔥 dividir texto en líneas
+    const words = text.split(' ')
+    const lines = []
+
+    let current = ''
+
+    for (const word of words) {
+
+        if ((current + ' ' + word).length > 10) {
+
+            lines.push(current.trim())
+            current = word
+
+        } else {
+
+            current += ' ' + word
+        }
+    }
+
+    if (current) {
+        lines.push(current.trim())
+    }
+
+    // 🔥 saltos de línea
+    const finalText = lines.join('\n')
 
     const tmp = os.tmpdir()
 
@@ -65,15 +91,21 @@ Ejemplo:
             }
         })
 
-        // ⚡ crear sticker
+        // ⚡ crear brat
         await new Promise((resolve, reject) => {
 
             const ffmpeg = spawn('ffmpeg',[
                 '-f','lavfi',
                 '-i',
-                `color=c=white:s=512x512:d=1`,
+                'color=c=white:s=512x512:d=1',
                 '-vf',
-                `drawtext=text='${text.replace(/'/g,"\\'")}':fontcolor=black:fontsize=72:x=35:y=120`,
+`drawtext=
+text='${finalText.replace(/\n/g,'\\n').replace(/'/g,"\\'")}':
+fontcolor=black:
+fontsize=68:
+line_spacing=15:
+x=35:
+y=90`,
                 '-frames:v','1',
                 '-vcodec','libwebp',
                 output
