@@ -16,14 +16,12 @@ const handler = async ({
     pushName
 }) => {
 
-    // ❌ solo grupos
     if (!isGroup) {
         return sock.sendMessage(from,{
             text:'⚠️ Este comando solo funciona en grupos'
         },{ quoted:m })
     }
 
-    // 👤 admin real
     const senderNum = onlyNumber(sender)
 
     const userData = participants.find(p =>
@@ -36,11 +34,10 @@ const handler = async ({
 
     if (!isAdmin) {
         return sock.sendMessage(from,{
-            text:'🕷️ Solo los administradores pueden usar este comando'
+            text:'⚠️ Solo administradores'
         },{ quoted:m })
     }
 
-    // 👤 usuario mencionado
     const ctx = m.message?.extendedTextMessage?.contextInfo
 
     const userRaw =
@@ -49,42 +46,44 @@ const handler = async ({
 
     if (!userRaw) {
         return sock.sendMessage(from,{
-            text:
-`⚠️ Debes mencionar o responder a un usuario
-
-Ejemplo:
-.demote @usuario`
+            text:'⚠️ Menciona o responde a un usuario'
         },{ quoted:m })
     }
 
     const userNum = onlyNumber(userRaw)
 
-    // ⚡ reacción
+    // ✅ verificar si NO es admin
+    const targetData = participants.find(p =>
+        onlyNumber(p.id) === userNum
+    )
+
+    const alreadyUser =
+        !targetData?.admin
+
+    if (alreadyUser) {
+        return sock.sendMessage(from,{
+            text:`⚠️ @${userNum} no es admin`,
+            mentions:[normalizeJid(userRaw)]
+        },{ quoted:m })
+    }
+
     await sock.sendMessage(from,{
-        react:{ text:'⭐', key:m.key }
+        react:{ text:'⬇️', key:m.key }
     })
 
     try {
 
-        // ⬇️ quitar admin
         await sock.groupParticipantsUpdate(
             from,
             [normalizeJid(userRaw)],
             'demote'
         )
 
-        // 📩 mensaje
         await sock.sendMessage(from,{
             text:
-`╭━━━〔 🕸️ SPIDER SYSTEM 〕━━━⬣
-┃
-┃ ☠️ Administrador removido
-┃ 👤 Usuario: @${userNum}
-┃ 🕷️ removido por:
-┃ ${pushName}
-╰━━━━━━━━━━━━━━━━⬣
+`⬇️ @${userNum} ya no es administrador
 
-> SPIDER BOT`,
+> por ${pushName}`,
             mentions:[normalizeJid(userRaw)]
         },{ quoted:m })
 
