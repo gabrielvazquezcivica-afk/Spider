@@ -159,19 +159,14 @@ export async function before({
 
     try {
 
-        // 🗑️ borrar mensaje REAL
+        // 🗑️ borrar mensaje
         await sock.sendMessage(from, {
-            delete: {
-                remoteJid: from,
-                fromMe: false,
-                id: m.key.id,
-                participant: sender
-            }
+            delete: m.key
         })
 
         // ⚠️ aviso
         await sock.sendMessage(from,{
-            text:`🕷️ @${sender.split('@')[0]} no se permiten links en este grupo`,
+            text:`🕷️ @${sender.split('@')[0]} los links están prohibidos`,
             mentions:[sender]
         })
 
