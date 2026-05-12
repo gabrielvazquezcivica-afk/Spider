@@ -17,6 +17,12 @@ const pluginsPath = path.join(__dirname, 'plugins')
 let plugins = []
 let sockGlobal
 
+// ⚡ cache plugins/comandos
+const commandMap = new Map()
+
+// ⚡ cache metadata grupos
+const groupCache = new Map()
+
 // 🔒 MODODADMIN
 const modoadminPath = './data/modoadmin.json'
 
@@ -40,10 +46,35 @@ function getModoadmin() {
     }
 }
 
+// ⚡ metadata cache
+async function getGroupMetadata(sock, jid) {
+
+    const cache = groupCache.get(jid)
+
+    // ⚡ 15 segundos cache
+    if (
+        cache &&
+        Date.now() - cache.time < 15000
+    ) {
+        return cache.data
+    }
+
+    const metadata =
+        await sock.groupMetadata(jid)
+
+    groupCache.set(jid, {
+        data: metadata,
+        time: Date.now()
+    })
+
+    return metadata
+}
+
 // 🔄 cargar plugins
 async function loadPlugins() {
 
     plugins = []
+    commandMap.clear()
 
     const files = fs.readdirSync(pluginsPath)
         .filter(f => f.endsWith('.js'))
@@ -68,6 +99,24 @@ async function loadPlugins() {
                 }
 
                 plugins.push(handler)
+
+                // ⚡ guardar comandos en cache
+                if (handler.command) {
+
+                    const commands =
+                        Array.isArray(
+                            handler.command
+                        )
+                            ? handler.command
+                            : [handler.command]
+
+                    for (const cmd of commands) {
+                        commandMap.set(
+                            cmd,
+                            handler
+                        )
+                    }
+                }
             }
 
         } catch (err) {
@@ -155,10 +204,10 @@ async function start() {
                         typeof plugin.before === 'function'
                     ) {
 
-                        await plugin.before({
+                        plugin.before({
                             sock,
                             update
-                        })
+                        }).catch(() => {})
                     }
                 }
 
@@ -187,10 +236,10 @@ async function start() {
                         typeof plugin.before === 'function'
                     ) {
 
-                        await plugin.before({
+                        plugin.before({
                             sock,
                             groupsUpdate: update
-                        })
+                        }).catch(() => {})
                     }
                 }
 
@@ -237,8 +286,24 @@ async function start() {
             const sender =
                 m.key.participant || from
 
-            // 👁️ visto
-            await sock.readMessages([m.key])
+            // ⚡ NO ESPERAR visto
+            sock.readMessages([m.key])
+                .catch(() => {})
+
+            // 📄 texto
+            const msg =
+                m.message.conversation ||
+                m.message.extendedTextMessage?.text ||
+                m.message.imageMessage?.caption ||
+                m.message.videoMessage?.caption ||
+                ''
+
+            if (!msg)
+                return
+
+            // 🔥 primero revisar prefix
+            const isCmd =
+                msg.startsWith(config.prefix)
 
             // 🔇 mute
             const bloqueado =
@@ -266,21 +331,9 @@ async function start() {
             if (eliminado)
                 return
 
-            // 📄 texto
-            const msg =
-                m.message.conversation ||
-                m.message.extendedTextMessage?.text ||
-                m.message.imageMessage?.caption ||
-                m.message.videoMessage?.caption ||
-                ''
-
-            // ❌ ignorar mensajes normales
-            if (!msg)
+            // ❌ ignorar normales
+            if (!isCmd)
                 return
-
-            if (
-                !msg.startsWith(config.prefix)
-            ) return
 
             setImmediate(async () => {
 
@@ -296,13 +349,45 @@ async function start() {
 
                     let participants = []
 
-                    // 👥 metadata
-                    if (isGroup) {
+                    // ⚡ args rápido
+                    const body =
+                        msg.slice(
+                            config.prefix.length
+                        ).trim()
+
+                    const split =
+                        body.split(/ +/)
+
+                    const command =
+                        split.shift()
+                            ?.toLowerCase()
+
+                    const args = split
+
+                    // ⚡ buscar handler directo
+                    const handler =
+                        commandMap.get(command)
+
+                    if (!handler)
+                        return
+
+                    // 👥 metadata SOLO si necesario
+                    if (
+                        isGroup &&
+                        (
+                            handler.admin ||
+                            handler.group ||
+                            handler.owner
+                        )
+                    ) {
 
                         try {
 
                             groupMetadata =
-                                await sock.groupMetadata(from)
+                                await getGroupMetadata(
+                                    sock,
+                                    from
+                                )
 
                             participants =
                                 groupMetadata.participants
@@ -315,17 +400,6 @@ async function start() {
                             participants = []
                         }
                     }
-
-                    // ⚡ args
-                    const args =
-                        msg
-                            .slice(config.prefix.length)
-                            .trim()
-                            .split(/ +/)
-
-                    const command =
-                        args.shift()
-                            .toLowerCase()
 
                     // 🔒 modoadmin
                     const modoadmin =
@@ -347,93 +421,77 @@ async function start() {
                         )
                     )
 
-                    for (const handler of plugins) {
+                    if (
+                        handler.group &&
+                        !isGroup
+                    ) return
 
-                        if (!handler.command)
-                            continue
+                    if (
+                        handler.private &&
+                        isGroup
+                    ) return
 
-                        const commands =
-                            Array.isArray(
-                                handler.command
+                    // 🔒 modoadmin
+                    const isGroupCommand =
+                        handler.group === true
+
+                    if (
+                        isBlockedGroup &&
+                        !isGroupCommand
+                    ) {
+
+                        const user =
+                            participants.find(
+                                p =>
+                                    p.id === sender
                             )
-                                ? handler.command
-                                : [handler.command]
 
-                        if (
-                            !commands.includes(command)
-                        ) continue
+                        const isAdmin =
+                            user?.admin === 'admin' ||
+                            user?.admin === 'superadmin'
 
-                        if (
-                            handler.group &&
-                            !isGroup
-                        ) continue
-
-                        if (
-                            handler.private &&
-                            isGroup
-                        ) continue
-
-                        // 🔒 modoadmin
-                        const isGroupCommand =
-                            handler.group === true
-
-                        if (
-                            isBlockedGroup &&
-                            !isGroupCommand
-                        ) {
-
-                            const user =
-                                participants.find(
-                                    p =>
-                                        p.id === sender
-                                )
-
-                            const isAdmin =
-                                user?.admin === 'admin' ||
-                                user?.admin === 'superadmin'
-
-                            if (!isAdmin)
-                                return
-                        }
-
-                        // 👑 admin
-                        if (handler.admin) {
-
-                            const user =
-                                participants.find(
-                                    p =>
-                                        p.id === sender
-                                )
-
-                            const isAdmin =
-                                user?.admin === 'admin' ||
-                                user?.admin === 'superadmin'
-
-                            if (!isAdmin)
-                                continue
-                        }
-
-                        // 👑 owner
-                        if (handler.owner) {
-
-                            if (
-                                !config.owner.includes(sender)
-                            ) continue
-                        }
-
-                        await handler({
-                            sock,
-                            m,
-                            args,
-                            command,
-                            from,
-                            isGroup,
-                            sender,
-                            pushName,
-                            participants,
-                            groupMetadata
-                        })
+                        if (!isAdmin)
+                            return
                     }
+
+                    // 👑 admin
+                    if (handler.admin) {
+
+                        const user =
+                            participants.find(
+                                p =>
+                                    p.id === sender
+                            )
+
+                        const isAdmin =
+                            user?.admin === 'admin' ||
+                            user?.admin === 'superadmin'
+
+                        if (!isAdmin)
+                            return
+                    }
+
+                    // 👑 owner
+                    if (handler.owner) {
+
+                        if (
+                            !config.owner.includes(sender)
+                        ) return
+                    }
+
+                    // 🚀 ejecutar
+                    await handler({
+                        sock,
+                        m,
+                        args,
+                        command,
+                        from,
+                        isGroup,
+                        sender,
+                        pushName,
+                        participants,
+                        groupMetadata
+                    })
 
                 } catch (err) {
 
