@@ -4,31 +4,41 @@ import os from 'os'
 import webp from 'node-webpmux'
 import { downloadContentFromMessage } from '@whiskeysockets/baileys'
 
-export const handler = async (m, {
+const handler = async ({
   sock,
+  m,
   from,
   isGroup,
   sender,
   args,
-  pushName,
-  reply
+  pushName
 }) => {
 
-  /* ───── 🔒 MODO ADMIN SILENCIOSO ───── */
-  let groupSettings = { enabled: false }
-
+  /* ───── 🔒 MODODADMIN REAL ───── */
   const modoadminPath = './data/modoadmin.json'
 
-  if (fs.existsSync(modoadminPath)) {
+  let modoadmin = {}
 
-    const modoadminData =
-      JSON.parse(fs.readFileSync(modoadminPath))
+  try {
 
-    groupSettings =
-      modoadminData[from] || { enabled: false }
-  }
+    if (fs.existsSync(modoadminPath)) {
 
-  if (groupSettings.enabled && isGroup) {
+      modoadmin =
+        JSON.parse(
+          fs.readFileSync(
+            modoadminPath,
+            'utf-8'
+          )
+        )
+    }
+
+  } catch {}
+
+  const isBlockedGroup =
+    isGroup &&
+    modoadmin[from]
+
+  if (isBlockedGroup) {
 
     let isAdmin = false
 
@@ -40,18 +50,16 @@ export const handler = async (m, {
       const participants =
         metadata.participants || []
 
-      isAdmin = participants.some(
-        p =>
-          p.id === sender &&
-          (
-            p.admin === 'admin' ||
-            p.admin === 'superadmin'
-          )
-      )
+      const user =
+        participants.find(
+          p => p.id === sender
+        )
 
-    } catch {
-      isAdmin = false
-    }
+      isAdmin =
+        user?.admin === 'admin' ||
+        user?.admin === 'superadmin'
+
+    } catch {}
 
     // 🔇 silencioso
     if (!isAdmin) return
@@ -75,9 +83,9 @@ export const handler = async (m, {
 
   if (!quoted || !quoted.stickerMessage) {
 
-    return reply(
-      '❌ Responde a un sticker'
-    )
+    return sock.sendMessage(from,{
+      text:'❌ Responde a un sticker'
+    },{ quoted:m })
   }
 
   let input
@@ -208,9 +216,9 @@ export const handler = async (m, {
       e
     )
 
-    reply(
-      '❌ Error procesando el sticker'
-    )
+    await sock.sendMessage(from,{
+      text:'❌ Error procesando el sticker'
+    },{ quoted:m })
 
   } finally {
 
