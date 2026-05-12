@@ -1,14 +1,14 @@
 import fs from 'fs'
 import path from 'path'
 import os from 'os'
-import ffmpeg from 'fluent-ffmpeg'
-import pkg from 'node-webpmux'
+import { spawn } from 'child_process'
+import pkg from '@whiskeysockets/baileys'
 
-const { Image } = pkg
+const { downloadContentFromMessage } = pkg
 
 const modoadminPath = './data/modoadmin.json'
 
-// 📥 DB modoadmin
+// 📥 DB
 function getDB() {
     try {
         if (!fs.existsSync(modoadminPath)) return {}
@@ -18,46 +18,78 @@ function getDB() {
     }
 }
 
-// 🏷️ cambiar metadata sticker
-async function addExif(webpPath, packname, author) {
+// 🧩 convertir stream a buffer
+async function streamToBuffer(stream) {
+    let buffer = Buffer.from([])
 
-    const img = new Image()
+    for await (const chunk of stream) {
+        buffer = Buffer.concat([buffer, chunk])
+    }
 
-    const stickerPackId =
-        'SPIDER-BOT'
+    return buffer
+}
+
+// 🏷️ poner metadata
+async function addExif(webpBuffer, packname, author) {
+
+    const tmpIn = path.join(os.tmpdir(), `wm_${Date.now()}.webp`)
+    const tmpOut = path.join(os.tmpdir(), `wm_${Date.now()}_out.webp`)
+    const exifPath = path.join(os.tmpdir(), `wm_${Date.now()}.exif`)
+
+    fs.writeFileSync(tmpIn, webpBuffer)
 
     const json = {
-        'sticker-pack-id': stickerPackId,
-        'sticker-pack-name': packname,
-        'sticker-pack-publisher': author,
-        emojis: ['🕷️']
+        "sticker-pack-id": "SPIDER-BOT",
+        "sticker-pack-name": packname,
+        "sticker-pack-publisher": author,
+        "emojis": ["🕷️"]
     }
 
     const exifAttr = Buffer.from([
-        0x49, 0x49, 0x2A, 0x00,
-        0x08, 0x00, 0x00, 0x00,
-        0x01, 0x00, 0x41, 0x57,
-        0x07, 0x00
+        0x49,0x49,0x2A,0x00,
+        0x08,0x00,0x00,0x00,
+        0x01,0x00,
+        0x41,0x57,
+        0x07,0x00
     ])
 
-    const jsonBuffer = Buffer.from(JSON.stringify(json), 'utf8')
-
+    const jsonBuffer = Buffer.from(JSON.stringify(json), 'utf-8')
     const exif = Buffer.concat([
         exifAttr,
         Buffer.from([
-            jsonBuffer.length,
-            0x00, 0x00, 0x00
+            jsonBuffer.length,0x00,0x00,0x00
         ]),
         jsonBuffer
     ])
 
-    exif.writeUIntLE(jsonBuffer.length, 14, 4)
+    fs.writeFileSync(exifPath, exif)
 
-    await img.load(webpPath)
+    await new Promise((resolve, reject) => {
 
-    img.exif = exif
+        const ff = spawn('webpmux', [
+            '-set',
+            'exif',
+            exifPath,
+            tmpIn,
+            '-o',
+            tmpOut
+        ])
 
-    await img.save(webpPath)
+        ff.on('close', code => {
+            if (code === 0) resolve()
+            else reject(new Error('webpmux error'))
+        })
+
+        ff.on('error', reject)
+    })
+
+    const result = fs.readFileSync(tmpOut)
+
+    fs.unlinkSync(tmpIn)
+    fs.unlinkSync(tmpOut)
+    fs.unlinkSync(exifPath)
+
+    return result
 }
 
 const handler = async ({
@@ -65,22 +97,19 @@ const handler = async ({
     m,
     from,
     sender,
+    pushName,
     isGroup,
     participants,
-    pushName,
     args
 }) => {
 
-    // 🔒 MODODADMIN
     const db = getDB()
+    const isBlockedGroup = db[from]
 
-    const isBlockedGroup = isGroup && db[from]
+    // 🔒 MODODADMIN
+    if (isBlockedGroup && isGroup) {
 
-    if (isBlockedGroup) {
-
-        const user = participants.find(
-            p => p.id === sender
-        )
+        const user = participants.find(p => p.id === sender)
 
         const isAdmin =
             user?.admin === 'admin' ||
@@ -89,114 +118,64 @@ const handler = async ({
         if (!isAdmin) return
     }
 
-    // 📌 sticker citado
     const quoted =
-        m.message?.extendedTextMessage
-            ?.contextInfo
-            ?.quotedMessage
+        m.message?.extendedTextMessage?.contextInfo?.quotedMessage
 
     if (!quoted?.stickerMessage) {
         return sock.sendMessage(from,{
-            text:
-`⚠️ Responde a un sticker
-
-Ejemplo:
-.wm
-.wm Mundo`
+            text:'⚠️ Responde a un sticker'
         },{ quoted:m })
     }
 
-    // ⚡ reacción
+    // 🏷️ nombre
+    const wmName =
+        args.join(' ').trim() ||
+        pushName ||
+        'SPIDER BOT'
+
     await sock.sendMessage(from,{
-        react:{
-            text:'⚔️',
-            key:m.key
-        }
+        react:{ text:'⚔️', key:m.key }
     })
 
     try {
 
-        const stickerMsg =
-            quoted.stickerMessage
+        // 📥 descargar sticker
+        const stream = await downloadContentFromMessage(
+            quoted.stickerMessage,
+            'sticker'
+        )
 
-        const media =
-            await sock.downloadMediaMessage({
-                message:{
-                    stickerMessage: stickerMsg
-                }
-            })
+        const stickerBuffer = await streamToBuffer(stream)
 
-        const tmpInput =
-            path.join(
-                os.tmpdir(),
-                `wm_${Date.now()}.webp`
-            )
-
-        const tmpOutput =
-            path.join(
-                os.tmpdir(),
-                `wm_out_${Date.now()}.webp`
-            )
-
-        fs.writeFileSync(tmpInput, media)
-
-        // 🔥 reconstruir webp
-        await new Promise((resolve, reject) => {
-
-            ffmpeg(tmpInput)
-                .outputOptions([
-                    '-vcodec libwebp',
-                    '-lossless 1',
-                    '-qscale 1',
-                    '-preset default'
-                ])
-                .save(tmpOutput)
-                .on('end', resolve)
-                .on('error', reject)
-        })
-
-        const wm =
-            args.join(' ').trim() ||
-            pushName
-
-        await addExif(
-            tmpOutput,
-            wm,
+        // 🏷️ agregar exif
+        const result = await addExif(
+            stickerBuffer,
+            wmName,
             'SPIDER BOT'
         )
 
-        const finalSticker =
-            fs.readFileSync(tmpOutput)
-
+        // 📤 enviar sticker
         await sock.sendMessage(from,{
-            sticker: finalSticker
+            sticker: result
         },{ quoted:m })
 
-        // 🧹 limpiar
-        fs.unlinkSync(tmpInput)
-        fs.unlinkSync(tmpOutput)
-
-        // ✅ reacción final
+        // ✅ reacción
         await sock.sendMessage(from,{
-            react:{
-                text:'✅',
-                key:m.key
-            }
+            react:{ text:'✅', key:m.key }
         })
 
     } catch (e) {
 
-        console.log('❌ ERROR WM:', e)
+        console.log('ERROR WM:', e)
 
         return sock.sendMessage(from,{
-            text:'❌ No pude cambiar el wm del sticker'
+            text:'❌ Error al cambiar el wm'
         },{ quoted:m })
     }
 }
 
 handler.command = ['wm']
 handler.tags = ['stickers']
-handler.group = false
 handler.menu = true
 
 export default handler
