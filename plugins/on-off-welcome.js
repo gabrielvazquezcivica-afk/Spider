@@ -213,11 +213,25 @@ welcomeDB[id] ||
                 })
 
                 // 🎵 AUDIO
-                await sock.sendMessage(id,{
-                    audio:{ url: welcomeAudio },
-                    mimetype:'audio/mp4',
-                    ptt:false
-                })
+                try {
+
+                    const audioBuffer =
+                        await fetch(welcomeAudio)
+                            .then(res => res.arrayBuffer())
+
+                    await sock.sendMessage(id,{
+                        audio: Buffer.from(audioBuffer),
+                        mimetype:'audio/mpeg',
+                        ptt:false
+                    })
+
+                } catch (e) {
+
+                    console.log(
+                        '❌ Error audio welcome:',
+                        e
+                    )
+                }
             }
 
             // 🔴 SALIDA
@@ -246,12 +260,26 @@ byeDB[id] ||
                 })
 
                 // 🎵 AUDIO
-                await sock.sendMessage(id,{
-                    audio:{ url: byeAudio },
-                    mimetype:'audio/mp4',
-                    ptt:false
-                })
+                try {
+
+                    const audioBuffer =
+                        await fetch(byeAudio)
+                            .then(res => res.arrayBuffer())
+
+                    await sock.sendMessage(id,{
+                        audio: Buffer.from(audioBuffer),
+                        mimetype:'audio/mpeg',
+                        ptt:false
+                    })
+
+                } catch (e) {
+
+                    console.log(
+                        '❌ Error audio bye:',
+                        e
+                    )
+                }
             }
         }
     }
-                                           }
+            }
