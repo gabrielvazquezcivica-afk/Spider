@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url'
 import { connect } from './lib/connection.js'
 import config from './config.js'
 import { verificarMuteados } from './lib/muteWatcher.js'
+import { verificarAntiLink } from './lib/antilink.js' // ✅ NUEVO
 
 // 📁 rutas
 const __filename = fileURLToPath(import.meta.url)
@@ -29,6 +30,7 @@ function getModoadmin() {
 
 // 🔄 cargar plugins
 async function loadPlugins() {
+
     plugins = []
 
     const files = fs.readdirSync(pluginsPath)
@@ -102,7 +104,7 @@ async function start() {
 
     console.log(
         chalk.redBright.bold(`
-███████╗██████╗ ██╗██████╗ ███████╗██████╗ 
+███████╗██████╗ ██╗██████╗ ███████╗██████╗
 ██╔════╝██╔══██╗██║██╔══██╗██╔════╝██╔══██╗
 ███████╗██████╔╝██║██║  ██║█████╗  ██████╔╝
 ╚════██║██╔═══╝ ██║██║  ██║██╔══╝  ██╔══██╗
@@ -203,6 +205,8 @@ async function start() {
             const from =
                 m.key.remoteJid
 
+            if (!from) return
+
             const isGroup =
                 from.endsWith('@g.us')
 
@@ -223,6 +227,18 @@ async function start() {
                 })
 
             if (bloqueado) return
+
+            // 🔥 ANTILINK
+            const eliminado =
+                await verificarAntiLink({
+                    sock,
+                    m,
+                    from,
+                    sender,
+                    isGroup
+                })
+
+            if (eliminado) return
 
             // ⚡ texto
             const msg =
