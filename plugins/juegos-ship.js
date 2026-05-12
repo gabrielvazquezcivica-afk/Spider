@@ -30,24 +30,47 @@ const handler = async ({ sock, m, from, isGroup, participants, sender }) => {
         user?.admin === 'admin' ||
         user?.admin === 'superadmin'
 
-    // 🔒 MODODADMIN: solo admins pueden usar comandos normales
+    // 🔒 MODODADMIN
     if (isBlockedGroup && !isAdmin) return
 
     const ctx = m.message?.extendedTextMessage?.contextInfo
 
-    const userRaw =
-        ctx?.mentionedJid?.[0] ||
-        ctx?.participant
+    // 👥 mencionados
+    const mentioned =
+        ctx?.mentionedJid || []
 
-    if (!userRaw) {
+    let user1
+    let user2
+
+    // ✅ si mencionan 2 personas
+    if (mentioned.length >= 2) {
+
+        user1 = mentioned[0]
+        user2 = mentioned[1]
+
+    // ✅ si mencionan 1 persona
+    } else if (mentioned.length === 1) {
+
+        user1 = sender
+        user2 = mentioned[0]
+
+    // ✅ si responden mensaje
+    } else if (ctx?.participant) {
+
+        user1 = sender
+        user2 = ctx.participant
+
+    } else {
+
         return sock.sendMessage(from, {
-            text: '⚠️ Menciona o responde a alguien para usar ship'
+            text: '⚠️ Menciona a 1 o 2 personas para usar ship'
         }, { quoted: m })
     }
 
-    if (userRaw === sender) {
+    // 🚫 evitar mismo usuario
+    if (user1 === user2) {
         return sock.sendMessage(from, {
-            text: '💀 No puedes hacer ship contigo mismo'
+            text: '💀 No puedes hacer ship con la misma persona'
         }, { quoted: m })
     }
 
@@ -59,22 +82,27 @@ const handler = async ({ sock, m, from, isGroup, participants, sender }) => {
 
     let msg = ''
 
-    if (percent <= 20) msg = '💔 Cero compatibilidad…'
-    else if (percent <= 50) msg = '💞 Algo hay…'
-    else if (percent <= 80) msg = '💖 Buena conexión'
-    else msg = '💘 AMOR PERFECTO'
+    if (percent <= 20) {
+        msg = '💔 Cero compatibilidad…'
+    } else if (percent <= 50) {
+        msg = '💞 Algo hay…'
+    } else if (percent <= 80) {
+        msg = '💖 Buena conexión'
+    } else {
+        msg = '💘 AMOR PERFECTO'
+    }
 
     return sock.sendMessage(from, {
         text:
 `💘 SPIDER SHIP 💘
 
-👤 Usuario 1: @${sender.split('@')[0]}
-👤 Usuario 2: @${userRaw.split('@')[0]}
+👤 Usuario 1: @${user1.split('@')[0]}
+👤 Usuario 2: @${user2.split('@')[0]}
 
 📊 Compatibilidad: ${percent}%
 
 ${msg}`,
-        mentions: [sender, userRaw]
+        mentions: [user1, user2]
     }, { quoted: m })
 }
 
