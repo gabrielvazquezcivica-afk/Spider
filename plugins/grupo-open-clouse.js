@@ -4,7 +4,8 @@ const handler = async ({
     from,
     isGroup,
     participants,
-    sender
+    sender,
+    command
 }) => {
 
     if (!isGroup) {
@@ -14,7 +15,9 @@ const handler = async ({
     }
 
     // 🔐 verificar admin
-    const user = participants.find(p => p.id === sender)
+    const user = participants.find(
+        p => p.id === sender
+    )
 
     const isAdmin =
         user?.admin === 'admin' ||
@@ -28,8 +31,8 @@ const handler = async ({
 
     try {
 
-        // 🔒 cerrar
-        if (m.body?.startsWith('.cerrar') || m.message?.conversation === '.cerrar') {
+        // 🔒 cerrar grupo
+        if (command === 'cerrar') {
 
             await sock.groupSettingUpdate(
                 from,
@@ -45,8 +48,8 @@ const handler = async ({
             }, { quoted: m })
         }
 
-        // 🔓 abrir
-        if (m.body?.startsWith('.abrir') || m.message?.conversation === '.abrir') {
+        // 🔓 abrir grupo
+        if (command === 'abrir') {
 
             await sock.groupSettingUpdate(
                 from,
@@ -64,7 +67,10 @@ const handler = async ({
 
     } catch (e) {
 
-        console.log('❌ ERROR:', e)
+        console.log(
+            '❌ ERROR ABRIR/CERRAR:',
+            e
+        )
 
         return sock.sendMessage(from, {
             text: '❌ Ocurrió un error.'
@@ -77,4 +83,4 @@ handler.tags = ['grupo']
 handler.group = true
 handler.menu = true
 
-export default 
+export default handler
