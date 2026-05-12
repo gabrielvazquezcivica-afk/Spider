@@ -77,6 +77,6 @@ const handler = async ({
 handler.command = ['salir']
 handler.tags = ['owner']
 handler.group = true
-handler.menu = false
+handler.menu = true
 
 export default handler
