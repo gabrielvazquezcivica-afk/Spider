@@ -5,7 +5,7 @@ import { fileURLToPath } from 'url'
 import { connect } from './lib/connection.js'
 import config from './config.js'
 import { verificarMuteados } from './lib/muteWatcher.js'
-import { verificarAntiLink } from './lib/antilink.js' // ✅ NUEVO
+import { verificarAntilink } from './lib/antilink.js' // ✅ NUEVO
 
 // 📁 rutas
 const __filename = fileURLToPath(import.meta.url)
@@ -230,7 +230,7 @@ async function start() {
 
             // 🔥 ANTILINK
             const eliminado =
-                await verificarAntiLink({
+                await verificarAntilink({
                     sock,
                     m,
                     from,
