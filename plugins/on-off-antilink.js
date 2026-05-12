@@ -39,7 +39,9 @@ const handler = async ({
     if (!isGroup) return
 
     // 🔐 solo admins
-    const user = participants.find(p => p.id === sender)
+    const user = participants.find(
+        p => p.id === sender
+    )
 
     const isAdmin =
         user?.admin === 'admin' ||
@@ -59,7 +61,8 @@ const handler = async ({
         }
     }
 
-    const option = args[0]?.toLowerCase()
+    const option =
+        args[0]?.toLowerCase()
 
     // ❓ ayuda
     if (!option) {
@@ -146,9 +149,12 @@ export async function before({
 
     if (!text) return
 
+    // 🔎 no hay link
     if (!isLink(text)) return
 
-    const user = participants.find(p => p.id === sender)
+    const user = participants.find(
+        p => p.id === sender
+    )
 
     const isAdmin =
         user?.admin === 'admin' ||
@@ -157,20 +163,45 @@ export async function before({
     // 🔥 admins no afectados
     if (isAdmin) return
 
+    // 🔥 BOT ADMIN
+    const botNumber =
+        sock.user.id.split(':')[0] +
+        '@s.whatsapp.net'
+
+    const botData = participants.find(
+        p => p.id === botNumber
+    )
+
+    const botAdmin =
+        botData?.admin === 'admin' ||
+        botData?.admin === 'superadmin'
+
+    if (!botAdmin) return
+
     try {
 
-        // 🗑️ borrar mensaje
+        // 🗑️ borrar mensaje REAL
         await sock.sendMessage(from, {
-            delete: m.key
+            delete: {
+                remoteJid: from,
+                fromMe: false,
+                id: m.key.id,
+                participant: sender
+            }
         })
 
         // ⚠️ aviso
         await sock.sendMessage(from,{
-            text:`🕷️ @${sender.split('@')[0]} los links están prohibidos`,
+            text:
+`🕷️ @${sender.split('@')[0]} los links están prohibidos`,
             mentions:[sender]
         })
 
     } catch (e) {
-        console.log('❌ Error AntiLink:', e)
+
+        console.log(
+            '❌ Error AntiLink:',
+            e
+        )
     }
 }
