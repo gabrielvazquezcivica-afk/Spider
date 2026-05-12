@@ -120,7 +120,7 @@ const handler = async ({
 }
 
 handler.command = ['owner']
-handler.tags = ['info']
+handler.tags = ['informacion']
 handler.menu = true
 
 export default handler
