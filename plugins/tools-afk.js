@@ -3,24 +3,36 @@ import fetch from 'node-fetch'
 
 // ───── DB ─────
 const afkPath = './data/afk.json'
-const modoadminPath = './data/modoadmin.json'
 
 let afkDB = {}
 
 if (!fs.existsSync(afkPath)) {
-    fs.writeFileSync(afkPath, JSON.stringify({}))
+    fs.writeFileSync(
+        afkPath,
+        JSON.stringify({})
+    )
 }
 
 try {
-    afkDB = JSON.parse(fs.readFileSync(afkPath))
+
+    afkDB = JSON.parse(
+        fs.readFileSync(afkPath)
+    )
+
 } catch {
+
     afkDB = {}
 }
 
 const saveAFK = () => {
+
     fs.writeFileSync(
         afkPath,
-        JSON.stringify(afkDB, null, 2)
+        JSON.stringify(
+            afkDB,
+            null,
+            2
+        )
     )
 }
 
@@ -37,7 +49,7 @@ const msToTime = (ms) => {
     return `${h ? h + 'h ' : ''}${m ? m + 'm ' : ''}${s}s`
 }
 
-// ───── QUOTED SPIDER ─────
+// ───── QUOTED PRO ─────
 const sistema = async (
     sock,
     from,
@@ -65,12 +77,14 @@ const sistema = async (
                         'image'
                     )
 
-                const res = await fetch(pp)
+                const res =
+                    await fetch(pp)
 
                 const buffer =
                     await res.arrayBuffer()
 
-                thumbnail = Buffer.from(buffer)
+                thumbnail =
+                    Buffer.from(buffer)
 
             } catch {}
         }
@@ -96,68 +110,91 @@ const sistema = async (
 }
 
 // ───── 🔒 MODO ADMIN ─────
-async function checkModoAdmin(
+const checkModoAdmin = async (
     sock,
     from,
     sender,
     isGroup
-) {
+) => {
 
-    try {
+    let groupSettings = {
+        enabled: false
+    }
 
-        if (!isGroup)
-            return true
+    const modoadminPath =
+        './data/modoadmin.json'
 
-        let db = {}
+    if (fs.existsSync(modoadminPath)) {
 
-        if (fs.existsSync(modoadminPath)) {
+        try {
 
-            db = JSON.parse(
-                fs.readFileSync(
-                    modoadminPath,
-                    'utf-8'
+            const modoadminData =
+                JSON.parse(
+                    fs.readFileSync(
+                        modoadminPath
+                    )
                 )
-            )
+
+            groupSettings =
+                modoadminData[from] || {
+                    enabled: false
+                }
+
+        } catch {
+
+            groupSettings = {
+                enabled: false
+            }
+        }
+    }
+
+    if (
+        groupSettings.enabled &&
+        isGroup
+    ) {
+
+        let isAdmin = false
+
+        try {
+
+            const metadata =
+                await sock.groupMetadata(from)
+
+            const participants =
+                metadata.participants || []
+
+            isAdmin =
+                participants.some(
+                    p =>
+                        p.id === sender &&
+                        (
+                            p.admin === 'admin' ||
+                            p.admin === 'superadmin'
+                        )
+                )
+
+        } catch {
+
+            isAdmin = false
         }
 
-        const enabled =
-            db[from]?.enabled ||
-            db[from] === true
-
-        if (!enabled)
-            return true
-
-        const metadata =
-            await sock.groupMetadata(from)
-
-        const user =
-            metadata.participants.find(
-                p => p.id === sender
-            )
-
-        const isAdmin =
-            user?.admin === 'admin' ||
-            user?.admin === 'superadmin'
-
-        return isAdmin
-
-    } catch {
-
-        return true
+        if (!isAdmin)
+            return false
     }
+
+    return true
 }
 
 // ───── COMANDO AFK ─────
 const handler = async ({
     sock,
     m,
-    from,
     sender,
-    isGroup,
-    args
+    from,
+    isGroup
 }) => {
 
-    // 🔒 modoadmin
+    // 🔒 modo admin
     const permitido =
         await checkModoAdmin(
             sock,
@@ -166,11 +203,19 @@ const handler = async ({
             isGroup
         )
 
-    if (!permitido) return
+    if (!permitido)
+        return
+
+    const text =
+        m.message?.conversation ||
+        m.message?.extendedTextMessage?.text ||
+        ''
 
     const reason =
-        args.join(' ').trim() ||
-        'Sin razón'
+        text.replace(
+            /^\.?afk\s*/i,
+            ''
+        ) || 'Sin razón'
 
     if (!afkDB[from]) {
         afkDB[from] = {}
@@ -183,7 +228,6 @@ const handler = async ({
 
     saveAFK()
 
-    // ⚡ reacción
     await sock.sendMessage(from,{
         react:{
             text:'😴',
@@ -191,7 +235,6 @@ const handler = async ({
         }
     })
 
-    // 📩 mensaje
     await sock.sendMessage(from,{
         text:
 `😴 AFK ACTIVADO
@@ -208,20 +251,19 @@ ${reason}`
 }
 
 // ───── BEFORE ─────
-handler.before = async ({
+export async function before({
     sock,
     m,
     from,
     sender,
     isGroup
-}) => {
+}) {
 
     try {
 
         if (!m?.message)
             return false
 
-        // 🔒 modoadmin
         const permitido =
             await checkModoAdmin(
                 sock,
@@ -236,7 +278,6 @@ handler.before = async ({
         if (!afkDB[from])
             return false
 
-        // 📄 texto
         const text =
             m.message.conversation ||
             m.message.extendedTextMessage?.text ||
@@ -244,7 +285,7 @@ handler.before = async ({
             m.message.videoMessage?.caption ||
             ''
 
-        // 👋 quitar afk
+        // 👋 quitar AFK
         if (
             afkDB[from][sender] &&
             !text.startsWith('.afk')
@@ -290,12 +331,14 @@ ${tiempo}`
         let mentioned = []
 
         if (ctx?.mentionedJid) {
+
             mentioned.push(
                 ...ctx.mentionedJid
             )
         }
 
         if (ctx?.participant) {
+
             mentioned.push(
                 ctx.participant
             )
@@ -348,9 +391,10 @@ ${tiempo}`,
     return false
 }
 
+// ───── CONFIG ─────
 handler.command = ['afk']
 handler.tags = ['tools']
-handler.help = ['afk']
+handler.help = ['afk <razón>']
 handler.menu = true
 
 export default handler
