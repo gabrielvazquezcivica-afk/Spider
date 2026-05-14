@@ -1,10 +1,14 @@
+import fetch from 'node-fetch'
+
 const handler = async (ctx) => {
 
   const { sock, from, pushName, m } = ctx
   const plugins = global.plugins || []
 
   if (!Array.isArray(plugins) || plugins.length === 0) {
-    return sock.sendMessage(from, { text: '❌ No hay plugins cargados.' }, { quoted: m })
+    return sock.sendMessage(from, {
+      text: '❌ No hay plugins cargados.'
+    }, { quoted: m })
   }
 
   // ⚡ reacción
@@ -105,9 +109,13 @@ const handler = async (ctx) => {
   menu += `\n\n╰─➤ ${botName}`
 
   await sock.sendMessage(from, {
-    image: { url: 'https://i.postimg.cc/GpTgKWYp/file-00000000c6a4720caff9cf521ed86667.png' },
+    image: {
+      url: 'https://i.postimg.cc/GpTgKWYp/file-00000000c6a4720caff9cf521ed86667.png'
+    },
     caption: menu
-  }, { quoted: m })
+  }, {
+    quoted: await sistema(sock, from, '🕷️ 𝐒𝐏𝐈𝐃𝐄𝐑-𝐁𝐎𝐓 𝐌𝐄𝐍𝐔')
+  })
 }
 
 handler.command = ['menu']
@@ -118,7 +126,70 @@ export default handler
 
 function getGreeting() {
   const hour = new Date().getHours()
-  if (hour >= 5 && hour < 12) return 'Buenos días ☀️'
-  if (hour >= 12 && hour < 19) return 'Buenas tardes 🌤️'
+
+  if (hour >= 5 && hour < 12)
+    return 'Buenos días ☀️'
+
+  if (hour >= 12 && hour < 19)
+    return 'Buenas tardes 🌤️'
+
   return 'Buenas noches 🌙'
 }
+
+// ───── SISTEMA WHATSAPP ─────
+const sistema = async (
+  sock,
+  from,
+  titulo = 'SpiderBot 🕷️'
+) => {
+
+  let nombreGrupo = 'Chat'
+  let thumbnail = null
+
+  try {
+
+    if (from.endsWith('@g.us')) {
+
+      const metadata =
+        await sock.groupMetadata(from)
+
+      nombreGrupo =
+        metadata.subject || 'Grupo'
+
+      try {
+
+        const pp =
+          await sock.profilePictureUrl(
+            from,
+            'image'
+          )
+
+        const res = await fetch(pp)
+
+        const buffer =
+          await res.arrayBuffer()
+
+        thumbnail = Buffer.from(buffer)
+
+      } catch {}
+    }
+
+  } catch {}
+
+  return {
+    key: {
+      fromMe: false,
+      participant: '0@s.whatsapp.net',
+      remoteJid: 'status@broadcast'
+    },
+    message: {
+      extendedTextMessage: {
+        text: titulo,
+        title: 'SpiderBot',
+        description: nombreGrupo,
+        jpegThumbnail: thumbnail,
+        previewType: 0
+      }
+    }
+  }
+  }
