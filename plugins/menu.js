@@ -105,7 +105,7 @@ const handler = async (ctx) => {
   menu += `\n\n╰─➤ ${botName}`
 
   await sock.sendMessage(from, {
-    image: { url: 'https://i.postimg.cc/VsSqN5RG/19d8fec1698683dde758218220caa31e.jpg' },
+    image: { url: 'https://i.postimg.cc/GpTgKWYp/file-00000000c6a4720caff9cf521ed86667.png' },
     caption: menu
   }, { quoted: m })
 }
