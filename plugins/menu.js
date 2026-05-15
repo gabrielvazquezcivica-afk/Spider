@@ -30,7 +30,7 @@ const handler = async (ctx) => {
     ia: '🔎',
     rpg: '💰',
     stickers: '🖼️',
-    nsfw: '🔞',
+    search: '📁',
     'on-off': '🔴🟢'
   }
 
@@ -44,7 +44,7 @@ const handler = async (ctx) => {
     ia: '🔍',
     rpg: '💎',
     stickers: '🖌️',
-    nsfw: '⚠️',
+    search: '📂',
     'on-off': '🔛'
   }
 
@@ -59,7 +59,7 @@ const handler = async (ctx) => {
     'stickers',
     'tools',
     'owner',
-    'nsfw'
+    'search'
   ]
 
   const categories = {}
