@@ -1,6 +1,6 @@
 import fs from 'fs'
 
-const path = './data/marry.json'
+const path = './data/casados.json'
 const modoadminPath = './data/modoadmin.json'
 
 // 📥 DB matrimonios
