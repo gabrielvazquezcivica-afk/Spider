@@ -1,145 +1,165 @@
 import yts from 'yt-search'
-import { spawn } from 'child_process'
+import axios from 'axios'
 import fs from 'fs'
 
 const path = './data/modoadmin.json'
 
 function getDB() {
-try {
-if (!fs.existsSync(path)) return {}
-return JSON.parse(fs.readFileSync(path, 'utf-8'))
-} catch {
-return {}
-}
+    try {
+        if (!fs.existsSync(path)) return {}
+        return JSON.parse(fs.readFileSync(path, 'utf-8'))
+    } catch {
+        return {}
+    }
 }
 
 const handler = async (ctx) => {
 
-const {
-sock,
-m,
-from,
-args,
-isGroup,
-participants,
-sender
-} = ctx
+    const {
+        sock,
+        m,
+        from,
+        args,
+        isGroup,
+        participants,
+        sender
+    } = ctx
 
-const botName = sock.user?.name || 'SPIDER BOT 🕷️'
+    const botName =
+        sock.user?.name || 'SPIDER BOT 🕷️'
 
-/* 🔒 MODODADMIN */
-if (isGroup) {
+    /* 🔒 MODODADMIN */
+    if (isGroup) {
 
-const db = getDB()    
-const isBlockedGroup = db[from]    
+        const db = getDB()
 
-const user = participants.find(p => p.id === sender)    
+        const isBlockedGroup =
+            db[from]
 
-const isAdmin =    
-    user?.admin === 'admin' ||    
-    user?.admin === 'superadmin'    
+        const user =
+            participants.find(
+                p => p.id === sender
+            )
 
-if (isBlockedGroup && !isAdmin) return
+        const isAdmin =
+            user?.admin === 'admin' ||
+            user?.admin === 'superadmin'
 
-}
+        if (isBlockedGroup && !isAdmin)
+            return
+    }
 
-const text = args.join(' ').trim()
+    const text =
+        args.join(' ').trim()
 
-if (!text) {
-return sock.sendMessage(from,{
-text:'🕷️ Uso correcto: .play <nombre de la canción>'
-},{ quoted:m })
-}
+    if (!text) {
 
-/* ⚡ REACCIÓN SPIDER */
-await sock.sendMessage(from,{
-react:{ text:'🔎', key:m.key }
-})
+        return sock.sendMessage(from,{
+            text:
+'🕷️ Uso correcto: .play <nombre de la canción>'
+        },{ quoted:m })
+    }
 
-try {
+    /* ⚡ REACCIÓN */
+    await sock.sendMessage(from,{
+        react:{
+            text:'🔎',
+            key:m.key
+        }
+    })
 
-const search = await yts(text)
-if (!search.videos.length)
-return sock.sendMessage(from,{
-text:'❌ No se encontraron resultados en la red'
-},{ quoted:m })
+    try {
 
-const video = search.videos[0]
+        /* 🔍 BUSCAR VIDEO */
+        const search =
+            await yts(text)
 
-const { title, url, thumbnail, timestamp, views, author } = video
+        if (!search.videos.length) {
 
-/* 🕷️ PANEL SPIDER - BORDES DE UNA LÍNEA */
-await sock.sendMessage(from,{
-image:{ url: thumbnail },
-caption:
+            return sock.sendMessage(from,{
+                text:
+'❌ No se encontraron resultados'
+            },{ quoted:m })
+        }
+
+        const video =
+            search.videos[0]
+
+        const {
+            title,
+            url,
+            thumbnail,
+            timestamp,
+            views,
+            author
+        } = video
+
+        /* 📡 API YTMP3 */
+        const api =
+            `https://api.delirius.store/download/ytmp3?url=${encodeURIComponent(url)}`
+
+        const { data } =
+            await axios.get(api)
+
+        if (
+            !data.status ||
+            !data.data ||
+            !data.data.download
+        ) {
+
+            return sock.sendMessage(from,{
+                text:
+'❌ No pude descargar el audio'
+            },{ quoted:m })
+        }
+
+        const audio =
+            data.data.download
+
+        /* 🕷️ PANEL */
+        await sock.sendMessage(from,{
+            image:{ url: thumbnail },
+            caption:
 `╭━━━━━━━━━━━━╮
-┃   🕷️ SPIDER 🕷️   ┃
+┃ 🕷️ SPIDER 🕷️ ┃
 ╰━━━━━━━━━━━━╯
 
-🎵 Título:
-└─ ${title}
+🎵 ${title}
 
-👤 Autor:
-└─ ${author.name || 'Desconocido'}
-
-⏱️ Duración:
-└─ ${timestamp}
-
-👁️ Vistas:
-└─ ${views.toLocaleString()}
+👤 ${author.name || 'Desconocido'}
+⏱️ ${timestamp}
+👁️ ${views.toLocaleString()}
 
 ╭━━━━━━━━━━━━╮
-┃ 🔍 Buscando... ┃
-┃ 📡 Cargando... ┃
+┃ ⚡ Audio listo
 ╰━━━━━━━━━━━━╯`
-},{ quoted:m })
+        },{ quoted:m })
 
-if (!fs.existsSync('./tmp')) fs.mkdirSync('./tmp', { recursive: true })
+        /* 🎧 ENVIAR AUDIO */
+        await sock.sendMessage(from,{
+            audio:{ url: audio },
+            mimetype:'audio/mpeg',
+            fileName:`${title}.mp3`,
+            ptt:false
+        },{ quoted:m })
 
-const file = `./tmp/${Date.now()}.m4a`
+        /* ✅ REACCIÓN */
+        await sock.sendMessage(from,{
+            react:{
+                text:'✅',
+                key:m.key
+            }
+        })
 
-// Comando optimizado para mayor velocidad
-const ytdlp = spawn('yt-dlp',[
-'-f','bestaudio[ext=m4a]',
-'--no-playlist',
-'--quiet',
-'--no-warnings',
-'--force-ipv4',
-'-o',file,
-url
-])
+    } catch (e) {
 
-ytdlp.on('close', async(code)=>{
+        console.log('PLAY ERROR:', e)
 
-if(code !== 0){    
-    return sock.sendMessage(from,{    
-        text:'🕷️ Error: Fallo en la descarga'    
-    },{ quoted:m })    
-}    
-
-await sock.sendMessage(from,{    
-    audio:{ url:file },    
-    mimetype:'audio/mp4',    
-    ptt:false    
-},{ quoted:m })    
-
-setTimeout(() => {
-    if (fs.existsSync(file)) fs.unlinkSync(file)
-}, 3000)
-
-await sock.sendMessage(from,{    
-    react:{ text:'✅', key:m.key }    
-})
-
-})
-
-}catch(e){
-console.log(e)
-sock.sendMessage(from,{
-text:'🕷️ Sistema Spider: Error interno'
-},{ quoted:m })
-}
-
+        sock.sendMessage(from,{
+            text:
+'🕷️ Sistema Spider: Error interno'
+        },{ quoted:m })
+    }
 }
 
 handler.command = ['play']
