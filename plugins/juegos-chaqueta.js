@@ -1,20 +1,20 @@
 import fs from 'fs'
 
-export const handler = async (
-    m,
-    {
+const handler = async (ctx) => {
+
+    const {
         sock,
+        m,
         from,
         sender,
-        isGroup,
-        reply
-    }
-) => {
+        isGroup
+    } = ctx
 
-    if (!isGroup)
-        return reply(
-            '🚫 Este comando solo funciona en grupos'
-        )
+    if (!isGroup) {
+        return sock.sendMessage(from,{
+            text:'🚫 Este comando solo funciona en grupos'
+        },{ quoted:m })
+    }
 
     /* 🔒 MODODADMIN */
     let groupSettings = {
@@ -48,54 +48,49 @@ export const handler = async (
         }
     }
 
-    if (groupSettings.enabled && isGroup) {
+    let participants = []
 
-        try {
+    try {
 
-            const metadata =
-                await sock.groupMetadata(from)
+        const metadata =
+            await sock.groupMetadata(from)
 
-            const participants =
-                metadata.participants || []
+        participants =
+            metadata.participants || []
 
-            const isAdmin =
-                participants.some(
-                    p =>
-                        p.id === sender &&
-                        (
-                            p.admin === 'admin' ||
-                            p.admin === 'superadmin'
-                        )
-                )
+    } catch {}
 
-            if (!isAdmin) return
+    if (groupSettings.enabled) {
 
-        } catch {}
+        const isAdmin =
+            participants.some(
+                p =>
+                    p.id === sender &&
+                    (
+                        p.admin === 'admin' ||
+                        p.admin === 'superadmin'
+                    )
+            )
+
+        if (!isAdmin) return
     }
-
-    /* 👥 PARTICIPANTES */
-    const metadata =
-        await sock.groupMetadata(from)
-
-    const participants =
-        metadata.participants || []
 
     /* 🎯 OBJETIVO */
     let who
 
-    const ctx =
+    const ctxMsg =
         m.message?.extendedTextMessage
             ?.contextInfo
 
-    if (ctx?.participant) {
+    if (ctxMsg?.participant) {
 
-        who = ctx.participant
+        who = ctxMsg.participant
 
     } else if (
-        ctx?.mentionedJid?.length
+        ctxMsg?.mentionedJid?.length
     ) {
 
-        who = ctx.mentionedJid[0]
+        who = ctxMsg.mentionedJid[0]
 
     } else {
 
