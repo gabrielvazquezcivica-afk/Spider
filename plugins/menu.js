@@ -1,5 +1,3 @@
-import fetch from 'node-fetch'
-
 const handler = async (ctx) => {
 
   const { sock, from, pushName, m } = ctx
@@ -113,9 +111,7 @@ const handler = async (ctx) => {
       url: 'https://i.postimg.cc/GpTgKWYp/file-00000000c6a4720caff9cf521ed86667.png'
     },
     caption: menu
-  }, {
-    quoted: await sistema(sock, from, '🕷️ 𝐒𝐏𝐈𝐃𝐄𝐑-𝐁𝐎𝐓 𝐌𝐄𝐍𝐔')
-  })
+  }, { quoted: m })
 }
 
 handler.command = ['menu']
@@ -135,61 +131,3 @@ function getGreeting() {
 
   return 'Buenas noches 🌙'
 }
-
-// ───── SISTEMA WHATSAPP ─────
-const sistema = async (
-  sock,
-  from,
-  titulo = 'SpiderBot 🕷️'
-) => {
-
-  let nombreGrupo = 'Chat'
-  let thumbnail = null
-
-  try {
-
-    if (from.endsWith('@g.us')) {
-
-      const metadata =
-        await sock.groupMetadata(from)
-
-      nombreGrupo =
-        metadata.subject || 'Grupo'
-
-      try {
-
-        const pp =
-          await sock.profilePictureUrl(
-            from,
-            'image'
-          )
-
-        const res = await fetch(pp)
-
-        const buffer =
-          await res.arrayBuffer()
-
-        thumbnail = Buffer.from(buffer)
-
-      } catch {}
-    }
-
-  } catch {}
-
-  return {
-    key: {
-      fromMe: false,
-      participant: '0@s.whatsapp.net',
-      remoteJid: 'status@broadcast'
-    },
-    message: {
-      extendedTextMessage: {
-        text: titulo,
-        title: 'SpiderBot',
-        description: nombreGrupo,
-        jpegThumbnail: thumbnail,
-        previewType: 0
-      }
-    }
-  }
-  }
