@@ -4,18 +4,28 @@ const marryPath = './data/casados.json'
 const modoadminPath = './data/modoadmin.json'
 
 if (!fs.existsSync(marryPath)) {
-    fs.writeFileSync(marryPath, JSON.stringify({}))
+    fs.writeFileSync(
+        marryPath,
+        JSON.stringify({})
+    )
 }
 
 function getDB() {
+
     try {
-        return JSON.parse(fs.readFileSync(marryPath))
+
+        return JSON.parse(
+            fs.readFileSync(marryPath)
+        )
+
     } catch {
+
         return {}
     }
 }
 
 function saveDB(data) {
+
     fs.writeFileSync(
         marryPath,
         JSON.stringify(data, null, 2)
@@ -23,14 +33,18 @@ function saveDB(data) {
 }
 
 function getModoAdmin() {
+
     try {
+
         if (!fs.existsSync(modoadminPath))
             return {}
 
         return JSON.parse(
             fs.readFileSync(modoadminPath)
         )
+
     } catch {
+
         return {}
     }
 }
@@ -43,21 +57,25 @@ const handler = async ({
     from,
     sender,
     participants,
-    isGroup
+    isGroup,
+    command
 }) => {
 
     if (!isGroup) return
 
     /* 🔒 MODODADMIN */
-    const modoadmin = getModoAdmin()
+    const modoadmin =
+        getModoAdmin()
 
-    const isBlockedGroup = modoadmin[from]
+    const isBlockedGroup =
+        modoadmin[from]
 
     if (isBlockedGroup) {
 
-        const user = participants.find(
-            p => p.id === sender
-        )
+        const user =
+            participants.find(
+                p => p.id === sender
+            )
 
         const isAdmin =
             user?.admin === 'admin' ||
@@ -66,136 +84,140 @@ const handler = async ({
         if (!isAdmin) return
     }
 
-    const ctx =
-        m.message?.extendedTextMessage?.contextInfo
+    /* =========================
+       💍 CASAR
+    ========================== */
 
-    const userRaw =
-        ctx?.mentionedJid?.[0] ||
-        ctx?.participant
+    if (command === 'casar') {
 
-    if (!userRaw) {
+        const ctx =
+            m.message?.extendedTextMessage?.contextInfo
 
-        return sock.sendMessage(from,{
-            text:
+        const userRaw =
+            ctx?.mentionedJid?.[0] ||
+            ctx?.participant
+
+        if (!userRaw) {
+
+            return sock.sendMessage(from,{
+                text:
 `💍 Menciona o responde a alguien
 
 Ejemplo:
 .casar @usuario`
-        },{ quoted:m })
-    }
-
-    if (userRaw === sender) {
-
-        return sock.sendMessage(from,{
-            text:'💀 No puedes casarte contigo mismo'
-        },{ quoted:m })
-    }
-
-    const db = getDB()
-
-    // 🔒 validar si ya están casados
-    if (db[sender]) {
-
-        return sock.sendMessage(from,{
-            text:'💍 Tú ya estás casado'
-        },{ quoted:m })
-    }
-
-    if (db[userRaw]) {
-
-        return sock.sendMessage(from,{
-            text:'💍 Esa persona ya está casada'
-        },{ quoted:m })
-    }
-
-    pendientes[userRaw] = {
-        pareja: sender,
-        grupo: from,
-        tiempo: Date.now()
-    }
-
-    await sock.sendMessage(from,{
-        react:{
-            text:'💍',
-            key:m.key
+            },{ quoted:m })
         }
-    })
 
-    return sock.sendMessage(from,{
-        text:
+        if (userRaw === sender) {
+
+            return sock.sendMessage(from,{
+                text:
+'💀 No puedes casarte contigo mismo'
+            },{ quoted:m })
+        }
+
+        const db = getDB()
+
+        // 🔒 ya casado
+        if (db[sender]) {
+
+            return sock.sendMessage(from,{
+                text:
+`💍 Ya estás casado con @${db[sender].split('@')[0]}`,
+                mentions:[db[sender]]
+            },{ quoted:m })
+        }
+
+        if (db[userRaw]) {
+
+            return sock.sendMessage(from,{
+                text:
+`💍 Esa persona ya está casada con @${db[userRaw].split('@')[0]}`,
+                mentions:[db[userRaw]]
+            },{ quoted:m })
+        }
+
+        // 🔒 pendiente
+        if (pendientes[userRaw]) {
+
+            return sock.sendMessage(from,{
+                text:
+'⚠️ Esa persona ya tiene una propuesta pendiente'
+            },{ quoted:m })
+        }
+
+        pendientes[userRaw] = {
+            pareja: sender,
+            grupo: from,
+            tiempo: Date.now()
+        }
+
+        await sock.sendMessage(from,{
+            react:{
+                text:'💍',
+                key:m.key
+            }
+        })
+
+        return sock.sendMessage(from,{
+            text:
 `💍 @${sender.split('@')[0]} quiere casarse con @${userRaw.split('@')[0]}
 
-📝 Responde:
+📝 Responde con:
 
-• aceptar
-• rechazo`,
-        mentions:[sender,userRaw]
-    },{ quoted:m })
-}
+• .aceptar
+• .rechazo
 
-handler.before = async ({
-    sock,
-    m,
-    from,
-    sender,
-    isGroup,
-    participants
-}) => {
-
-    if (!isGroup) return false
-
-    /* 🔒 MODODADMIN */
-    const modoadmin = getModoAdmin()
-
-    const isBlockedGroup = modoadmin[from]
-
-    if (isBlockedGroup) {
-
-        const user = participants.find(
-            p => p.id === sender
-        )
-
-        const isAdmin =
-            user?.admin === 'admin' ||
-            user?.admin === 'superadmin'
-
-        if (!isAdmin) return false
-    }
-
-    const pending = pendientes[sender]
-
-    if (!pending) return false
-
-    if (pending.grupo !== from)
-        return false
-
-    const text =
-        m.message?.conversation ||
-        m.message?.extendedTextMessage?.text ||
-        ''
-
-    const msg = text.toLowerCase()
-
-    // ⏰ expira en 2 min
-    if (
-        Date.now() - pending.tiempo >
-        120000
-    ) {
-
-        delete pendientes[sender]
-
-        return sock.sendMessage(from,{
-            text:'⌛ La propuesta expiró'
+⏳ Tienes 2 minutos`,
+            mentions:[
+                sender,
+                userRaw
+            ]
         },{ quoted:m })
     }
 
-    // ❌ rechazo
-    if (
-        msg === 'rechazo' ||
-        msg === 'no'
-    ) {
+    /* =========================
+       ❌ RECHAZO
+    ========================== */
+
+    if (command === 'rechazo') {
+
+        const pending =
+            pendientes[sender]
+
+        if (!pending) {
+
+            return sock.sendMessage(from,{
+                text:
+'⚠️ No tienes propuestas pendientes'
+            },{ quoted:m })
+        }
+
+        if (pending.grupo !== from)
+            return
+
+        // ⏰ expiración
+        if (
+            Date.now() - pending.tiempo >
+            120000
+        ) {
+
+            delete pendientes[sender]
+
+            return sock.sendMessage(from,{
+                text:
+'⌛ La propuesta expiró'
+            },{ quoted:m })
+        }
 
         delete pendientes[sender]
+
+        await sock.sendMessage(from,{
+            react:{
+                text:'💔',
+                key:m.key
+            }
+        })
 
         return sock.sendMessage(from,{
             text:
@@ -204,12 +226,39 @@ handler.before = async ({
         },{ quoted:m })
     }
 
-    // ✅ aceptar
-    if (
-        msg === 'aceptar' ||
-        msg === 'si' ||
-        msg === 'sí'
-    ) {
+    /* =========================
+       ✅ ACEPTAR
+    ========================== */
+
+    if (command === 'aceptar') {
+
+        const pending =
+            pendientes[sender]
+
+        if (!pending) {
+
+            return sock.sendMessage(from,{
+                text:
+'⚠️ No tienes propuestas pendientes'
+            },{ quoted:m })
+        }
+
+        if (pending.grupo !== from)
+            return
+
+        // ⏰ expiración
+        if (
+            Date.now() - pending.tiempo >
+            120000
+        ) {
+
+            delete pendientes[sender]
+
+            return sock.sendMessage(from,{
+                text:
+'⌛ La propuesta expiró'
+            },{ quoted:m })
+        }
 
         const db = getDB()
 
@@ -219,7 +268,8 @@ handler.before = async ({
             delete pendientes[sender]
 
             return sock.sendMessage(from,{
-                text:'💍 Ya estás casado'
+                text:
+'💍 Ya estás casado'
             },{ quoted:m })
         }
 
@@ -228,7 +278,8 @@ handler.before = async ({
             delete pendientes[sender]
 
             return sock.sendMessage(from,{
-                text:'💍 La otra persona ya está casada'
+                text:
+'💍 La otra persona ya está casada'
             },{ quoted:m })
         }
 
@@ -261,11 +312,14 @@ handler.before = async ({
             ]
         },{ quoted:m })
     }
-
-    return false
 }
 
-handler.command = ['casar']
+handler.command = [
+    'casar',
+    'aceptar',
+    'rechazo'
+]
+
 handler.tags = ['juegos']
 handler.group = true
 handler.menu = true
