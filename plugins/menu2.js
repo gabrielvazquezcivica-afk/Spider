@@ -99,7 +99,7 @@ const handler = async (ctx) => {
 
     await sock.sendMessage(from,{
         image:{
-            url:'https://i.postimg.cc/GpTgKWYp/file-00000000c6a4720caff9cf521ed86667.png'
+            url:'https://i.postimg.cc/XYxFffwT/file-00000000cfac71f79671ee98bb3dd23d.png'
         },
         caption:menu,
         mentions:[
@@ -109,7 +109,7 @@ const handler = async (ctx) => {
 }
 
 handler.command = ['menu2']
-handler.tags = ['nsfw']
+handler.tags = ['informacion']
 handler.menu = true
 
 export default handler
