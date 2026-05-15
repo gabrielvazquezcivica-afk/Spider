@@ -1,13 +1,8 @@
-// 🕷️ SPIDER BOT - PINTEREST
-// Adaptado a Spider Bot
-
 import axios from 'axios'
-import baileys from '@whiskeysockets/baileys'
 import fs from 'fs'
 
 const path = './data/modoadmin.json'
 
-// 📥 DB
 function getDB() {
     try {
         if (!fs.existsSync(path)) return {}
@@ -50,19 +45,16 @@ const handler = async ({
     if (!text) {
         return sock.sendMessage(from,{
             text:
-`⚠️ Ingresa lo que quieres buscar
+`🕷️ Uso correcto:
 
-Ejemplo:
-.pinterest Messi`
+.pin gato
+.pinterest messi`
         },{ quoted:m })
     }
 
     // ⚡ reacción
     await sock.sendMessage(from,{
-        react:{
-            text:'🔍',
-            key:m.key
-        }
+        react:{ text:'🔎', key:m.key }
     })
 
     try {
@@ -74,70 +66,51 @@ Ejemplo:
             await axios.get(api)
 
         if (
-            !data.status ||
-            !data.results ||
-            !data.results.length
+            !data?.status ||
+            !data?.results?.length
         ) {
 
-            await sock.sendMessage(from,{
-                react:{
-                    text:'❌',
-                    key:m.key
-                }
-            })
-
             return sock.sendMessage(from,{
-                text:'❌ No se encontraron imágenes'
+                text:'❌ No encontré imágenes'
             },{ quoted:m })
         }
 
-        // 📸 máximo 6
+        // 🔥 máximo 6
         const results =
-            data.results.slice(0,6)
+            data.results.slice(0, 6)
 
-        const medias =
-            results.map(url => ({
-                type:'image',
-                data:{ url }
-            }))
-
-        // 🕷️ caption
-        const caption =
+        // 📸 primera imagen con info
+        await sock.sendMessage(from,{
+            image:{ url: results[0] },
+            caption:
 `╭━━━〔 🕷️ SPIDER PINTEREST 〕━━━⬣
 ┃ 🔎 Búsqueda:
 ┃ ${text}
+┃
+┃ 📸 Resultados:
+┃ ${results.length}
 ╰━━━━━━━━━━━━━━━━⬣`
+        },{ quoted:m })
 
-        // 📦 enviar álbum
-        await sendAlbumMessage(
-            sock,
-            from,
-            medias,
-            {
-                caption,
-                quoted:m,
-                delay:700
-            }
-        )
+        // 📸 restantes rápidas
+        for (let i = 1; i < results.length; i++) {
+
+            await sock.sendMessage(from,{
+                image:{ url: results[i] }
+            })
+        }
 
         // ✅ reacción final
         await sock.sendMessage(from,{
-            react:{
-                text:'✅',
-                key:m.key
-            }
+            react:{ text:'✅', key:m.key }
         })
 
     } catch (e) {
 
-        console.log('Pinterest Error:', e)
-
-        await sock.sendMessage(from,{
-            react:{
-                text:'⚠️',
-                key:m.key
-            }
-        })
+        console.log(
+            'Pinterest Error:',
+            e
+        )
 
         sock.sendMessage(from,{
             text:'❌ Error al buscar imágenes'
@@ -145,113 +118,9 @@ Ejemplo:
     }
 }
 
-// 📦 FUNCIÓN ÁLBUM
-async function sendAlbumMessage(
-    sock,
-    jid,
-    medias,
-    options = {}
-) {
-
-    const {
-        delay = 500,
-        caption = '',
-        quoted = null
-    } = options
-
-    const album =
-        baileys.generateWAMessageFromContent(
-            jid,
-            {
-                messageContextInfo:{},
-                albumMessage:{
-                    expectedImageCount:
-                        medias.filter(
-                            m => m.type === 'image'
-                        ).length,
-
-                    expectedVideoCount:
-                        medias.filter(
-                            m => m.type === 'video'
-                        ).length,
-
-                    contextInfo: quoted ? {
-                        remoteJid:
-                            quoted.key.remoteJid,
-
-                        fromMe:
-                            quoted.key.fromMe,
-
-                        stanzaId:
-                            quoted.key.id,
-
-                        participant:
-                            quoted.key.participant ||
-                            quoted.key.remoteJid,
-
-                        quotedMessage:
-                            quoted.message
-                    } : {}
-                }
-            },
-            {}
-        )
-
-    await sock.relayMessage(
-        jid,
-        album.message,
-        {
-            messageId: album.key.id
-        }
-    )
-
-    for (let i = 0; i < medias.length; i++) {
-
-        const {
-            type,
-            data
-        } = medias[i]
-
-        const msg =
-            await baileys.generateWAMessage(
-                jid,
-                {
-                    [type]: data,
-                    ...(i === 0
-                        ? { caption }
-                        : {})
-                },
-                {
-                    upload:
-                        sock.waUploadToServer
-                }
-            )
-
-        msg.message.messageContextInfo = {
-            messageAssociation:{
-                associationType:1,
-                parentMessageKey:album.key
-            }
-        }
-
-        await sock.relayMessage(
-            jid,
-            msg.message,
-            {
-                messageId: msg.key.id
-            }
-        )
-
-        await new Promise(
-            resolve =>
-                setTimeout(resolve, delay)
-        )
-    }
-}
-
 handler.command = ['pinterest']
 handler.tags = ['search']
-handler.menu = true
 handler.group = true
+handler.menu = true
 
 export default handler
