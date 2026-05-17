@@ -74,14 +74,14 @@ const handler = async (ctx) => {
 
     let img = null
 
-    /* 🔍 BUSCAR IMG */
+    /* 🔍 BUSCAR IMG RANDOM */
     for (const api of apis) {
 
         try {
 
             const res =
                 await axios.get(
-                    api,
+                    `${api}?t=${Date.now()}`,
                     {
                         timeout:10000
                     }
@@ -132,10 +132,31 @@ const handler = async (ctx) => {
         },{ quoted:m })
     }
 
+    /* 💬 FRASES */
+    const frases = [
+
+'🔥 Spider encontró algo rico',
+'😈 Material peligroso detectado',
+'🕷️ Spider NSFW activo',
+'🥵 Imagen caliente cargada',
+'💋 Disfruta el pack',
+'🔞 Contenido exclusivo',
+'👀 Mucho cuidado con esto',
+'😏 Spider trae calidad'
+
+    ]
+
     const txt =
 `🔥 PACK NSFW 🔥
 
-> Usa .pack para otro`
+> ${
+    frases[
+        Math.floor(
+            Math.random() *
+            frases.length
+        )
+    ]
+}`
 
     /* ✅ REACCIÓN */
     await sock.sendMessage(from,{
@@ -152,6 +173,7 @@ const handler = async (ctx) => {
     },{ quoted:m })
 }
 
+/* ⚙️ CONFIG */
 handler.command = ['pack']
 handler.tags = ['nsfw']
 handler.menu = true
