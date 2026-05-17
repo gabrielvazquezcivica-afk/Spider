@@ -20,6 +20,9 @@ let sockGlobal
 // 🔒 MODODADMIN
 const modoadminPath = './data/modoadmin.json'
 
+// 🚫 BANNED
+const bannedPath = './data/banned.json'
+
 function getModoadmin() {
 
     try {
@@ -30,6 +33,26 @@ function getModoadmin() {
         return JSON.parse(
             fs.readFileSync(
                 modoadminPath,
+                'utf-8'
+            )
+        )
+
+    } catch {
+
+        return {}
+    }
+}
+
+function getBanned() {
+
+    try {
+
+        if (!fs.existsSync(bannedPath))
+            return {}
+
+        return JSON.parse(
+            fs.readFileSync(
+                bannedPath,
                 'utf-8'
             )
         )
@@ -236,6 +259,13 @@ async function start() {
 
             const sender =
                 m.key.participant || from
+
+            // 🚫 BAN
+            const banned =
+                getBanned()
+
+            if (banned[sender])
+                return
 
             // 👁️ visto
             await sock.readMessages([m.key])
