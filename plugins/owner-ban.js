@@ -1,4 +1,5 @@
 import fs from 'fs'
+import config from '../config.js'
 
 const banPath = './data/banned.json'
 
@@ -49,17 +50,12 @@ const handler = async (ctx) => {
         sock,
         m,
         from,
-        sender,
-        participants
+        sender
     } = ctx
 
     /* 👑 SOLO OWNER */
-    const owners = [
-        '521xxxxxxxxxx@s.whatsapp.net'
-    ]
-
     if (
-        !owners.includes(sender)
+        !config.owner.includes(sender)
     ) {
 
         return sock.sendMessage(from,{
@@ -88,7 +84,7 @@ Ejemplo:
 
     /* 🚫 EVITAR OWNER */
     if (
-        owners.includes(userRaw)
+        config.owner.includes(userRaw)
     ) {
 
         return sock.sendMessage(from,{
@@ -142,5 +138,6 @@ Ejemplo:
 handler.command = ['ban']
 handler.tags = ['owner']
 handler.menu = true
+handler.owner = true
 
 export default handler
