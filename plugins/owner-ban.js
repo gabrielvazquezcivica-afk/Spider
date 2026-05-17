@@ -6,138 +6,145 @@ const banPath = './data/banned.json'
 /* 📂 DB */
 function getDB() {
 
-    try {
+  try {
 
-        if (!fs.existsSync(banPath))
-            return {}
+    if (!fs.existsSync(banPath))
+      return {}
 
-        return JSON.parse(
-            fs.readFileSync(
-                banPath,
-                'utf-8'
-            )
-        )
+    return JSON.parse(
+      fs.readFileSync(
+        banPath,
+        'utf-8'
+      )
+    )
 
-    } catch {
+  } catch {
 
-        return {}
-    }
+    return {}
+  }
 }
 
 function saveDB(db) {
 
-    fs.writeFileSync(
-        banPath,
-        JSON.stringify(
-            db,
-            null,
-            2
-        )
+  fs.writeFileSync(
+    banPath,
+    JSON.stringify(
+      db,
+      null,
+      2
     )
+  )
 }
 
-function onlyNumber(jid = '') {
+const handler = async ({
+  sock,
+  m,
+  from,
+  sender,
+  isGroup
+}) => {
 
-    return jid.replace(
-        /[^0-9]/g,
-        ''
+  // 🚫 evitar mensajes del bot
+  if (m.key.fromMe) return
+
+  // 👑 validar owner por LID
+  const senderLid =
+    sender.split('@')[0]
+
+  const isOwner =
+    config.ownerLid.includes(
+      senderLid
     )
-}
 
-const handler = async (ctx) => {
+  if (!isOwner) {
 
-    const {
-        sock,
-        m,
-        from,
-        sender
-    } = ctx
+    return sock.sendMessage(from,{
+      text:'🕷️ Solo el owner puede usar este comando.'
+    },{ quoted:m })
+  }
 
-    /* 👑 SOLO OWNER */
-    if (
-        !config.owner.includes(sender)
-    ) {
+  /* 👤 OBJETIVO */
+  const ctx =
+    m.message?.extendedTextMessage?.contextInfo
 
-        return sock.sendMessage(from,{
-            text:'❌ Solo el owner puede usar este comando'
-        },{ quoted:m })
-    }
+  const userRaw =
+    ctx?.mentionedJid?.[0] ||
+    ctx?.participant
 
-    /* 👤 OBJETIVO */
-    const ctxMsg =
-        m.message?.extendedTextMessage?.contextInfo
+  if (!userRaw) {
 
-    const userRaw =
-        ctxMsg?.mentionedJid?.[0] ||
-        ctxMsg?.participant
-
-    if (!userRaw) {
-
-        return sock.sendMessage(from,{
-            text:
+    return sock.sendMessage(from,{
+      text:
 `⚠️ Menciona o responde al usuario
 
 Ejemplo:
 .ban @usuario`
-        },{ quoted:m })
-    }
-
-    /* 🚫 EVITAR OWNER */
-    if (
-        config.owner.includes(userRaw)
-    ) {
-
-        return sock.sendMessage(from,{
-            text:'❌ No puedes banear a un owner'
-        },{ quoted:m })
-    }
-
-    const db = getDB()
-
-    /* 🚫 YA BANEADO */
-    if (db[userRaw]) {
-
-        return sock.sendMessage(from,{
-            text:
-`⚠️ @${onlyNumber(userRaw)} ya está baneado`,
-            mentions:[userRaw]
-        },{ quoted:m })
-    }
-
-    /* ⚡ REACCIÓN */
-    await sock.sendMessage(from,{
-        react:{
-            text:'🚫',
-            key:m.key
-        }
-    })
-
-    /* 💾 GUARDAR */
-    db[userRaw] = {
-        banned:true,
-        by:sender,
-        time:Date.now()
-    }
-
-    saveDB(db)
-
-    /* 📩 MENSAJE */
-    await sock.sendMessage(from,{
-        text:
-`🚫 Usuario baneado del bot
-
-👤 Usuario:
-@${onlyNumber(userRaw)}
-
-> Ya no podrá usar comandos`,
-        mentions:[userRaw]
     },{ quoted:m })
+  }
+
+  /* 🚫 EVITAR OWNER */
+  const targetLid =
+    userRaw.split('@')[0]
+
+  if (
+    config.ownerLid.includes(
+      targetLid
+    )
+  ) {
+
+    return sock.sendMessage(from,{
+      text:'❌ No puedes banear a un owner.'
+    },{ quoted:m })
+  }
+
+  const db = getDB()
+
+  /* 🚫 YA BANEADO */
+  if (db[userRaw]) {
+
+    return sock.sendMessage(from,{
+      text:
+`⚠️ @${targetLid} ya está baneado.`,
+      mentions:[userRaw]
+    },{ quoted:m })
+  }
+
+  /* ⚡ REACCIÓN */
+  await sock.sendMessage(from,{
+    react:{
+      text:'🚫',
+      key:m.key
+    }
+  })
+
+  /* 💾 GUARDAR */
+  db[userRaw] = {
+    banned:true,
+    by:sender,
+    time:Date.now()
+  }
+
+  saveDB(db)
+
+  /* 📩 MENSAJE */
+  await sock.sendMessage(from,{
+    text:
+`╭━━━〔 🚫 BAN 〕━━━⬣
+┃
+┃ 👤 Usuario baneado
+┃ 🚫 Acceso denegado
+┃
+┃ 🆔 @${targetLid}
+┃
+╰━━━━━━━━━━━━⬣
+
+> SPIDER BOT`,
+    mentions:[userRaw]
+  },{ quoted:m })
 }
 
-/* ⚙️ CONFIG */
 handler.command = ['ban']
 handler.tags = ['owner']
 handler.menu = true
-handler.owner = true
 
 export default handler
