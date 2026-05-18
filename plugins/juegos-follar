@@ -1,144 +1,106 @@
 import fs from 'fs'
 
-const handler = async (
-  m,
-  {
+const path = './data/modoadmin.json'
+
+// 📥 DB modoadmin
+function getDB() {
+    try {
+        if (!fs.existsSync(path)) return {}
+        return JSON.parse(fs.readFileSync(path, 'utf-8'))
+    } catch {
+        return {}
+    }
+}
+
+const handler = async ({
     sock,
+    m,
     from,
     sender,
     isGroup,
-    reply
-  }
-) => {
+    participants
+}) => {
 
-  if (!isGroup)
-    return reply(
-      '❌ Este comando solo funciona en grupos'
+    if (!isGroup) return
+
+    // 🔒 MODODADMIN
+    const db = getDB()
+    const isBlockedGroup = db[from]
+
+    const user = participants.find(
+        p => p.id === sender
     )
 
-  /* 🔒 MODODADMIN */
-  let groupSettings = {
-    enabled: false
-  }
+    const isAdmin =
+        user?.admin === 'admin' ||
+        user?.admin === 'superadmin'
 
-  const modoadminPath =
-    './data/modoadmin.json'
+    if (isBlockedGroup && !isAdmin) return
 
-  if (
-    fs.existsSync(modoadminPath)
-  ) {
+    /* 👤 TARGET */
+    const ctx =
+        m.message?.extendedTextMessage?.contextInfo ||
+        m.message?.imageMessage?.contextInfo ||
+        m.message?.videoMessage?.contextInfo
 
-    try {
+    const target =
+        ctx?.mentionedJid?.[0] ||
+        ctx?.participant
 
-      const data =
-        JSON.parse(
-          fs.readFileSync(
-            modoadminPath
-          )
-        )
+    if (!target) {
+        return sock.sendMessage(from, {
+            text: '⚠️ Menciona a alguien o responde un mensaje'
+        }, { quoted: m })
+    }
 
-      groupSettings =
-        data[from] || {
-          enabled: false
+    // 🚫 evitar mismo usuario
+    if (target === sender) {
+        return sock.sendMessage(from, {
+            text: '💀 No puedes usar esto contigo mismo'
+        }, { quoted: m })
+    }
+
+    /* ⚡ REACCIÓN */
+    await sock.sendMessage(from, {
+        react: {
+            text: '🔥',
+            key: m.key
         }
+    })
 
-    } catch {
+    const mentions = [
+        sender,
+        target
+    ]
 
-      groupSettings = {
-        enabled: false
-      }
-    }
-  }
+    const name1 =
+        sender.split('@')[0]
 
-  if (groupSettings.enabled) {
+    const name2 =
+        target.split('@')[0]
 
-    let isAdmin = false
-
-    try {
-
-      const metadata =
-        await sock.groupMetadata(
-          from
-        )
-
-      const participants =
-        metadata.participants || []
-
-      isAdmin =
-        participants.some(
-          p =>
-            p.id === sender &&
-            (
-              p.admin === 'admin' ||
-              p.admin === 'superadmin'
-            )
-        )
-
-    } catch {
-
-      isAdmin = false
-    }
-
-    if (!isAdmin) return
-  }
-
-  /* 👤 TARGET */
-  const ctx =
-    m.message?.extendedTextMessage?.contextInfo ||
-    m.message?.imageMessage?.contextInfo ||
-    m.message?.videoMessage?.contextInfo
-
-  const target =
-    ctx?.mentionedJid?.[0] ||
-    ctx?.participant
-
-  if (!target)
-    return reply(
-      '⚠️ Menciona a alguien o responde un mensaje'
-    )
-
-  /* ⚡ REACCIÓN */
-  await sock.sendMessage(from,{
-    react:{
-      text:'🔥',
-      key:m.key
-    }
-  })
-
-  const mentions = [
-    sender,
-    target
-  ]
-
-  const name1 =
-    sender.split('@')[0]
-
-  const name2 =
-    target.split('@')[0]
-
-  const text =
+    const text =
 `🤤👅🥵 *ACABAS DE FOLLAR* 🥵👅🤤
 
-@${name1} SE ACABA DE FOLLAR A LA PERRA DE @${name2} AH 4 PATAS MIENTRAS GEMIA COMO UNA MALDITA PERRA (Aaah...Aaah, NO PARES, SIGUE, SIGUE) Y LA HAS DEJADO TAN REVENTADA QUE NO PUEDE NI SOSTENER SU PROPIO CUERLO LA MALDITA PERRA 😳🔥
+@${name1} SE ACABA DE FOLLAR A LA PERRA DE @${name2} AH 4 PATAS MIENTRAS GEMIA COMO UNA MALDITA PERRA (Aaah...Aaah, NO PARES, SIGUE, SIGUE) Y LA HAS DEJADO TAN REVENTADA QUE NO PUEDE NI SOSTENER SU PROPIO CUERPO LA MALDITA PERRA 😳🔥
 
 🤤 @${name2} YA TE HAN FOLLADO 🥵`
 
-  await sock.sendMessage(
-    from,
-    {
-      text,
-      mentions
-    },
-    {
-      quoted: m
-    }
-  )
+    return sock.sendMessage(
+        from,
+        {
+            text,
+            mentions
+        },
+        {
+            quoted: m
+        }
+    )
 }
 
 handler.command = ['follar']
 handler.tags = ['juegos']
 handler.group = true
 handler.menu = true
-handler.help = ['follar @usuario']
 
 export default handler
