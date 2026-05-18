@@ -1,6 +1,6 @@
 import fs from 'fs'
 
-const handler = async ({
+const handler = async (
   m,
   {
     sock,
