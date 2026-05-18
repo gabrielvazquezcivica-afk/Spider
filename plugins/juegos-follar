@@ -1,0 +1,144 @@
+import fs from 'fs'
+
+export const handler = async (
+  m,
+  {
+    sock,
+    from,
+    sender,
+    isGroup,
+    reply
+  }
+) => {
+
+  if (!isGroup)
+    return reply(
+      '❌ Este comando solo funciona en grupos'
+    )
+
+  /* 🔒 MODODADMIN */
+  let groupSettings = {
+    enabled: false
+  }
+
+  const modoadminPath =
+    './data/modoadmin.json'
+
+  if (
+    fs.existsSync(modoadminPath)
+  ) {
+
+    try {
+
+      const data =
+        JSON.parse(
+          fs.readFileSync(
+            modoadminPath
+          )
+        )
+
+      groupSettings =
+        data[from] || {
+          enabled: false
+        }
+
+    } catch {
+
+      groupSettings = {
+        enabled: false
+      }
+    }
+  }
+
+  if (groupSettings.enabled) {
+
+    let isAdmin = false
+
+    try {
+
+      const metadata =
+        await sock.groupMetadata(
+          from
+        )
+
+      const participants =
+        metadata.participants || []
+
+      isAdmin =
+        participants.some(
+          p =>
+            p.id === sender &&
+            (
+              p.admin === 'admin' ||
+              p.admin === 'superadmin'
+            )
+        )
+
+    } catch {
+
+      isAdmin = false
+    }
+
+    if (!isAdmin) return
+  }
+
+  /* 👤 TARGET */
+  const ctx =
+    m.message?.extendedTextMessage?.contextInfo ||
+    m.message?.imageMessage?.contextInfo ||
+    m.message?.videoMessage?.contextInfo
+
+  const target =
+    ctx?.mentionedJid?.[0] ||
+    ctx?.participant
+
+  if (!target)
+    return reply(
+      '⚠️ Menciona a alguien o responde un mensaje'
+    )
+
+  /* ⚡ REACCIÓN */
+  await sock.sendMessage(from,{
+    react:{
+      text:'🔥',
+      key:m.key
+    }
+  })
+
+  const mentions = [
+    sender,
+    target
+  ]
+
+  const name1 =
+    sender.split('@')[0]
+
+  const name2 =
+    target.split('@')[0]
+
+  const text =
+`🤤👅🥵 *𝐀𝐂𝐀𝐁𝐀𝐒 𝐃𝐄 𝐅𝐎𝐋𝐋𝐀𝐑* 🥵👅🤤
+
+@${name1} 𝐒𝐄 𝐀𝐂𝐀𝐁𝐀 𝐃𝐄 𝐅𝐎𝐋𝐋𝐀𝐑 𝐀 𝐋𝐀 𝐏𝐄𝐑𝐑𝐀 𝐃𝐄 @${name2} 𝐀 4 𝐏𝐀𝐓𝐀𝐒 𝐌𝐈𝐄𝐍𝐓𝐑𝐀𝐒 𝐆𝐄𝐌𝐈𝐀 𝐂𝐎𝐌𝐎 𝐔𝐍𝐀 𝐌𝐀𝐋𝐃𝐈𝐓𝐀 𝐏𝐄𝐑𝐑𝐀 (𝐀𝐚𝐚𝐡...𝐀𝐚𝐚𝐡,𝐍𝐎 𝐏𝐀𝐑𝐄𝐒,𝐒𝐈𝐆𝐔𝐄,𝐒𝐈𝐆𝐔𝐄) 𝐘 𝐋𝐀 𝐇𝐀𝐒 𝐃𝐄𝐉𝐀𝐃𝐎 𝐓𝐀𝐍 𝐑𝐄𝐕𝐄𝐍𝐓𝐀𝐃𝐀 𝐐𝐔𝐄 𝐍𝐎 𝐏𝐔𝐄𝐃𝐄 𝐍𝐈 𝐒𝐎𝐒𝐓𝐄𝐍𝐄𝐑 𝐒𝐔 𝐏𝐑𝐎𝐏𝐈𝐎 𝐂𝐔𝐄𝐑𝐏𝐎 𝐋𝐀 𝐌𝐀𝐋𝐃𝐈𝐓𝐀 𝐏𝐄𝐑𝐑𝐀 😳🔥
+
+🤤 @${name2} 𝐘𝐀 𝐓𝐄 𝐇𝐀𝐍 𝐅𝐎𝐋𝐋𝐀𝐃𝐎 🥵`
+
+  await sock.sendMessage(
+    from,
+    {
+      text,
+      mentions
+    },
+    {
+      quoted: m
+    }
+  )
+}
+
+handler.command = ['follar']
+handler.tags = ['juegos']
+handler.group = true
+handler.menu = true
+handler.help = ['follar @usuario']
+
+export default handler
