@@ -159,7 +159,7 @@ ${frase}
         url:audio
       },
       mimetype:'audio/mpeg',
-      ptt:true
+      ptt:false
     },
     {
       quoted:m
