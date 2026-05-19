@@ -3,6 +3,7 @@ import path from 'path'
 import os from 'os'
 import { spawn } from 'child_process'
 
+/* ───── CREAR STICKER ───── */
 async function createSticker(text) {
 
   const output = path.join(
@@ -10,7 +11,7 @@ async function createSticker(text) {
     `brat_${Date.now()}.webp`
   )
 
-  await new Promise((resolve,reject)=>{
+  return new Promise((resolve,reject)=>{
 
     const ff = spawn('ffmpeg',[
 
@@ -23,50 +24,55 @@ async function createSticker(text) {
         .replace(/'/g,"\\'")
       }':fontcolor=black:fontsize=48:x=(w-text_w)/2:y=(h-text_h)/2`,
 
+      '-frames:v','1',
+
       '-vcodec','libwebp',
       '-lossless','1',
-      '-qscale','1',
+      '-q:v','100',
       '-preset','picture',
-      '-loop','0',
-      '-an',
-      '-vsync','0',
-      '-y',
 
+      '-y',
       output
     ])
 
-    ff.on(
-      'close',
-      code => {
+    ff.stderr.on('data',data=>{
+      console.log(
+        data.toString()
+      )
+    })
 
-        if(code === 0)
-          resolve()
+    ff.on('close',code=>{
 
-        else
-          reject(
-            new Error(
-              'FFmpeg fallo'
-            )
+      if(code !== 0)
+        return reject(
+          new Error(
+            'FFmpeg fallo'
           )
+        )
+
+      try {
+
+        const buffer =
+          fs.readFileSync(output)
+
+        fs.unlinkSync(output)
+
+        resolve(buffer)
+
+      } catch(e){
+
+        reject(e)
       }
-    )
+    })
 
     ff.on(
       'error',
       reject
     )
   })
-
-  const buffer =
-    fs.readFileSync(output)
-
-  try {
-    fs.unlinkSync(output)
-  } catch {}
-
-  return buffer
 }
 
+/* ───── COMANDO ───── */
 const handler = async ({
   sock,
   m,
@@ -88,6 +94,7 @@ Ejemplo:
     },{ quoted:m })
   }
 
+  /* ⚡ reacción */
   await sock.sendMessage(from,{
     react:{
       text:'🎨',
@@ -101,8 +108,10 @@ Ejemplo:
       await createSticker(text)
 
     await sock.sendMessage(from,{
-      sticker
-    },{ quoted:m })
+      sticker: sticker
+    },{
+      quoted:m
+    })
 
     await sock.sendMessage(from,{
       react:{
@@ -120,7 +129,9 @@ Ejemplo:
 
     await sock.sendMessage(from,{
       text:'❌ Error al generar sticker'
-    },{ quoted:m })
+    },{
+      quoted:m
+    })
   }
 }
 
