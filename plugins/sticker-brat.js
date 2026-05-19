@@ -1,13 +1,93 @@
 import fs from 'fs'
+import path from 'path'
+import os from 'os'
 import axios from 'axios'
+import { spawn } from 'child_process'
 
+/* ───── PNG → WEBP REAL ───── */
+async function createSticker(buffer) {
+
+  const tmpIn = path.join(
+    os.tmpdir(),
+    `brat_${Date.now()}.png`
+  )
+
+  const tmpOut = path.join(
+    os.tmpdir(),
+    `brat_${Date.now()}.webp`
+  )
+
+  fs.writeFileSync(
+    tmpIn,
+    buffer
+  )
+
+  await new Promise((resolve,reject)=>{
+
+    const ff = spawn('ffmpeg',[
+
+      '-i', tmpIn,
+
+      '-vf',
+      'scale=512:512:force_original_aspect_ratio=increase,crop=512:512',
+
+      '-vcodec','libwebp',
+      '-quality','80',
+      '-compression_level','6',
+      '-preset','picture',
+      '-loop','0',
+      '-an',
+      '-vsync','0',
+      '-y',
+
+      tmpOut
+    ])
+
+    ff.on(
+      'close',
+      code => {
+
+        if(code === 0)
+          resolve()
+
+        else
+          reject(
+            new Error(
+              'FFmpeg fallo'
+            )
+          )
+      }
+    )
+
+    ff.on(
+      'error',
+      reject
+    )
+  })
+
+  const result =
+    fs.readFileSync(tmpOut)
+
+  try {
+    fs.unlinkSync(tmpIn)
+  } catch {}
+
+  try {
+    fs.unlinkSync(tmpOut)
+  } catch {}
+
+  return result
+}
+
+/* ───── COMANDO ───── */
 const handler = async ({
   sock,
   m,
   from,
   args,
-  participants,
-  sender
+  isGroup,
+  sender,
+  participants
 }) => {
 
   /* 🔒 MODODADMIN */
@@ -26,16 +106,19 @@ const handler = async ({
 
   } catch {}
 
-  const user = participants?.find(
-    p => p.id === sender
-  )
+  const user =
+    participants?.find(
+      p => p.id === sender
+    )
 
   const isAdmin =
     user?.admin === 'admin' ||
     user?.admin === 'superadmin'
 
-  if (isBlockedGroup && !isAdmin)
-    return
+  if (
+    isBlockedGroup &&
+    !isAdmin
+  ) return
 
   const text =
     args.join(' ').trim()
@@ -61,20 +144,37 @@ Ejemplo:
 
   try {
 
-    /* 🔥 API BRAT */
+    /* 🔥 API */
     const res = await axios.get(
-      `https://brat.caliphdev.com/api/brat?text=${encodeURIComponent(text)}`,
+      'https://kepolu-brat.hf.space/brat',
       {
-        responseType:'arraybuffer'
+        params:{
+          q:text
+        },
+        responseType:'arraybuffer',
+        timeout:15000
       }
     )
 
-    const buffer =
-      Buffer.from(res.data)
+    if (
+      !res.data ||
+      !res.data.byteLength
+    ) {
 
-    /* 🕷️ enviar sticker */
+      throw new Error(
+        'Imagen vacía'
+      )
+    }
+
+    /* 🖼️ WEBP */
+    const sticker =
+      await createSticker(
+        Buffer.from(res.data)
+      )
+
+    /* 🕷️ enviar */
     await sock.sendMessage(from,{
-      sticker: buffer
+      sticker
     },{ quoted:m })
 
     /* ✅ reacción */
@@ -102,6 +202,6 @@ handler.command = ['brat']
 handler.tags = ['stickers']
 handler.help = ['brat <texto>']
 handler.menu = true
-handler.group = true
+handler.group = false
 
 export default handler
