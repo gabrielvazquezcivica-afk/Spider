@@ -4,7 +4,7 @@ import os from 'os'
 import { spawn } from 'child_process'
 
 /* ───── AJUSTAR TEXTO ───── */
-function wrapText(text, max = 14) {
+function wrapText(text, max = 12) {
 
   const words = text.split(' ')
   const lines = []
@@ -30,7 +30,7 @@ function wrapText(text, max = 14) {
   if (line.trim())
     lines.push(line.trim())
 
-  return lines.join('\n')
+  return lines
 }
 
 /* ───── CREAR STICKER ───── */
@@ -41,8 +41,12 @@ async function createSticker(text) {
     `brat_${Date.now()}.webp`
   )
 
-  const formatted =
+  const lines =
     wrapText(text)
+
+  // 🔥 texto acomodado hacia abajo
+  const finalText =
+    lines.join('\\n')
 
   return new Promise((resolve,reject)=>{
 
@@ -52,11 +56,17 @@ async function createSticker(text) {
       '-i','color=c=white:s=512x512',
 
       '-vf',
-      `drawtext=text='${formatted
-        .replace(/:/g,'\\:')
-        .replace(/'/g,"\\'")
-        .replace(/\n/g,'\\\\n')
-      }':fontcolor=black:fontsize=58:line_spacing=20:x=(w-text_w)/2:y=(h-text_h)/2`,
+      `drawtext=
+fontfile=/system/fonts/Roboto-Regular.ttf:
+text='${finalText
+.replace(/:/g,'\\:')
+.replace(/'/g,"\\\\'")
+}':
+fontcolor=black:
+fontsize=65:
+line_spacing=18:
+x=(w-text_w)/2:
+y=(h-text_h)/2`,
 
       '-frames:v','1',
 
@@ -69,7 +79,7 @@ async function createSticker(text) {
       output
     ])
 
-    // 🚫 sin spam consola
+    // 🚫 quitar spam consola
     ff.stderr.on('data',()=>{})
 
     ff.on('close',code=>{
