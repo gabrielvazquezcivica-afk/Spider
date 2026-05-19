@@ -3,6 +3,36 @@ import path from 'path'
 import os from 'os'
 import { spawn } from 'child_process'
 
+/* ───── AJUSTAR TEXTO ───── */
+function wrapText(text, max = 14) {
+
+  const words = text.split(' ')
+  const lines = []
+
+  let line = ''
+
+  for (const word of words) {
+
+    if (
+      (line + word).length > max
+    ) {
+
+      lines.push(
+        line.trim()
+      )
+
+      line = ''
+    }
+
+    line += word + ' '
+  }
+
+  if (line.trim())
+    lines.push(line.trim())
+
+  return lines.join('\n')
+}
+
 /* ───── CREAR STICKER ───── */
 async function createSticker(text) {
 
@@ -10,6 +40,9 @@ async function createSticker(text) {
     os.tmpdir(),
     `brat_${Date.now()}.webp`
   )
+
+  const formatted =
+    wrapText(text)
 
   return new Promise((resolve,reject)=>{
 
@@ -19,10 +52,11 @@ async function createSticker(text) {
       '-i','color=c=white:s=512x512',
 
       '-vf',
-      `drawtext=text='${text
+      `drawtext=text='${formatted
         .replace(/:/g,'\\:')
         .replace(/'/g,"\\'")
-      }':fontcolor=black:fontsize=58:x=(w-text_w)/2:y=(h-text_h)/2`,
+        .replace(/\n/g,'\\\\n')
+      }':fontcolor=black:fontsize=58:line_spacing=20:x=(w-text_w)/2:y=(h-text_h)/2`,
 
       '-frames:v','1',
 
@@ -87,7 +121,7 @@ const handler = async ({
 `❌ Escribe un texto
 
 Ejemplo:
-.brat ya te vimos`
+.brat ya te vimos cállate`
     },{ quoted:m })
   }
 
@@ -105,7 +139,7 @@ Ejemplo:
       await createSticker(text)
 
     await sock.sendMessage(from,{
-      sticker: sticker
+      sticker
     },{
       quoted:m
     })
