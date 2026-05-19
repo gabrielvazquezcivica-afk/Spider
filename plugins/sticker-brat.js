@@ -1,46 +1,38 @@
 import fs from 'fs'
 import path from 'path'
 import os from 'os'
-import axios from 'axios'
 import { spawn } from 'child_process'
 
-/* ───── PNG → WEBP REAL ───── */
-async function createSticker(buffer) {
+async function createSticker(text) {
 
-  const tmpIn = path.join(
-    os.tmpdir(),
-    `brat_${Date.now()}.png`
-  )
-
-  const tmpOut = path.join(
+  const output = path.join(
     os.tmpdir(),
     `brat_${Date.now()}.webp`
-  )
-
-  fs.writeFileSync(
-    tmpIn,
-    buffer
   )
 
   await new Promise((resolve,reject)=>{
 
     const ff = spawn('ffmpeg',[
 
-      '-i', tmpIn,
+      '-f','lavfi',
+      '-i','color=c=white:s=512x512',
 
       '-vf',
-      'scale=512:512:force_original_aspect_ratio=increase,crop=512:512',
+      `drawtext=text='${text
+        .replace(/:/g,'\\:')
+        .replace(/'/g,"\\'")
+      }':fontcolor=black:fontsize=48:x=(w-text_w)/2:y=(h-text_h)/2`,
 
       '-vcodec','libwebp',
-      '-quality','80',
-      '-compression_level','6',
+      '-lossless','1',
+      '-qscale','1',
       '-preset','picture',
       '-loop','0',
       '-an',
       '-vsync','0',
       '-y',
 
-      tmpOut
+      output
     ])
 
     ff.on(
@@ -65,60 +57,22 @@ async function createSticker(buffer) {
     )
   })
 
-  const result =
-    fs.readFileSync(tmpOut)
+  const buffer =
+    fs.readFileSync(output)
 
   try {
-    fs.unlinkSync(tmpIn)
+    fs.unlinkSync(output)
   } catch {}
 
-  try {
-    fs.unlinkSync(tmpOut)
-  } catch {}
-
-  return result
+  return buffer
 }
 
-/* ───── COMANDO ───── */
 const handler = async ({
   sock,
   m,
   from,
-  args,
-  isGroup,
-  sender,
-  participants
+  args
 }) => {
-
-  /* 🔒 MODODADMIN */
-  let isBlockedGroup = false
-
-  try {
-
-    const db = JSON.parse(
-      fs.readFileSync(
-        './data/modoadmin.json',
-        'utf-8'
-      )
-    )
-
-    isBlockedGroup = db[from]
-
-  } catch {}
-
-  const user =
-    participants?.find(
-      p => p.id === sender
-    )
-
-  const isAdmin =
-    user?.admin === 'admin' ||
-    user?.admin === 'superadmin'
-
-  if (
-    isBlockedGroup &&
-    !isAdmin
-  ) return
 
   const text =
     args.join(' ').trim()
@@ -130,11 +84,10 @@ const handler = async ({
 `❌ Escribe un texto
 
 Ejemplo:
-.brat Hola`
+.brat ya te vimos`
     },{ quoted:m })
   }
 
-  /* ⚡ reacción */
   await sock.sendMessage(from,{
     react:{
       text:'🎨',
@@ -144,40 +97,13 @@ Ejemplo:
 
   try {
 
-    /* 🔥 API */
-    const res = await axios.get(
-      'https://kepolu-brat.hf.space/brat',
-      {
-        params:{
-          q:text
-        },
-        responseType:'arraybuffer',
-        timeout:15000
-      }
-    )
-
-    if (
-      !res.data ||
-      !res.data.byteLength
-    ) {
-
-      throw new Error(
-        'Imagen vacía'
-      )
-    }
-
-    /* 🖼️ WEBP */
     const sticker =
-      await createSticker(
-        Buffer.from(res.data)
-      )
+      await createSticker(text)
 
-    /* 🕷️ enviar */
     await sock.sendMessage(from,{
       sticker
     },{ quoted:m })
 
-    /* ✅ reacción */
     await sock.sendMessage(from,{
       react:{
         text:'✅',
@@ -185,7 +111,7 @@ Ejemplo:
       }
     })
 
-  } catch (e) {
+  } catch(e) {
 
     console.log(
       'BRAT ERROR:',
@@ -193,7 +119,7 @@ Ejemplo:
     )
 
     await sock.sendMessage(from,{
-      text:'❌ Error al generar brat'
+      text:'❌ Error al generar sticker'
     },{ quoted:m })
   }
 }
@@ -202,6 +128,5 @@ handler.command = ['brat']
 handler.tags = ['stickers']
 handler.help = ['brat <texto>']
 handler.menu = true
-handler.group = false
 
 export default handler
