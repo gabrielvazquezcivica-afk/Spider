@@ -4,7 +4,7 @@ import os from 'os'
 import axios from 'axios'
 import { spawn } from 'child_process'
 
-/* ───── PNG → STICKER ───── */
+/* ───── PNG → WEBP ───── */
 async function createSticker(buffer) {
 
   const tmpIn = path.join(
@@ -31,7 +31,7 @@ async function createSticker(buffer) {
 
       '-vcodec', 'libwebp',
       '-lossless', '1',
-      '-qscale', '1',
+      '-q:v', '80',
       '-preset', 'picture',
       '-loop', '0',
       '-an',
@@ -41,39 +41,23 @@ async function createSticker(buffer) {
       tmpOut
     ])
 
-    ff.stderr.on('data', () => {})
+    ff.on('close', code => {
 
-    ff.on(
-      'close',
-      code => {
+      if (code === 0)
+        resolve()
+      else
+        reject(
+          new Error('FFmpeg falló')
+        )
+    })
 
-        if (code === 0)
-          resolve()
-
-        else
-          reject(
-            new Error(
-              'FFmpeg fallo'
-            )
-          )
-      }
-    )
-
-    ff.on(
-      'error',
-      reject
-    )
+    ff.on('error', reject)
   })
 
   const result = fs.readFileSync(tmpOut)
 
-  try {
-    fs.unlinkSync(tmpIn)
-  } catch {}
-
-  try {
-    fs.unlinkSync(tmpOut)
-  } catch {}
+  try { fs.unlinkSync(tmpIn) } catch {}
+  try { fs.unlinkSync(tmpOut) } catch {}
 
   return result
 }
@@ -84,12 +68,11 @@ const handler = async ({
   m,
   from,
   args,
-  isGroup,
   sender,
   participants
 }) => {
 
-  // 🔒 MODODADMIN
+  /* 🔒 MODODADMIN */
   let isBlockedGroup = false
 
   try {
@@ -112,23 +95,22 @@ const handler = async ({
     user?.admin === 'admin' ||
     user?.admin === 'superadmin'
 
-  // 🔥 silencioso
-  if (isBlockedGroup && !isAdmin) return
+  if (isBlockedGroup && !isAdmin)
+    return
 
+  /* 📄 TEXTO */
   const text = args.join(' ').trim()
 
   if (!text) {
 
     return sock.sendMessage(from,{
       text:
-`❌ Escribe un texto
-
-Ejemplo:
+`🕷️ Uso correcto:
 .brat Hola mundo`
     },{ quoted:m })
   }
 
-  // 🎨 reacción
+  /* ⚡ REACCIÓN */
   await sock.sendMessage(from,{
     react:{
       text:'🎨',
@@ -138,38 +120,27 @@ Ejemplo:
 
   try {
 
-    // 🔥 API brat
-    const res = await axios.get(
-      'https://kepolu-brat.hf.space/brat',
-      {
-        params:{
-          q:text
-        },
-        responseType:'arraybuffer'
-      }
-    )
+    /* 🔥 API */
+    const api =
+`https://kepolu-brat.hf.space/brat?q=${encodeURIComponent(text)}`
 
-    if (
-      !res.data ||
-      !res.data.byteLength
-    ) {
-      throw new Error(
-        'Imagen vacía'
-      )
-    }
+    const res = await axios.get(api,{
+      responseType:'arraybuffer'
+    })
 
-    // 🖼️ sticker
-    const sticker =
-      await createSticker(
-        res.data
-      )
+    if (!res.data)
+      throw new Error('Sin imagen')
 
-    // 🕷️ enviar
+    /* 🖼️ CREAR STICKER */
+    const stickerBuffer =
+      await createSticker(res.data)
+
+    /* 📤 ENVIAR */
     await sock.sendMessage(from,{
-      sticker
+      sticker: stickerBuffer
     },{ quoted:m })
 
-    // ✅ reacción
+    /* ✅ */
     await sock.sendMessage(from,{
       react:{
         text:'✅',
@@ -185,8 +156,15 @@ Ejemplo:
     )
 
     await sock.sendMessage(from,{
-      text:'❌ Error al generar brat'
+      text:'❌ Error al crear el sticker brat'
     },{ quoted:m })
+
+    await sock.sendMessage(from,{
+      react:{
+        text:'❌',
+        key:m.key
+      }
+    })
   }
 }
 
