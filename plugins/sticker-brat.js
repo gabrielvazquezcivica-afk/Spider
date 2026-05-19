@@ -1,6 +1,5 @@
 import fs from 'fs'
 import axios from 'axios'
-import { writeExifImg } from '../lib/sticker.js'
 
 const handler = async ({
   sock,
@@ -70,23 +69,12 @@ Ejemplo:
       }
     )
 
-    const imgBuffer =
+    const buffer =
       Buffer.from(res.data)
 
-    /* 🕷️ sticker REAL */
-    const sticker =
-      await writeExifImg(
-        imgBuffer,
-        {
-          packname:'SPIDER BOT',
-          author:'SoyGabo'
-        }
-      )
-
+    /* 🕷️ enviar sticker */
     await sock.sendMessage(from,{
-      sticker:{
-        url: sticker
-      }
+      sticker: buffer
     },{ quoted:m })
 
     /* ✅ reacción */
@@ -105,7 +93,7 @@ Ejemplo:
     )
 
     await sock.sendMessage(from,{
-      text:'❌ Error al generar sticker brat'
+      text:'❌ Error al generar brat'
     },{ quoted:m })
   }
 }
