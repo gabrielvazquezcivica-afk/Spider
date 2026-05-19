@@ -22,7 +22,7 @@ async function createSticker(text) {
       `drawtext=text='${text
         .replace(/:/g,'\\:')
         .replace(/'/g,"\\'")
-      }':fontcolor=black:fontsize=48:x=(w-text_w)/2:y=(h-text_h)/2`,
+      }':fontcolor=black:fontsize=22:x=(w-text_w)/2:y=(h-text_h)/2`,
 
       '-frames:v','1',
 
