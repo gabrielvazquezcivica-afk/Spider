@@ -3,8 +3,8 @@ import path from 'path'
 import os from 'os'
 import { spawn } from 'child_process'
 
-/* ───── AJUSTAR TEXTO ───── */
-function wrapText(text, max = 12) {
+/* ───── ACOMODAR TEXTO ───── */
+function wrapText(text, max = 10) {
 
   const words = text.split(' ')
   const lines = []
@@ -30,7 +30,7 @@ function wrapText(text, max = 12) {
   if (line.trim())
     lines.push(line.trim())
 
-  return lines
+  return lines.join('\n')
 }
 
 /* ───── CREAR STICKER ───── */
@@ -41,12 +41,19 @@ async function createSticker(text) {
     `brat_${Date.now()}.webp`
   )
 
-  const lines =
+  const txtFile = path.join(
+    os.tmpdir(),
+    `brat_${Date.now()}.txt`
+  )
+
+  // 🔥 texto acomodado
+  const formatted =
     wrapText(text)
 
-  // 🔥 texto acomodado hacia abajo
-  const finalText =
-    lines.join('\\n')
+  fs.writeFileSync(
+    txtFile,
+    formatted
+  )
 
   return new Promise((resolve,reject)=>{
 
@@ -58,13 +65,10 @@ async function createSticker(text) {
       '-vf',
       `drawtext=
 fontfile=/system/fonts/Roboto-Regular.ttf:
-text='${finalText
-.replace(/:/g,'\\:')
-.replace(/'/g,"\\\\'")
-}':
+textfile='${txtFile}':
 fontcolor=black:
-fontsize=65:
-line_spacing=18:
+fontsize=60:
+line_spacing=15:
 x=(w-text_w)/2:
 y=(h-text_h)/2`,
 
@@ -79,10 +83,15 @@ y=(h-text_h)/2`,
       output
     ])
 
-    // 🚫 quitar spam consola
     ff.stderr.on('data',()=>{})
 
     ff.on('close',code=>{
+
+      try {
+
+        fs.unlinkSync(txtFile)
+
+      } catch {}
 
       if(code !== 0)
         return reject(
@@ -135,7 +144,6 @@ Ejemplo:
     },{ quoted:m })
   }
 
-  /* ⚡ reacción */
   await sock.sendMessage(from,{
     react:{
       text:'🎨',
