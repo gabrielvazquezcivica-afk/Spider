@@ -1,75 +1,14 @@
 import fs from 'fs'
-import path from 'path'
-import os from 'os'
 import axios from 'axios'
-import { spawn } from 'child_process'
+import { writeExifImg } from '../lib/sticker.js'
 
-/* ───── PNG → WEBP ───── */
-async function createSticker(buffer) {
-
-  const tmpIn = path.join(
-    os.tmpdir(),
-    `brat_${Date.now()}.png`
-  )
-
-  const tmpOut = path.join(
-    os.tmpdir(),
-    `brat_${Date.now()}.webp`
-  )
-
-  fs.writeFileSync(tmpIn, buffer)
-
-  await new Promise((resolve, reject) => {
-
-    const ff = spawn('ffmpeg', [
-
-      '-i', tmpIn,
-
-      '-vf',
-      'scale=512:512:force_original_aspect_ratio=decrease,' +
-      'pad=512:512:(ow-iw)/2:(oh-ih)/2:color=white',
-
-      '-vcodec', 'libwebp',
-      '-lossless', '1',
-      '-q:v', '80',
-      '-preset', 'picture',
-      '-loop', '0',
-      '-an',
-      '-vsync', '0',
-      '-y',
-
-      tmpOut
-    ])
-
-    ff.on('close', code => {
-
-      if (code === 0)
-        resolve()
-      else
-        reject(
-          new Error('FFmpeg falló')
-        )
-    })
-
-    ff.on('error', reject)
-  })
-
-  const result = fs.readFileSync(tmpOut)
-
-  try { fs.unlinkSync(tmpIn) } catch {}
-  try { fs.unlinkSync(tmpOut) } catch {}
-
-  return result
-}
-
-/* ───── COMANDO ───── */
 const handler = async ({
   sock,
   m,
   from,
   args,
-  sender,
-  participants
+  participants,
+  sender
 }) => {
 
   /* 🔒 MODODADMIN */
@@ -79,7 +18,8 @@ const handler = async ({
 
     const db = JSON.parse(
       fs.readFileSync(
-        './data/modoadmin.json'
+        './data/modoadmin.json',
+        'utf-8'
       )
     )
 
@@ -98,19 +38,21 @@ const handler = async ({
   if (isBlockedGroup && !isAdmin)
     return
 
-  /* 📄 TEXTO */
-  const text = args.join(' ').trim()
+  const text =
+    args.join(' ').trim()
 
   if (!text) {
 
     return sock.sendMessage(from,{
       text:
-`🕷️ Uso correcto:
-.brat Hola mundo`
+`❌ Escribe un texto
+
+Ejemplo:
+.brat Hola`
     },{ quoted:m })
   }
 
-  /* ⚡ REACCIÓN */
+  /* ⚡ reacción */
   await sock.sendMessage(from,{
     react:{
       text:'🎨',
@@ -120,27 +62,34 @@ const handler = async ({
 
   try {
 
-    /* 🔥 API */
-    const api =
-`https://kepolu-brat.hf.space/brat?q=${encodeURIComponent(text)}`
+    /* 🔥 API BRAT */
+    const res = await axios.get(
+      `https://brat.caliphdev.com/api/brat?text=${encodeURIComponent(text)}`,
+      {
+        responseType:'arraybuffer'
+      }
+    )
 
-    const res = await axios.get(api,{
-      responseType:'arraybuffer'
-    })
+    const imgBuffer =
+      Buffer.from(res.data)
 
-    if (!res.data)
-      throw new Error('Sin imagen')
+    /* 🕷️ sticker REAL */
+    const sticker =
+      await writeExifImg(
+        imgBuffer,
+        {
+          packname:'SPIDER BOT',
+          author:'SoyGabo'
+        }
+      )
 
-    /* 🖼️ CREAR STICKER */
-    const stickerBuffer =
-      await createSticker(res.data)
-
-    /* 📤 ENVIAR */
     await sock.sendMessage(from,{
-      sticker: stickerBuffer
+      sticker:{
+        url: sticker
+      }
     },{ quoted:m })
 
-    /* ✅ */
+    /* ✅ reacción */
     await sock.sendMessage(from,{
       react:{
         text:'✅',
@@ -156,15 +105,8 @@ const handler = async ({
     )
 
     await sock.sendMessage(from,{
-      text:'❌ Error al crear el sticker brat'
+      text:'❌ Error al generar sticker brat'
     },{ quoted:m })
-
-    await sock.sendMessage(from,{
-      react:{
-        text:'❌',
-        key:m.key
-      }
-    })
   }
 }
 
