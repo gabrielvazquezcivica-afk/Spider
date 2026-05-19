@@ -22,7 +22,7 @@ async function createSticker(text) {
       `drawtext=text='${text
         .replace(/:/g,'\\:')
         .replace(/'/g,"\\'")
-      }':fontcolor=black:fontsize=22:x=(w-text_w)/2:y=(h-text_h)/2`,
+      }':fontcolor=black:fontsize=58:x=(w-text_w)/2:y=(h-text_h)/2`,
 
       '-frames:v','1',
 
@@ -35,11 +35,8 @@ async function createSticker(text) {
       output
     ])
 
-    ff.stderr.on('data',data=>{
-      console.log(
-        data.toString()
-      )
-    })
+    // 🚫 sin spam consola
+    ff.stderr.on('data',()=>{})
 
     ff.on('close',code=>{
 
