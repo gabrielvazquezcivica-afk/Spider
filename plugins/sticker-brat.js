@@ -63,11 +63,13 @@ async function createSticker(text) {
       '-i','color=c=white:s=512x512',
 
       '-vf',
-      `drawtext=
+`drawtext=
 fontfile=/system/fonts/Roboto-Regular.ttf:
 textfile='${txtFile}':
 fontcolor=black:
 fontsize=60:
+borderw=2:
+bordercolor=black:
 line_spacing=15:
 x=(w-text_w)/2:
 y=(h-text_h)/2`,
