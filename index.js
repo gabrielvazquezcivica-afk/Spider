@@ -379,12 +379,12 @@ sock.ev.on(
                         .toLowerCase()  
 
                 // 🔒 modoadmin  
-                const modoadmin =  
-                    getModoadmin()  
+                const modoadmin =
+    getModoadmin()
 
-                const isBlockedGroup =  
-                    isGroup &&  
-                    modoadmin[from]  
+const isBlockedGroup =
+    isGroup &&
+    modoadmin[from]?.enabled
 
                 console.log(  
                     chalk.cyan(  
