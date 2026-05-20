@@ -3,25 +3,30 @@ import path from 'path'
 import os from 'os'
 import { spawn } from 'child_process'
 
-/* ───── ACOMODAR TEXTO ───── */
-function wrapText(text, maxChars = 13) {
+/* ───── ACOMODAR TEXTO ESTILO MEME ───── */
+function wrapText(text, maxChars = 18) {
 
-  const words = text.split(' ')
+  const words = text.split(/\s+/)
   const lines = []
 
-  let current = ''
+  let line = ''
 
   for (const word of words) {
 
-    // 🔥 palabra enorme
+    // 🔥 si la palabra sola excede
     if (word.length > maxChars) {
 
-      if (current.trim()) {
-        lines.push(current.trim())
-        current = ''
+      if (line.trim()) {
+        lines.push(line.trim())
+        line = ''
       }
 
-      for (let i = 0; i < word.length; i += maxChars) {
+      for (
+        let i = 0;
+        i < word.length;
+        i += maxChars
+      ) {
+
         lines.push(
           word.slice(i, i + maxChars)
         )
@@ -30,37 +35,37 @@ function wrapText(text, maxChars = 13) {
       continue
     }
 
-    // 🔥 acomodar líneas
+    // 🔥 si ya no cabe
     if (
-      (current + ' ' + word)
+      (line + ' ' + word)
         .trim()
         .length > maxChars
     ) {
 
-      lines.push(current.trim())
-      current = word
+      lines.push(line.trim())
+      line = word
 
     } else {
 
-      current += ' ' + word
+      line += ' ' + word
     }
   }
 
-  if (current.trim())
-    lines.push(current.trim())
+  if (line.trim())
+    lines.push(line.trim())
 
-  return lines.join('\n')
+  return lines
 }
 
-/* ───── CALCULAR TAMAÑO ───── */
+/* ───── TAMAÑO DINÁMICO ───── */
 function getFontSize(linesCount) {
 
-  if (linesCount <= 2) return 80
-  if (linesCount <= 4) return 68
-  if (linesCount <= 6) return 58
-  if (linesCount <= 8) return 50
+  if (linesCount <= 3) return 54
+  if (linesCount <= 5) return 46
+  if (linesCount <= 7) return 40
+  if (linesCount <= 10) return 34
 
-  return 42
+  return 28
 }
 
 /* ───── CREAR STICKER ───── */
@@ -76,16 +81,15 @@ async function createSticker(text) {
     `brat_${Date.now()}.txt`
   )
 
-  // 🔥 texto acomodado
-  const formatted =
+  // 🔥 líneas acomodadas
+  const lines =
     wrapText(text)
 
-  const linesCount =
-    formatted.split('\n').length
+  const formatted =
+    lines.join('\n')
 
-  // 🔥 tamaño dinámico
   const fontSize =
-    getFontSize(linesCount)
+    getFontSize(lines.length)
 
   fs.writeFileSync(
     txtFile,
@@ -105,9 +109,10 @@ fontfile=/system/fonts/Roboto-Bold.ttf:
 textfile='${txtFile}':
 fontcolor=black:
 fontsize=${fontSize}:
-line_spacing=18:
+line_spacing=12:
 x=(w-text_w)/2:
-y=(h-text_h)/2`,
+y=(h-text_h)/2:
+borderw=1`,
 
       '-frames:v','1',
 
@@ -120,7 +125,7 @@ y=(h-text_h)/2`,
       output
     ])
 
-    // 🚫 ocultar spam ffmpeg
+    // 🚫 quitar spam consola
     ff.stderr.on('data',()=>{})
 
     ff.on('close',code=>{
