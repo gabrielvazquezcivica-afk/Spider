@@ -4,7 +4,7 @@ import os from 'os'
 import { spawn } from 'child_process'
 
 /* ───── WRAP TEXTO ───── */
-function wrapText(text, maxWidth = 18) {
+function wrapText(text, maxWidth = 24) {
 
   const words = text.split(/\s+/)
   const lines = []
@@ -35,33 +35,43 @@ function wrapText(text, maxWidth = 18) {
   return lines
 }
 
-/* ───── FUENTE DINÁMICA ───── */
-function getFontSize(lines, text) {
+/* ───── FUENTE DINÁMICA REAL ───── */
+function getFontSize(textLength) {
 
-  const len = text.length
+  if (textLength <= 15)
+    return 95
 
-  if (len <= 15) return 90
-  if (len <= 40) return 75
-  if (len <= 80) return 62
-  if (len <= 140) return 50
-  if (len <= 220) return 42
+  if (textLength <= 40)
+    return 75
 
-  return 34
+  if (textLength <= 80)
+    return 58
+
+  if (textLength <= 140)
+    return 46
+
+  if (textLength <= 220)
+    return 36
+
+  if (textLength <= 320)
+    return 30
+
+  return 24
 }
 
 /* ───── CREAR STICKER ───── */
 async function createSticker(text) {
 
-  let maxWidth = 18
-
-  if (text.length > 40)
-    maxWidth = 22
+  let maxWidth = 24
 
   if (text.length > 80)
-    maxWidth = 26
+    maxWidth = 28
 
-  if (text.length > 140)
-    maxWidth = 30
+  if (text.length > 160)
+    maxWidth = 32
+
+  if (text.length > 260)
+    maxWidth = 36
 
   const lines =
     wrapText(text, maxWidth)
@@ -70,7 +80,7 @@ async function createSticker(text) {
     lines.join('\n')
 
   const fontSize =
-    getFontSize(lines, text)
+    getFontSize(text.length)
 
   const output = path.join(
     os.tmpdir(),
@@ -100,7 +110,7 @@ fontfile=/system/fonts/Roboto-Bold.ttf:
 textfile='${txtFile}':
 fontcolor=black:
 fontsize=${fontSize}:
-line_spacing=12:
+line_spacing=4:
 x=(w-text_w)/2:
 y=(h-text_h)/2`,
 
@@ -152,7 +162,7 @@ y=(h-text_h)/2`,
   })
 }
 
-/* ───── TEXTO REPLY ───── */
+/* ───── TEXTO RESPONDIDO ───── */
 function getQuotedText(m) {
 
   const ctx =
@@ -274,14 +284,12 @@ O responde un mensaje con:
     const sticker =
       await createSticker(text)
 
-    /* 📤 ENVIAR */
     await sock.sendMessage(from,{
       sticker
     },{
       quoted:m
     })
 
-    /* ✅ */
     await sock.sendMessage(from,{
       react:{
         text:'✅',
