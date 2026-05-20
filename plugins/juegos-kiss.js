@@ -1,156 +1,128 @@
 import fs from 'fs'
 
+const path = './data/modoadmin.json'
+
+// 📥 DB modoadmin
+function getDB() {
+    try {
+        if (!fs.existsSync(path)) return {}
+        return JSON.parse(fs.readFileSync(path, 'utf-8'))
+    } catch {
+        return {}
+    }
+}
+
 const handler = async ({
-  sock,
-  m,
-  from,
-  sender,
-  isGroup,
-  participants
+    sock,
+    m,
+    from,
+    sender,
+    isGroup,
+    participants
 }) => {
 
-  // ❌ Solo grupos
-  if (!isGroup) return
+    // ❌ Solo grupos
+    if (!isGroup) return
 
-  /* 🔒 MODODADMIN */
-  let groupSettings = {
-    enabled: false
-  }
+    // 🔒 MODODADMIN (TU SISTEMA)
+    const db = getDB()
+    const isBlockedGroup = db[from]
 
-  const modoadminPath =
-    './data/modoadmin.json'
-
-  if (
-    fs.existsSync(modoadminPath)
-  ) {
-
-    try {
-
-      const data =
-        JSON.parse(
-          fs.readFileSync(
-            modoadminPath
-          )
-        )
-
-      groupSettings =
-        data[from] || {
-          enabled: false
-        }
-
-    } catch {
-
-      groupSettings = {
-        enabled: false
-      }
-    }
-  }
-
-  if (groupSettings.enabled) {
-
-    const user =
-      participants.find(
+    const user = participants.find(
         p => p.id === sender
-      )
+    )
 
     const isAdmin =
-      user?.admin === 'admin' ||
-      user?.admin === 'superadmin'
+        user?.admin === 'admin' ||
+        user?.admin === 'superadmin'
 
-    if (!isAdmin) return
-  }
+    if (isBlockedGroup && !isAdmin) return
 
-  /* 👤 TARGET */
-  const ctx =
-    m.message?.extendedTextMessage?.contextInfo ||
-    m.message?.imageMessage?.contextInfo ||
-    m.message?.videoMessage?.contextInfo
+    /* 👤 TARGET */
+    const ctx =
+        m.message?.extendedTextMessage?.contextInfo ||
+        m.message?.imageMessage?.contextInfo ||
+        m.message?.videoMessage?.contextInfo
 
-  let who
+    let who
 
-  if (
-    ctx?.mentionedJid?.length
-  ) {
+    if (ctx?.mentionedJid?.length) {
 
-    who =
-      ctx.mentionedJid[0]
+        who = ctx.mentionedJid[0]
 
-  } else if (
-    ctx?.participant
-  ) {
+    } else if (ctx?.participant) {
 
-    who =
-      ctx.participant
+        who = ctx.participant
 
-  } else {
+    } else {
 
-    who = sender
-  }
-
-  /* ⚡ REACCIÓN */
-  await sock.sendMessage(from,{
-    react:{
-      text:'💋',
-      key:m.key
+        who = sender
     }
-  })
 
-  const name1 =
-    sender.split('@')[0]
+    /* ⚡ REACCIÓN */
+    await sock.sendMessage(from, {
+        react: {
+            text: '💋',
+            key: m.key
+        }
+    })
 
-  const name2 =
-    who.split('@')[0]
+    const name1 =
+        sender.split('@')[0]
 
-  /* 📝 TEXO */
-  let texto
+    const name2 =
+        who.split('@')[0]
 
-  if (who !== sender) {
+    /* 📝 TEXTO */
+    let texto
 
-    texto =
+    if (who !== sender) {
+
+        texto =
 `💋 *@${name1}* le dio besos a *@${name2}* ( ˘ ³˘)♥`
 
-  } else {
+    } else {
 
-    texto =
+        texto =
 `💋 *@${name1}* se besó solito… falta amor 😳`
-  }
+    }
 
-  /* 🎞️ VIDEOS */
-  const videos = [
+    /* 🎞️ VIDEOS */
+    const videos = [
 
-    'https://telegra.ph/file/d6ece99b5011aedd359e8.mp4',
-    'https://telegra.ph/file/ba841c699e9e039deadb3.mp4',
-    'https://telegra.ph/file/6497758a122357bc5bbb7.mp4',
-    'https://telegra.ph/file/8c0f70ed2bfd95a125993.mp4',
-    'https://telegra.ph/file/826ce3530ab20b15a496d.mp4'
-  ]
-
-  const video =
-    videos[
-      Math.floor(
-        Math.random() *
-        videos.length
-      )
+        'https://telegra.ph/file/d6ece99b5011aedd359e8.mp4',
+        'https://telegra.ph/file/ba841c699e9e039deadb3.mp4',
+        'https://telegra.ph/file/6497758a122357bc5bbb7.mp4',
+        'https://telegra.ph/file/8c0f70ed2bfd95a125993.mp4',
+        'https://telegra.ph/file/826ce3530ab20b15a496d.mp4'
     ]
 
-  /* 📤 ENVIAR */
-  await sock.sendMessage(
-    from,
-    {
-      video:{
-        url: video
-      },
-      gifPlayback:true,
-      caption:texto,
-      mentions:[
-        sender,
-        who
-      ]
-    },
-    {
-      quoted:m
-    }
-  )
+    const video =
+        videos[
+            Math.floor(
+                Math.random() *
+                videos.length
+            )
+        ]
+
+    /* 📤 ENVIAR */
+    await sock.sendMessage(
+        from,
+        {
+            video: {
+                url: video
+            },
+            gifPlayback: true,
+            caption: texto,
+            mentions: [
+                sender,
+                who
+            ]
+        },
+        {
+            quoted: m
+        }
+    )
 }
 
 handler.command = ['kiss']
