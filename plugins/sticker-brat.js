@@ -28,9 +28,10 @@ async function createSticker(buffer) {
 
       '-i', tmpIn,
 
-      // 🔥 mantener blanco y negro
+      // 🔥 AQUÍ ESTÁ EL ARREGLO
+      // elimina colores y deja fondo blanco
       '-vf',
-'scale=512:512:force_original_aspect_ratio=decrease,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=white',
+'scale=512:512:force_original_aspect_ratio=decrease,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=white,hue=s=0',
 
       '-vcodec','libwebp',
       '-lossless','1',
