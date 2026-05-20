@@ -97,18 +97,11 @@ Ejemplo:
       'remove'
     )
 
-    // 📩 mensaje
+    // 📩 mensaje limpio
     await sock.sendMessage(from, {
       text:
-`╭━━━〔 🕷️ SPIDER SYSTEM 〕━━━⬣
-┃
-┃ ☠️ Enemigo eliminado
-┃ 👤 Usuario: @${userNum}
-┃ 🕸️ Por:
-┃ ${pushName}
-╰━━━━━━━━━━━━━━━━⬣
-
-> SPIDER BOT`,
+`☠️ USUARIO @${userNum} ELIMINADO 
+🕸️ Por: ${pushName}`,
       mentions: [normalizeJid(userRaw)]
     }, { quoted: m })
 
