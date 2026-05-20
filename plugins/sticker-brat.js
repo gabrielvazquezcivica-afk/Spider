@@ -4,7 +4,7 @@ import os from 'os'
 import axios from 'axios'
 import { spawn } from 'child_process'
 
-/* ───── FUNCIÓN: PNG → WEBP ───── */
+/* ───── PNG → WEBP ───── */
 async function createSticker(buffer) {
 
   const tmpIn = path.join(
@@ -28,13 +28,14 @@ async function createSticker(buffer) {
 
       '-i', tmpIn,
 
+      // 🔥 mantener blanco y negro
       '-vf',
-'format=rgba,scale=512:512:force_original_aspect_ratio=decrease,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=white',
+'scale=512:512:force_original_aspect_ratio=decrease,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=white',
 
       '-vcodec','libwebp',
       '-lossless','1',
       '-loop','0',
-      '-preset','default',
+      '-preset','picture',
       '-an',
       '-vsync','0',
       '-y',
@@ -69,7 +70,7 @@ async function createSticker(buffer) {
   return result
 }
 
-/* ───── OBTENER TEXTO RESPONDIDO ───── */
+/* ───── TEXTO RESPONDIDO ───── */
 function getQuotedText(m) {
 
   const ctx =
@@ -91,7 +92,7 @@ function getQuotedText(m) {
   )
 }
 
-/* ───── DB MODOADMIN ───── */
+/* ───── DB MODODADMIN ───── */
 function getDB() {
 
   try {
@@ -149,11 +150,10 @@ const handler = async ({
     if (!isAdmin) return
   }
 
-  /* 🔥 TEXO */
+  /* 🔥 TEXTO */
   let text =
     args.join(' ').trim()
 
-  // responder mensaje
   if (!text) {
 
     const quotedText =
@@ -211,7 +211,7 @@ O responde un mensaje con:
       )
     }
 
-    /* 🔹 CREAR STICKER */
+    /* 🔹 STICKER */
     const sticker =
       await createSticker(
         res.data
