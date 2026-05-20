@@ -4,7 +4,7 @@ import os from 'os'
 import { spawn } from 'child_process'
 
 /* ───── WRAP TEXTO ───── */
-function wrapText(text, maxWidth = 30) {
+function wrapText(text, maxWidth = 18) {
 
   const words = text.split(/\s+/)
   const lines = []
@@ -36,27 +36,24 @@ function wrapText(text, maxWidth = 30) {
 }
 
 /* ───── FUENTE DINÁMICA ───── */
-function getFontSize(lines, text) {
+function getFontSize(lines) {
 
-  const totalLines =
+  const total =
     lines.length
 
-  if (totalLines <= 2)
-    return 90
-
-  if (totalLines <= 4)
+  if (total <= 2)
     return 72
 
-  if (totalLines <= 6)
+  if (total <= 4)
     return 58
 
-  if (totalLines <= 8)
+  if (total <= 6)
     return 48
 
-  if (totalLines <= 10)
+  if (total <= 8)
     return 40
 
-  if (totalLines <= 12)
+  if (total <= 10)
     return 34
 
   return 28
@@ -65,16 +62,16 @@ function getFontSize(lines, text) {
 /* ───── CREAR STICKER ───── */
 async function createSticker(text) {
 
-  let maxWidth = 30
+  let maxWidth = 18
+
+  if (text.length > 40)
+    maxWidth = 22
 
   if (text.length > 80)
-    maxWidth = 34
+    maxWidth = 26
 
   if (text.length > 160)
-    maxWidth = 38
-
-  if (text.length > 260)
-    maxWidth = 42
+    maxWidth = 30
 
   const lines =
     wrapText(text, maxWidth)
@@ -83,7 +80,7 @@ async function createSticker(text) {
     lines.join('\n')
 
   const fontSize =
-    getFontSize(lines, text)
+    getFontSize(lines)
 
   const output = path.join(
     os.tmpdir(),
@@ -113,8 +110,9 @@ fontfile=/system/fonts/Roboto-Bold.ttf:
 textfile='${txtFile}':
 fontcolor=black:
 fontsize=${fontSize}:
-line_spacing=1:
-x=(w-text_w)/2:
+line_spacing=2:
+fix_bounds=true:
+x=25:
 y=(h-text_h)/2`,
 
       '-frames:v','1',
