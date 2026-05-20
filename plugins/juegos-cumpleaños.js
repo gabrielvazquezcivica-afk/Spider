@@ -59,11 +59,17 @@ const handler = async (ctx) => {
           enabled:false
         }
 
-    } catch {}
+    } catch {
+
+      groupSettings = {
+        enabled:false
+      }
+    }
   }
 
   if (
-    groupSettings.enabled
+    groupSettings.enabled &&
+    isGroup
   ) {
 
     const user =
@@ -171,7 +177,7 @@ ${frase}
     }
   )
 
-  /* ✅ */
+  /* ✅ REACCIÓN FINAL */
   await sock.sendMessage(from,{
     react:{
       text:'🎂',
