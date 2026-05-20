@@ -78,19 +78,27 @@ async function loadPlugins() {
 
         try {
 
-            const module = await import(
-                `file://${path.join(
+            const filePath =
+                path.join(
                     pluginsPath,
                     file
-                )}?update=${Date.now()}`
-            )
+                )
 
-            const handler = module.default
+            const module =
+                await import(
+                    `file://${filePath}?update=${fs.statSync(filePath).mtimeMs}`
+                )
 
-            if (typeof handler === 'function') {
+            const handler =
+                module.default
+
+            if (
+                typeof handler === 'function'
+            ) {
 
                 if (module.before) {
-                    handler.before = module.before
+                    handler.before =
+                        module.before
                 }
 
                 plugins.push(handler)
@@ -117,19 +125,23 @@ async function loadPlugins() {
 }
 
 // 👀 autoreload
-fs.watch(pluginsPath, async (_, file) => {
+fs.watch(
+    pluginsPath,
+    async (_, file) => {
 
-    if (!file?.endsWith('.js'))
-        return
+        if (
+            !file?.endsWith('.js')
+        ) return
 
-    console.log(
-        chalk.yellow(
-            `♻️ Recargando ${file}...`
+        console.log(
+            chalk.yellow(
+                `♻️ Recargando ${file}...`
+            )
         )
-    )
 
-    await loadPlugins()
-})
+        await loadPlugins()
+    }
+)
 
 // 🚀 iniciar
 async function start() {
@@ -137,7 +149,9 @@ async function start() {
     if (sockGlobal?.ev) {
 
         try {
+
             sockGlobal.ev.removeAllListeners()
+
         } catch {}
     }
 
@@ -191,8 +205,8 @@ async function start() {
 
     }, 1000 * 60 * 10)
 
-    // 🔄 reinicio automático
-    setInterval(() => {
+    // 🔄 reinicio automático limpio
+    setInterval(async () => {
 
         console.log(
             chalk.yellow(
@@ -200,7 +214,15 @@ async function start() {
             )
         )
 
-        process.exit()
+        try {
+
+            if (sockGlobal?.ws) {
+                sockGlobal.ws.close()
+            }
+
+        } catch {}
+
+        start()
 
     }, 1000 * 60 * 30)
 
@@ -211,7 +233,10 @@ async function start() {
 
             try {
 
-                for (const plugin of plugins) {
+                for (
+                    const plugin
+                    of plugins
+                ) {
 
                     if (
                         typeof plugin.before === 'function'
@@ -236,10 +261,48 @@ async function start() {
         }
     )
 
+    // 🕷️ cambios grupo
+    sock.ev.on(
+        'groups.update',
+        async (update) => {
+
+            try {
+
+                for (
+                    const plugin
+                    of plugins
+                ) {
+
+                    if (
+                        typeof plugin.before === 'function'
+                    ) {
+
+                        await plugin.before({
+                            sock,
+                            groupsUpdate:update
+                        })
+                    }
+                }
+
+            } catch (err) {
+
+                console.log(
+                    chalk.red(
+                        'Error autodetect:'
+                    ),
+                    err
+                )
+            }
+        }
+    )
+
     // 📨 mensajes
     sock.ev.on(
         'messages.upsert',
-        async ({ messages, type }) => {
+        async ({
+            messages,
+            type
+        }) => {
 
             if (type !== 'notify')
                 return
@@ -328,9 +391,11 @@ async function start() {
                     let groupName =
                         'Privado'
 
-                    let groupMetadata = null
+                    let groupMetadata =
+                        null
 
-                    let participants = []
+                    let participants =
+                        []
 
                     // 👥 metadata cache
                     if (isGroup) {
@@ -379,10 +444,14 @@ async function start() {
                         isGroup &&
                         modoadmin[from]
 
-                    for (const handler of plugins) {
+                    for (
+                        const handler
+                        of plugins
+                    ) {
 
-                        if (!handler.command)
-                            continue
+                        if (
+                            !handler.command
+                        ) continue
 
                         const commands =
                             Array.isArray(
@@ -470,7 +539,9 @@ async function start() {
                 } catch (err) {
 
                     console.log(
-                        chalk.red('Error:'),
+                        chalk.red(
+                            'Error:'
+                        ),
                         err
                     )
                 }
@@ -483,7 +554,9 @@ async function start() {
         'connection.update',
         ({ connection }) => {
 
-            if (connection === 'close') {
+            if (
+                connection === 'close'
+            ) {
 
                 console.log(
                     chalk.red(
@@ -491,7 +564,10 @@ async function start() {
                     )
                 )
 
-                setTimeout(start, 2000)
+                setTimeout(
+                    start,
+                    2000
+                )
             }
         }
     )
