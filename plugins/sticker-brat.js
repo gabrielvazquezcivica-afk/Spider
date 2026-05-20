@@ -13,7 +13,6 @@ function wrapText(text, maxChars = 18) {
 
   for (const word of words) {
 
-    // 🔥 si la palabra sola excede
     if (word.length > maxChars) {
 
       if (line.trim()) {
@@ -35,7 +34,6 @@ function wrapText(text, maxChars = 18) {
       continue
     }
 
-    // 🔥 si ya no cabe
     if (
       (line + ' ' + word)
         .trim()
@@ -81,7 +79,6 @@ async function createSticker(text) {
     `brat_${Date.now()}.txt`
   )
 
-  // 🔥 líneas acomodadas
   const lines =
     wrapText(text)
 
@@ -125,7 +122,6 @@ borderw=1`,
       output
     ])
 
-    // 🚫 quitar spam consola
     ff.stderr.on('data',()=>{})
 
     ff.on('close',code=>{
@@ -163,6 +159,27 @@ borderw=1`,
   })
 }
 
+/* ───── OBTENER TEXTO ───── */
+function getQuotedText(m) {
+
+  const ctx =
+    m.message?.extendedTextMessage?.contextInfo
+
+  const quoted =
+    ctx?.quotedMessage
+
+  if (!quoted)
+    return null
+
+  return (
+    quoted.conversation ||
+    quoted.extendedTextMessage?.text ||
+    quoted.imageMessage?.caption ||
+    quoted.videoMessage?.caption ||
+    null
+  )
+}
+
 /* ───── COMANDO ───── */
 const handler = async ({
   sock,
@@ -171,17 +188,32 @@ const handler = async ({
   args
 }) => {
 
-  const text =
+  // 🔥 prioridad:
+  // texto escrito > reply
+
+  let text =
     args.join(' ').trim()
+
+  if (!text) {
+
+    const quotedText =
+      getQuotedText(m)
+
+    if (quotedText)
+      text = quotedText
+  }
 
   if (!text) {
 
     return sock.sendMessage(from,{
       text:
-`❌ Escribe un texto
+`❌ Escribe o responde un mensaje
 
 Ejemplo:
-.brat ya te vimos cállate`
+.brat hola
+
+O responde un texto con:
+.brat`
     },{
       quoted:m
     })
@@ -207,7 +239,7 @@ Ejemplo:
       quoted:m
     })
 
-    // ✅ reacción final
+    // ✅ reacción
     await sock.sendMessage(from,{
       react:{
         text:'✅',
