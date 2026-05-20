@@ -1,82 +1,160 @@
 import fs from 'fs'
 import path from 'path'
 import os from 'os'
-import axios from 'axios'
 import { spawn } from 'child_process'
 
-/* ───── PNG → WEBP ───── */
-async function createSticker(buffer) {
+/* ───── WRAP TEXTO ───── */
+function wrapText(text, maxWidth = 10) {
 
-  const tmpIn = path.join(
-    os.tmpdir(),
-    `brat_${Date.now()}.png`
-  )
+  const words = text.split(/\s+/)
+  const lines = []
 
-  const tmpOut = path.join(
+  let line = ''
+
+  for (const word of words) {
+
+    const test =
+      (line + ' ' + word).trim()
+
+    if (test.length > maxWidth) {
+
+      if (line)
+        lines.push(line)
+
+      line = word
+
+    } else {
+
+      line = test
+    }
+  }
+
+  if (line)
+    lines.push(line)
+
+  return lines
+}
+
+/* ───── FUENTE DINÁMICA ───── */
+function getFontSize(lines) {
+
+  const total = lines.length
+
+  if (total <= 2) return 95
+  if (total <= 4) return 80
+  if (total <= 6) return 68
+  if (total <= 8) return 58
+  if (total <= 10) return 50
+
+  return 42
+}
+
+/* ───── CREAR STICKER ───── */
+async function createSticker(text) {
+
+  let maxWidth = 10
+
+  if (text.length > 40)
+    maxWidth = 12
+
+  if (text.length > 80)
+    maxWidth = 14
+
+  if (text.length > 140)
+    maxWidth = 16
+
+  const lines =
+    wrapText(text, maxWidth)
+
+  const formatted =
+    lines.join('\n')
+
+  const fontSize =
+    getFontSize(lines)
+
+  const output = path.join(
     os.tmpdir(),
     `brat_${Date.now()}.webp`
   )
 
-  fs.writeFileSync(
-    tmpIn,
-    buffer
+  const txtFile = path.join(
+    os.tmpdir(),
+    `brat_${Date.now()}.txt`
   )
 
-  await new Promise((resolve,reject)=>{
+  fs.writeFileSync(
+    txtFile,
+    formatted
+  )
+
+  return new Promise((resolve,reject)=>{
 
     const ff = spawn('ffmpeg',[
 
-      '-i', tmpIn,
+      '-f','lavfi',
+      '-i','color=c=white:s=512x512',
 
-      // 🔥 ESTE SÍ LO DEJA COMO EL ORIGINAL
-      // blanco y negro SIN colores
       '-vf',
-'format=gray,negate,scale=512:512:force_original_aspect_ratio=decrease,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=white',
+`drawtext=
+fontfile=/system/fonts/Roboto-Regular.ttf:
+textfile='${txtFile}':
+fontcolor=black:
+fontsize=${fontSize}:
+line_spacing=12:
+x=(w-text_w)/2:
+y=(h-text_h)/2`,
+
+      '-frames:v','1',
 
       '-vcodec','libwebp',
       '-lossless','1',
-      '-loop','0',
+      '-q:v','100',
       '-preset','picture',
-      '-an',
-      '-vsync','0',
-      '-y',
 
-      tmpOut
+      '-y',
+      output
     ])
 
-    ff.on(
-      'close',
-      code =>
-        code === 0
-          ? resolve()
-          : reject(
-              new Error(
-                'FFmpeg fallo'
-              )
-            )
-    )
+    ff.stderr.on('data',()=>{})
+
+    ff.on('close',code=>{
+
+      try {
+        fs.unlinkSync(txtFile)
+      } catch {}
+
+      if(code !== 0)
+        return reject(
+          new Error('FFmpeg falló')
+        )
+
+      try {
+
+        const buffer =
+          fs.readFileSync(output)
+
+        fs.unlinkSync(output)
+
+        resolve(buffer)
+
+      } catch(e){
+
+        reject(e)
+      }
+    })
 
     ff.on(
       'error',
       reject
     )
   })
-
-  const result =
-    fs.readFileSync(tmpOut)
-
-  fs.unlinkSync(tmpIn)
-  fs.unlinkSync(tmpOut)
-
-  return result
 }
 
-/* ───── TEXTO RESPONDIDO ───── */
+/* ───── OBTENER TEXTO REPLY ───── */
 function getQuotedText(m) {
 
   const ctx =
-    m.message?.extendedTextMessage
-      ?.contextInfo
+    m.message?.extendedTextMessage?.contextInfo
 
   const quoted =
     ctx?.quotedMessage
@@ -93,65 +171,59 @@ function getQuotedText(m) {
   )
 }
 
-/* ───── DB MODODADMIN ───── */
-function getDB() {
-
-  try {
-
-    const pathDB =
-      './data/modoadmin.json'
-
-    if (!fs.existsSync(pathDB))
-      return {}
-
-    return JSON.parse(
-      fs.readFileSync(
-        pathDB,
-        'utf-8'
-      )
-    )
-
-  } catch {
-
-    return {}
-  }
-}
-
 /* ───── COMANDO ───── */
 const handler = async ({
   sock,
   m,
   from,
+  args,
   sender,
-  isGroup,
-  participants,
-  args
+  isGroup
 }) => {
 
   /* 🔒 MODODADMIN */
-  const db = getDB()
-
-  const isBlockedGroup =
-    db[from]?.enabled
+  const modoadminPath =
+    './data/modoadmin.json'
 
   if (
-    isBlockedGroup &&
-    isGroup
+    fs.existsSync(modoadminPath)
   ) {
 
-    const user =
-      participants?.find(
-        p => p.id === sender
-      )
+    try {
 
-    const isAdmin =
-      user?.admin === 'admin' ||
-      user?.admin === 'superadmin'
+      const data =
+        JSON.parse(
+          fs.readFileSync(
+            modoadminPath
+          )
+        )
 
-    if (!isAdmin) return
+      if (
+        data[from]?.enabled &&
+        isGroup
+      ) {
+
+        const metadata =
+          await sock.groupMetadata(from)
+
+        const participants =
+          metadata.participants || []
+
+        const user =
+          participants.find(
+            p => p.id === sender
+          )
+
+        const isAdmin =
+          user?.admin === 'admin' ||
+          user?.admin === 'superadmin'
+
+        if (!isAdmin) return
+      }
+
+    } catch {}
   }
 
-  /* 🔥 TEXTO */
   let text =
     args.join(' ').trim()
 
@@ -171,16 +243,12 @@ const handler = async ({
 `❌ Escribe un texto
 
 Ejemplo:
-.brat hola
-
-O responde un mensaje con:
-.brat`
+.brat hola`
     },{
       quoted:m
     })
   }
 
-  /* 🎨 REACCIÓN */
   await sock.sendMessage(from,{
     react:{
       text:'🎨',
@@ -190,42 +258,15 @@ O responde un mensaje con:
 
   try {
 
-    /* 🔹 API BRAT */
-    const res =
-      await axios.get(
-        'https://kepolu-brat.hf.space/brat',
-        {
-          params:{
-            q:text
-          },
-          responseType:'arraybuffer'
-        }
-      )
-
-    if (
-      !res.data ||
-      !res.data.byteLength
-    ) {
-
-      throw new Error(
-        'Respuesta vacía'
-      )
-    }
-
-    /* 🔹 STICKER */
     const sticker =
-      await createSticker(
-        res.data
-      )
+      await createSticker(text)
 
-    /* 📤 ENVIAR */
     await sock.sendMessage(from,{
       sticker
     },{
       quoted:m
     })
 
-    /* ✅ */
     await sock.sendMessage(from,{
       react:{
         text:'✅',
@@ -241,8 +282,7 @@ O responde un mensaje con:
     )
 
     await sock.sendMessage(from,{
-      text:
-'❌ Error al generar sticker'
+      text:'❌ Error al generar sticker'
     },{
       quoted:m
     })
@@ -253,6 +293,5 @@ handler.command = ['brat']
 handler.tags = ['stickers']
 handler.help = ['brat <texto>']
 handler.menu = true
-handler.group = false
 
 export default handler
