@@ -15,14 +15,16 @@ const frases = [
   '🏳️‍🌈 Certificado oficialmente'
 ]
 
-const handler = async ({
-  sock,
-  m,
-  from,
-  sender,
-  isGroup,
-  participants
-}) => {
+const handler = async (ctx) => {
+
+  const {
+    sock,
+    m,
+    from,
+    sender,
+    isGroup,
+    participants
+  } = ctx
 
   /* 🔒 MODODADMIN */
   let groupSettings = {
@@ -71,7 +73,7 @@ const handler = async ({
   }
 
   /* 👤 TARGET */
-  const ctx =
+  const msgCtx =
     m.message?.extendedTextMessage?.contextInfo ||
     m.message?.imageMessage?.contextInfo ||
     m.message?.videoMessage?.contextInfo
@@ -79,18 +81,18 @@ const handler = async ({
   let who
 
   if (
-    ctx?.mentionedJid?.length
+    msgCtx?.mentionedJid?.length
   ) {
 
     who =
-      ctx.mentionedJid[0]
+      msgCtx.mentionedJid[0]
 
   } else if (
-    ctx?.participant
+    msgCtx?.participant
   ) {
 
     who =
-      ctx.participant
+      msgCtx.participant
 
   } else {
 
@@ -124,7 +126,7 @@ const handler = async ({
 'https://telegra.ph/file/24fa902ead26340f3df2c.png'
     }
 
-    /* 🌈 EFECTO */
+    /* 🌈 EFECTO GAY */
     const api =
 `https://some-random-api.com/canvas/gay?avatar=${encodeURIComponent(pfp)}`
 
@@ -147,7 +149,7 @@ const handler = async ({
       {
         image: Buffer.from(res.data),
         caption:
-`🏳️‍🌈 GAY DETECTOR 🏳️‍🌈
+`🏳️‍🌈 *GAY DETECTOR* 🏳️‍🌈
 
 👤 @${who.split('@')[0]}
 
@@ -159,6 +161,7 @@ ${frase}`,
       }
     )
 
+    /* ✅ REACCIÓN FINAL */
     await sock.sendMessage(from,{
       react:{
         text:'✅',
