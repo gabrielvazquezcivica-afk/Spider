@@ -4,7 +4,7 @@ import os from 'os'
 import { spawn } from 'child_process'
 
 /* ───── WRAP TEXTO ───── */
-function wrapText(text, maxWidth = 24) {
+function wrapText(text, maxWidth = 30) {
 
   const words = text.split(/\s+/)
   const lines = []
@@ -35,43 +35,46 @@ function wrapText(text, maxWidth = 24) {
   return lines
 }
 
-/* ───── FUENTE DINÁMICA REAL ───── */
-function getFontSize(textLength) {
+/* ───── FUENTE DINÁMICA ───── */
+function getFontSize(lines, text) {
 
-  if (textLength <= 15)
-    return 95
+  const totalLines =
+    lines.length
 
-  if (textLength <= 40)
-    return 75
+  if (totalLines <= 2)
+    return 90
 
-  if (textLength <= 80)
+  if (totalLines <= 4)
+    return 72
+
+  if (totalLines <= 6)
     return 58
 
-  if (textLength <= 140)
-    return 46
+  if (totalLines <= 8)
+    return 48
 
-  if (textLength <= 220)
-    return 36
+  if (totalLines <= 10)
+    return 40
 
-  if (textLength <= 320)
-    return 30
+  if (totalLines <= 12)
+    return 34
 
-  return 24
+  return 28
 }
 
 /* ───── CREAR STICKER ───── */
 async function createSticker(text) {
 
-  let maxWidth = 24
+  let maxWidth = 30
 
   if (text.length > 80)
-    maxWidth = 28
+    maxWidth = 34
 
   if (text.length > 160)
-    maxWidth = 32
+    maxWidth = 38
 
   if (text.length > 260)
-    maxWidth = 36
+    maxWidth = 42
 
   const lines =
     wrapText(text, maxWidth)
@@ -80,7 +83,7 @@ async function createSticker(text) {
     lines.join('\n')
 
   const fontSize =
-    getFontSize(text.length)
+    getFontSize(lines, text)
 
   const output = path.join(
     os.tmpdir(),
@@ -110,7 +113,7 @@ fontfile=/system/fonts/Roboto-Bold.ttf:
 textfile='${txtFile}':
 fontcolor=black:
 fontsize=${fontSize}:
-line_spacing=4:
+line_spacing=1:
 x=(w-text_w)/2:
 y=(h-text_h)/2`,
 
@@ -284,12 +287,14 @@ O responde un mensaje con:
     const sticker =
       await createSticker(text)
 
+    /* 📤 ENVIAR */
     await sock.sendMessage(from,{
       sticker
     },{
       quoted:m
     })
 
+    /* ✅ */
     await sock.sendMessage(from,{
       react:{
         text:'✅',
@@ -317,6 +322,5 @@ handler.command = ['brat']
 handler.tags = ['stickers']
 handler.help = ['brat <texto>']
 handler.menu = true
-handler.group = false
 
 export default handler
