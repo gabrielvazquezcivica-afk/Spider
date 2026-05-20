@@ -4,31 +4,31 @@ import os from 'os'
 import { spawn } from 'child_process'
 
 /* ───── ACOMODAR TEXTO ───── */
-function wrapText(text, max = 10) {
+function wrapText(text, maxChars = 14) {
 
   const words = text.split(' ')
   const lines = []
 
-  let line = ''
+  let current = ''
 
   for (const word of words) {
 
+    // 🔥 si agregar palabra supera límite
     if (
-      (line + word).length > max
+      (current + ' ' + word).trim().length > maxChars
     ) {
 
-      lines.push(
-        line.trim()
-      )
+      lines.push(current.trim())
+      current = word
 
-      line = ''
+    } else {
+
+      current += ' ' + word
     }
-
-    line += word + ' '
   }
 
-  if (line.trim())
-    lines.push(line.trim())
+  if (current.trim())
+    lines.push(current.trim())
 
   return lines.join('\n')
 }
@@ -46,7 +46,7 @@ async function createSticker(text) {
     `brat_${Date.now()}.txt`
   )
 
-  // 🔥 texto acomodado
+  // 🔥 acomoda texto automáticamente
   const formatted =
     wrapText(text)
 
@@ -63,12 +63,12 @@ async function createSticker(text) {
       '-i','color=c=white:s=512x512',
 
       '-vf',
-      `drawtext=
-fontfile=/system/fonts/Roboto-Regular.ttf:
+`drawtext=
+fontfile=/system/fonts/Roboto-Bold.ttf:
 textfile='${txtFile}':
 fontcolor=black:
-fontsize=60:
-line_spacing=15:
+fontsize=72:
+line_spacing=20:
 x=(w-text_w)/2:
 y=(h-text_h)/2`,
 
@@ -83,14 +83,13 @@ y=(h-text_h)/2`,
       output
     ])
 
+    // 🚫 sin spam consola
     ff.stderr.on('data',()=>{})
 
     ff.on('close',code=>{
 
       try {
-
         fs.unlinkSync(txtFile)
-
       } catch {}
 
       if(code !== 0)
@@ -141,9 +140,12 @@ const handler = async ({
 
 Ejemplo:
 .brat ya te vimos cállate`
-    },{ quoted:m })
+    },{
+      quoted:m
+    })
   }
 
+  // 🎨 reacción
   await sock.sendMessage(from,{
     react:{
       text:'🎨',
@@ -156,12 +158,14 @@ Ejemplo:
     const sticker =
       await createSticker(text)
 
+    // 📤 enviar sticker
     await sock.sendMessage(from,{
       sticker
     },{
       quoted:m
     })
 
+    // ✅ reacción final
     await sock.sendMessage(from,{
       react:{
         text:'✅',
