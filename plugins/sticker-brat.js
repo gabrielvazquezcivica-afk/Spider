@@ -4,7 +4,7 @@ import os from 'os'
 import { spawn } from 'child_process'
 
 /* ───── WRAP TEXTO ───── */
-function wrapText(text, maxWidth = 10) {
+function wrapText(text, maxWidth = 18) {
 
   const words = text.split(/\s+/)
   const lines = []
@@ -36,32 +36,32 @@ function wrapText(text, maxWidth = 10) {
 }
 
 /* ───── FUENTE DINÁMICA ───── */
-function getFontSize(lines) {
+function getFontSize(lines, text) {
 
-  const total = lines.length
+  const len = text.length
 
-  if (total <= 2) return 95
-  if (total <= 4) return 80
-  if (total <= 6) return 68
-  if (total <= 8) return 58
-  if (total <= 10) return 50
+  if (len <= 15) return 90
+  if (len <= 40) return 75
+  if (len <= 80) return 62
+  if (len <= 140) return 50
+  if (len <= 220) return 42
 
-  return 42
+  return 34
 }
 
 /* ───── CREAR STICKER ───── */
 async function createSticker(text) {
 
-  let maxWidth = 10
+  let maxWidth = 18
 
   if (text.length > 40)
-    maxWidth = 12
+    maxWidth = 22
 
   if (text.length > 80)
-    maxWidth = 14
+    maxWidth = 26
 
   if (text.length > 140)
-    maxWidth = 16
+    maxWidth = 30
 
   const lines =
     wrapText(text, maxWidth)
@@ -70,7 +70,7 @@ async function createSticker(text) {
     lines.join('\n')
 
   const fontSize =
-    getFontSize(lines)
+    getFontSize(lines, text)
 
   const output = path.join(
     os.tmpdir(),
@@ -96,7 +96,7 @@ async function createSticker(text) {
 
       '-vf',
 `drawtext=
-fontfile=/system/fonts/Roboto-Regular.ttf:
+fontfile=/system/fonts/Roboto-Bold.ttf:
 textfile='${txtFile}':
 fontcolor=black:
 fontsize=${fontSize}:
@@ -125,7 +125,9 @@ y=(h-text_h)/2`,
 
       if(code !== 0)
         return reject(
-          new Error('FFmpeg falló')
+          new Error(
+            'FFmpeg falló'
+          )
         )
 
       try {
@@ -150,11 +152,12 @@ y=(h-text_h)/2`,
   })
 }
 
-/* ───── OBTENER TEXTO REPLY ───── */
+/* ───── TEXTO REPLY ───── */
 function getQuotedText(m) {
 
   const ctx =
-    m.message?.extendedTextMessage?.contextInfo
+    m.message?.extendedTextMessage
+      ?.contextInfo
 
   const quoted =
     ctx?.quotedMessage
@@ -171,59 +174,65 @@ function getQuotedText(m) {
   )
 }
 
+/* ───── DB MODODADMIN ───── */
+function getDB() {
+
+  try {
+
+    const pathDB =
+      './data/modoadmin.json'
+
+    if (!fs.existsSync(pathDB))
+      return {}
+
+    return JSON.parse(
+      fs.readFileSync(
+        pathDB,
+        'utf-8'
+      )
+    )
+
+  } catch {
+
+    return {}
+  }
+}
+
 /* ───── COMANDO ───── */
 const handler = async ({
   sock,
   m,
   from,
-  args,
   sender,
-  isGroup
+  isGroup,
+  participants,
+  args
 }) => {
 
   /* 🔒 MODODADMIN */
-  const modoadminPath =
-    './data/modoadmin.json'
+  const db = getDB()
+
+  const isBlockedGroup =
+    db[from]
 
   if (
-    fs.existsSync(modoadminPath)
+    isBlockedGroup &&
+    isGroup
   ) {
 
-    try {
+    const user =
+      participants?.find(
+        p => p.id === sender
+      )
 
-      const data =
-        JSON.parse(
-          fs.readFileSync(
-            modoadminPath
-          )
-        )
+    const isAdmin =
+      user?.admin === 'admin' ||
+      user?.admin === 'superadmin'
 
-      if (
-        data[from]?.enabled &&
-        isGroup
-      ) {
-
-        const metadata =
-          await sock.groupMetadata(from)
-
-        const participants =
-          metadata.participants || []
-
-        const user =
-          participants.find(
-            p => p.id === sender
-          )
-
-        const isAdmin =
-          user?.admin === 'admin' ||
-          user?.admin === 'superadmin'
-
-        if (!isAdmin) return
-      }
-
-    } catch {}
+    if (!isAdmin) return
   }
 
+  /* 🔥 TEXTO */
   let text =
     args.join(' ').trim()
 
@@ -243,12 +252,16 @@ const handler = async ({
 `❌ Escribe un texto
 
 Ejemplo:
-.brat hola`
+.brat hola
+
+O responde un mensaje con:
+.brat`
     },{
       quoted:m
     })
   }
 
+  /* 🎨 REACCIÓN */
   await sock.sendMessage(from,{
     react:{
       text:'🎨',
@@ -261,12 +274,14 @@ Ejemplo:
     const sticker =
       await createSticker(text)
 
+    /* 📤 ENVIAR */
     await sock.sendMessage(from,{
       sticker
     },{
       quoted:m
     })
 
+    /* ✅ */
     await sock.sendMessage(from,{
       react:{
         text:'✅',
@@ -282,7 +297,8 @@ Ejemplo:
     )
 
     await sock.sendMessage(from,{
-      text:'❌ Error al generar sticker'
+      text:
+'❌ Error al generar sticker'
     },{
       quoted:m
     })
@@ -293,5 +309,6 @@ handler.command = ['brat']
 handler.tags = ['stickers']
 handler.help = ['brat <texto>']
 handler.menu = true
+handler.group = false
 
 export default handler
