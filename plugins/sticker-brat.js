@@ -3,8 +3,8 @@ import path from 'path'
 import os from 'os'
 import { spawn } from 'child_process'
 
-/* ───── ACOMODAR TEXTO ESTILO MEME ───── */
-function wrapText(text, maxChars = 18) {
+/* ───── AJUSTAR TEXTO AUTOMÁTICO ───── */
+function wrapText(text, maxWidth = 18) {
 
   const words = text.split(/\s+/)
   const lines = []
@@ -13,7 +13,8 @@ function wrapText(text, maxChars = 18) {
 
   for (const word of words) {
 
-    if (word.length > maxChars) {
+    // 🔥 palabras enormes
+    if (word.length > maxWidth) {
 
       if (line.trim()) {
         lines.push(line.trim())
@@ -23,29 +24,28 @@ function wrapText(text, maxChars = 18) {
       for (
         let i = 0;
         i < word.length;
-        i += maxChars
+        i += maxWidth
       ) {
 
         lines.push(
-          word.slice(i, i + maxChars)
+          word.slice(i, i + maxWidth)
         )
       }
 
       continue
     }
 
-    if (
-      (line + ' ' + word)
-        .trim()
-        .length > maxChars
-    ) {
+    const test =
+      (line + ' ' + word).trim()
+
+    if (test.length > maxWidth) {
 
       lines.push(line.trim())
       line = word
 
     } else {
 
-      line += ' ' + word
+      line = test
     }
   }
 
@@ -55,19 +55,63 @@ function wrapText(text, maxChars = 18) {
   return lines
 }
 
-/* ───── TAMAÑO DINÁMICO ───── */
-function getFontSize(linesCount) {
+/* ───── CALCULAR FUENTE ───── */
+function calculateFont(lines) {
 
-  if (linesCount <= 3) return 54
-  if (linesCount <= 5) return 46
-  if (linesCount <= 7) return 40
-  if (linesCount <= 10) return 34
+  const longest =
+    Math.max(
+      ...lines.map(l => l.length)
+    )
 
-  return 28
+  const total =
+    lines.length
+
+  // 🔥 mientras más texto:
+  // reduce tamaño y ensancha
+
+  if (total <= 2 && longest <= 10)
+    return 78
+
+  if (total <= 4 && longest <= 15)
+    return 64
+
+  if (total <= 6)
+    return 52
+
+  if (total <= 8)
+    return 44
+
+  return 36
 }
 
 /* ───── CREAR STICKER ───── */
 async function createSticker(text) {
+
+  // 🔥 ancho dinámico
+  let maxWidth = 18
+
+  if (text.length > 80)
+    maxWidth = 22
+
+  if (text.length > 140)
+    maxWidth = 26
+
+  if (text.length > 220)
+    maxWidth = 30
+
+  // 🔥 acomodar texto
+  const lines =
+    wrapText(
+      text,
+      maxWidth
+    )
+
+  const formatted =
+    lines.join('\n')
+
+  // 🔥 fuente dinámica
+  const fontSize =
+    calculateFont(lines)
 
   const output = path.join(
     os.tmpdir(),
@@ -78,15 +122,6 @@ async function createSticker(text) {
     os.tmpdir(),
     `brat_${Date.now()}.txt`
   )
-
-  const lines =
-    wrapText(text)
-
-  const formatted =
-    lines.join('\n')
-
-  const fontSize =
-    getFontSize(lines.length)
 
   fs.writeFileSync(
     txtFile,
@@ -106,7 +141,7 @@ fontfile=/system/fonts/Roboto-Bold.ttf:
 textfile='${txtFile}':
 fontcolor=black:
 fontsize=${fontSize}:
-line_spacing=12:
+line_spacing=10:
 x=(w-text_w)/2:
 y=(h-text_h)/2:
 borderw=1`,
@@ -122,6 +157,7 @@ borderw=1`,
       output
     ])
 
+    // 🚫 quitar spam consola
     ff.stderr.on('data',()=>{})
 
     ff.on('close',code=>{
@@ -159,7 +195,7 @@ borderw=1`,
   })
 }
 
-/* ───── OBTENER TEXTO ───── */
+/* ───── OBTENER TEXTO RESPONDIDO ───── */
 function getQuotedText(m) {
 
   const ctx =
@@ -212,7 +248,7 @@ const handler = async ({
 Ejemplo:
 .brat hola
 
-O responde un texto con:
+O responde un mensaje con:
 .brat`
     },{
       quoted:m
@@ -232,7 +268,7 @@ O responde un texto con:
     const sticker =
       await createSticker(text)
 
-    // 📤 enviar sticker
+    // 📤 enviar
     await sock.sendMessage(from,{
       sticker
     },{
