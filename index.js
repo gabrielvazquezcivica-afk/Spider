@@ -17,6 +17,9 @@ const pluginsPath = path.join(__dirname, 'plugins')
 let plugins = []
 let sockGlobal
 
+// ⚡ CACHE GLOBAL
+global.groupCache = {}
+
 // 🔒 MODODADMIN
 const modoadminPath = './data/modoadmin.json'
 
@@ -165,6 +168,42 @@ async function start() {
 
     const startTime = Date.now()
 
+    // 🧹 limpiar cache grupos
+    setInterval(() => {
+
+        global.groupCache = {}
+
+    }, 1000 * 60 * 5)
+
+    // 🧹 limpiar tmp
+    setInterval(() => {
+
+        try {
+
+            fs.rmSync('./tmp', {
+                recursive: true,
+                force: true
+            })
+
+            fs.mkdirSync('./tmp')
+
+        } catch {}
+
+    }, 1000 * 60 * 10)
+
+    // 🔄 reinicio automático
+    setInterval(() => {
+
+        console.log(
+            chalk.yellow(
+                '♻️ Reiniciando Spider Bot...'
+            )
+        )
+
+        process.exit()
+
+    }, 1000 * 60 * 30)
+
     // 🕷️ welcome/bye
     sock.ev.on(
         'group-participants.update',
@@ -190,38 +229,6 @@ async function start() {
                 console.log(
                     chalk.red(
                         'Error welcome/bye:'
-                    ),
-                    err
-                )
-            }
-        }
-    )
-
-    // 🕷️ cambios grupo
-    sock.ev.on(
-        'groups.update',
-        async (update) => {
-
-            try {
-
-                for (const plugin of plugins) {
-
-                    if (
-                        typeof plugin.before === 'function'
-                    ) {
-
-                        await plugin.before({
-                            sock,
-                            groupsUpdate: update
-                        })
-                    }
-                }
-
-            } catch (err) {
-
-                console.log(
-                    chalk.red(
-                        'Error autodetect:'
                     ),
                     err
                 )
@@ -304,7 +311,6 @@ async function start() {
                 m.message.videoMessage?.caption ||
                 ''
 
-            // ❌ ignorar mensajes normales
             if (!msg)
                 return
 
@@ -326,13 +332,21 @@ async function start() {
 
                     let participants = []
 
-                    // 👥 metadata
+                    // 👥 metadata cache
                     if (isGroup) {
 
                         try {
 
+                            if (
+                                !global.groupCache[from]
+                            ) {
+
+                                global.groupCache[from] =
+                                    await sock.groupMetadata(from)
+                            }
+
                             groupMetadata =
-                                await sock.groupMetadata(from)
+                                global.groupCache[from]
 
                             participants =
                                 groupMetadata.participants
@@ -364,18 +378,6 @@ async function start() {
                     const isBlockedGroup =
                         isGroup &&
                         modoadmin[from]
-
-                    console.log(
-                        chalk.cyan(
-                            `\n📌 Comando: ${command}`
-                        ) +
-                        chalk.yellow(
-                            `\n👤 Usuario: ${pushName}`
-                        ) +
-                        chalk.green(
-                            `\n📍 Lugar: ${groupName}\n`
-                        )
-                    )
 
                     for (const handler of plugins) {
 
