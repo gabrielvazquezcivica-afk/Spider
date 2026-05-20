@@ -58,7 +58,7 @@ const handler = async ({
 
         return sock.sendMessage(from,{
             text:
-`🕷️ Ejemplos:
+`⚠️ Ejemplos:
 
 .top memes
 .top feos
@@ -75,23 +75,39 @@ const handler = async ({
         }
     })
 
-    // 🔥 RANDOM USERS
+    // 👥 RANDOM USERS
     const users = shuffle(
         participants.map(p => p.id)
     ).slice(0, 10)
 
     let text =
-`╭━━━〔 🕷️ TOP ${categoria.toUpperCase()} 🕷️ 〕━━━⬣
+`╭────────────────╮
+      🏆 TOP ${categoria.toUpperCase()}
+╰────────────────╯
 
 `
 
     users.forEach((user, i) => {
 
+        const emojis = [
+            '🥇',
+            '🥈',
+            '🥉',
+            '🏅',
+            '🏅',
+            '🏅',
+            '🏅',
+            '🏅',
+            '🏅',
+            '🏅'
+        ]
+
         text +=
-`${i + 1}. @${user.split('@')[0]}\n`
+`${emojis[i]} @${user.split('@')[0]}\n`
     })
 
-    text += '\n╰━━━━━━━━━━━━━━━━⬣'
+    text +=
+`\n━━━━━━━━━━━━━━`
 
     await sock.sendMessage(from,{
         text,
