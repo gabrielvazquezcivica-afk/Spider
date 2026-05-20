@@ -28,141 +28,132 @@ const bannedPath = './data/banned.json'
 
 function getModoadmin() {
 
-    try {
+try {  
 
-        if (!fs.existsSync(modoadminPath))
-            return {}
+    if (!fs.existsSync(modoadminPath))  
+        return {}  
 
-        return JSON.parse(
-            fs.readFileSync(
-                modoadminPath,
-                'utf-8'
-            )
-        )
+    return JSON.parse(  
+        fs.readFileSync(  
+            modoadminPath,  
+            'utf-8'  
+        )  
+    )  
 
-    } catch {
+} catch {  
 
-        return {}
-    }
+    return {}  
+}
+
 }
 
 function getBanned() {
 
-    try {
+try {  
 
-        if (!fs.existsSync(bannedPath))
-            return {}
+    if (!fs.existsSync(bannedPath))  
+        return {}  
 
-        return JSON.parse(
-            fs.readFileSync(
-                bannedPath,
-                'utf-8'
-            )
-        )
+    return JSON.parse(  
+        fs.readFileSync(  
+            bannedPath,  
+            'utf-8'  
+        )  
+    )  
 
-    } catch {
+} catch {  
 
-        return {}
-    }
+    return {}  
+}
+
 }
 
 // 🔄 cargar plugins
 async function loadPlugins() {
 
-    plugins = []
+plugins = []  
 
-    const files = fs.readdirSync(pluginsPath)
-        .filter(f => f.endsWith('.js'))
+const files = fs.readdirSync(pluginsPath)  
+    .filter(f => f.endsWith('.js'))  
 
-    for (const file of files) {
+for (const file of files) {  
 
-        try {
+    try {  
 
-            const filePath =
-                path.join(
-                    pluginsPath,
-                    file
-                )
+        const module = await import(  
+            `file://${path.join(  
+                pluginsPath,  
+                file  
+            )}?update=${Date.now()}`  
+        )  
 
-            const module =
-                await import(
-                    `file://${filePath}?update=${fs.statSync(filePath).mtimeMs}`
-                )
+        const handler = module.default  
 
-            const handler =
-                module.default
+        if (typeof handler === 'function') {  
 
-            if (
-                typeof handler === 'function'
-            ) {
+            if (module.before) {  
+                handler.before = module.before  
+            }  
 
-                if (module.before) {
-                    handler.before =
-                        module.before
-                }
+            plugins.push(handler)  
+        }  
 
-                plugins.push(handler)
-            }
+    } catch (err) {  
 
-        } catch (err) {
+        console.log(  
+            chalk.red(  
+                `Error en plugin ${file}:`  
+            ),  
+            err  
+        )  
+    }  
+}  
 
-            console.log(
-                chalk.red(
-                    `Error en plugin ${file}:`
-                ),
-                err
-            )
-        }
-    }
+global.plugins = plugins  
 
-    global.plugins = plugins
+console.log(  
+    chalk.green(  
+        `✅ Plugins cargados: ${plugins.length}`  
+    )  
+)
 
-    console.log(
-        chalk.green(
-            `✅ Plugins cargados: ${plugins.length}`
-        )
-    )
 }
 
 // 👀 autoreload
-fs.watch(
-    pluginsPath,
-    async (_, file) => {
+fs.watch(pluginsPath, async (_, file) => {
 
-        if (
-            !file?.endsWith('.js')
-        ) return
+if (!file?.endsWith('.js'))  
+    return  
 
-        console.log(
-            chalk.yellow(
-                `♻️ Recargando ${file}...`
-            )
-        )
+console.log(  
+    chalk.yellow(  
+        `♻️ Recargando ${file}...`  
+    )  
+)  
 
-        await loadPlugins()
-    }
-)
+await loadPlugins()
+
+})
 
 // 🚀 iniciar
 async function start() {
 
-    if (sockGlobal?.ev) {
+if (sockGlobal?.ev) {  
 
-        try {
+    try {  
+        sockGlobal.ev.removeAllListeners()  
+    } catch {}  
+}  
 
-            sockGlobal.ev.removeAllListeners()
+const sock = await connect()  
 
-        } catch {}
-    }
+sockGlobal = sock  
 
-    const sock = await connect()
+console.clear()  
 
-    sockGlobal = sock
+console.log(  
+    chalk.redBright.bold(`
 
-    console.clear()
-
-    console.log(
-        chalk.redBright.bold(`
 ███████╗██████╗ ██╗██████╗ ███████╗██████╗
 ██╔════╝██╔══██╗██║██╔══██╗██╔════╝██╔══██╗
 ███████╗██████╔╝██║██║  ██║█████╗  ██████╔╝
@@ -170,407 +161,360 @@ async function start() {
 ███████║██║     ██║██████╔╝███████╗██║  ██║
 ╚══════╝╚═╝     ╚═╝╚═════╝ ╚══════╝╚═╝  ╚═╝
 `)
-    )
+)
 
-    console.log(
-        chalk.greenBright(
-            '\n⚡ SPIDER BOT ACTIVO\n'
-        )
-    )
+console.log(  
+    chalk.greenBright(  
+        '\n⚡ SPIDER BOT ACTIVO\n'  
+    )  
+)  
 
-    await loadPlugins()
+await loadPlugins()  
 
-    const startTime = Date.now()
+const startTime = Date.now()  
 
-    // 🧹 limpiar cache grupos
-    setInterval(() => {
+// 🧹 limpiar cache global
+setInterval(() => {
 
-        global.groupCache = {}
+    global.groupCache = {}
 
-    }, 1000 * 60 * 5)
+}, 1000 * 60 * 5)
 
-    // 🧹 limpiar tmp
-    setInterval(() => {
+// 🕷️ welcome/bye  
+sock.ev.on(  
+    'group-participants.update',  
+    async (update) => {  
 
-        try {
+        try {  
 
-            fs.rmSync('./tmp', {
-                recursive: true,
-                force: true
-            })
+            for (const plugin of plugins) {  
 
-            fs.mkdirSync('./tmp')
+                if (  
+                    typeof plugin.before === 'function'  
+                ) {  
 
-        } catch {}
+                    await plugin.before({  
+                        sock,  
+                        update  
+                    })  
+                }  
+            }  
 
-    }, 1000 * 60 * 10)
+        } catch (err) {  
 
-    // 🔄 reinicio automático limpio
-    setInterval(async () => {
+            console.log(  
+                chalk.red(  
+                    'Error welcome/bye:'  
+                ),  
+                err  
+            )  
+        }  
+    }  
+)  
 
-        console.log(
-            chalk.yellow(
-                '♻️ Reiniciando Spider Bot...'
-            )
-        )
+// 🕷️ cambios grupo  
+sock.ev.on(  
+    'groups.update',  
+    async (update) => {  
+
+        try {  
+
+            for (const plugin of plugins) {  
+
+                if (  
+                    typeof plugin.before === 'function'  
+                ) {  
+
+                    await plugin.before({  
+                        sock,  
+                        groupsUpdate: update  
+                    })  
+                }  
+            }  
 
-        try {
+        } catch (err) {  
 
-            if (sockGlobal?.ws) {
-                sockGlobal.ws.close()
-            }
+            console.log(  
+                chalk.red(  
+                    'Error autodetect:'  
+                ),  
+                err  
+            )  
+        }  
+    }  
+)  
 
-        } catch {}
+// 📨 mensajes  
+sock.ev.on(  
+    'messages.upsert',  
+    async ({ messages, type }) => {  
 
-        start()
+        if (type !== 'notify')  
+            return  
 
-    }, 1000 * 60 * 30)
+        const m = messages[0]  
 
-    // 🕷️ welcome/bye
-    sock.ev.on(
-        'group-participants.update',
-        async (update) => {
+        if (!m?.message)  
+            return  
 
-            try {
+        const msgTime =  
+            (m.messageTimestamp || 0) * 1000  
 
-                for (
-                    const plugin
-                    of plugins
-                ) {
+        if (msgTime < startTime)  
+            return  
 
-                    if (
-                        typeof plugin.before === 'function'
-                    ) {
+        const from =  
+            m.key.remoteJid  
 
-                        await plugin.before({
-                            sock,
-                            update
-                        })
-                    }
-                }
+        if (!from)  
+            return  
 
-            } catch (err) {
+        const isGroup =  
+            from.endsWith('@g.us')  
 
-                console.log(
-                    chalk.red(
-                        'Error welcome/bye:'
-                    ),
-                    err
-                )
-            }
-        }
-    )
+        const sender =  
+            m.key.participant || from  
 
-    // 🕷️ cambios grupo
-    sock.ev.on(
-        'groups.update',
-        async (update) => {
+        // 🚫 BAN  
+        const banned =  
+            getBanned()  
 
-            try {
+        if (banned[sender])  
+            return  
 
-                for (
-                    const plugin
-                    of plugins
-                ) {
-
-                    if (
-                        typeof plugin.before === 'function'
-                    ) {
-
-                        await plugin.before({
-                            sock,
-                            groupsUpdate:update
-                        })
-                    }
-                }
-
-            } catch (err) {
-
-                console.log(
-                    chalk.red(
-                        'Error autodetect:'
-                    ),
-                    err
-                )
-            }
-        }
-    )
-
-    // 📨 mensajes
-    sock.ev.on(
-        'messages.upsert',
-        async ({
-            messages,
-            type
-        }) => {
-
-            if (type !== 'notify')
-                return
+        // 👁️ visto  
+        await sock.readMessages([m.key])  
 
-            const m = messages[0]
-
-            if (!m?.message)
-                return
-
-            const msgTime =
-                (m.messageTimestamp || 0) * 1000
+        // 🔇 mute  
+        const bloqueado =  
+            await verificarMuteados({  
+                sock,  
+                m,  
+                from,  
+                sender,  
+                isGroup  
+            })  
 
-            if (msgTime < startTime)
-                return
+        if (bloqueado)  
+            return  
 
-            const from =
-                m.key.remoteJid
+        // 🔥 antilink  
+        const eliminado =  
+            await verificarAntilink({  
+                sock,  
+                m,  
+                from,  
+                sender,  
+                isGroup  
+            })  
 
-            if (!from)
-                return
+        if (eliminado)  
+            return  
 
-            const isGroup =
-                from.endsWith('@g.us')
+        // 📄 texto  
+        const msg =  
+            m.message.conversation ||  
+            m.message.extendedTextMessage?.text ||  
+            m.message.imageMessage?.caption ||  
+            m.message.videoMessage?.caption ||  
+            ''  
 
-            const sender =
-                m.key.participant || from
+        // ❌ ignorar mensajes normales  
+        if (!msg)  
+            return  
 
-            // 🚫 BAN
-            const banned =
-                getBanned()
+        if (  
+            !msg.startsWith(config.prefix)  
+        ) return  
 
-            if (banned[sender])
-                return
+        setImmediate(async () => {  
 
-            // 👁️ visto
-            await sock.readMessages([m.key])
-
-            // 🔇 mute
-            const bloqueado =
-                await verificarMuteados({
-                    sock,
-                    m,
-                    from,
-                    sender,
-                    isGroup
-                })
+            try {  
 
-            if (bloqueado)
-                return
-
-            // 🔥 antilink
-            const eliminado =
-                await verificarAntilink({
-                    sock,
-                    m,
-                    from,
-                    sender,
-                    isGroup
-                })
-
-            if (eliminado)
-                return
-
-            // 📄 texto
-            const msg =
-                m.message.conversation ||
-                m.message.extendedTextMessage?.text ||
-                m.message.imageMessage?.caption ||
-                m.message.videoMessage?.caption ||
-                ''
-
-            if (!msg)
-                return
-
-            if (
-                !msg.startsWith(config.prefix)
-            ) return
-
-            setImmediate(async () => {
-
-                try {
-
-                    let pushName =
-                        m.pushName || 'Usuario'
-
-                    let groupName =
-                        'Privado'
-
-                    let groupMetadata =
-                        null
-
-                    let participants =
-                        []
-
-                    // 👥 metadata cache
-                    if (isGroup) {
-
-                        try {
-
-                            if (
-                                !global.groupCache[from]
-                            ) {
-
-                                global.groupCache[from] =
-                                    await sock.groupMetadata(from)
-                            }
-
-                            groupMetadata =
-                                global.groupCache[from]
-
-                            participants =
-                                groupMetadata.participants
-
-                            groupName =
-                                groupMetadata.subject
-
-                        } catch {
-
-                            participants = []
-                        }
-                    }
-
-                    // ⚡ args
-                    const args =
-                        msg
-                            .slice(config.prefix.length)
-                            .trim()
-                            .split(/ +/)
-
-                    const command =
-                        args.shift()
-                            .toLowerCase()
-
-                    // 🔒 modoadmin
-                    const modoadmin =
-                        getModoadmin()
-
-                    const isBlockedGroup =
-                        isGroup &&
-                        modoadmin[from]
-
-                    for (
-                        const handler
-                        of plugins
-                    ) {
-
-                        if (
-                            !handler.command
-                        ) continue
-
-                        const commands =
-                            Array.isArray(
-                                handler.command
-                            )
-                                ? handler.command
-                                : [handler.command]
-
-                        if (
-                            !commands.includes(command)
-                        ) continue
-
-                        if (
-                            handler.group &&
-                            !isGroup
-                        ) continue
-
-                        if (
-                            handler.private &&
-                            isGroup
-                        ) continue
-
-                        // 🔒 modoadmin
-                        const isGroupCommand =
-                            handler.group === true
-
-                        if (
-                            isBlockedGroup &&
-                            !isGroupCommand
-                        ) {
-
-                            const user =
-                                participants.find(
-                                    p =>
-                                        p.id === sender
-                                )
-
-                            const isAdmin =
-                                user?.admin === 'admin' ||
-                                user?.admin === 'superadmin'
-
-                            if (!isAdmin)
-                                return
+                let pushName =  
+                    m.pushName || 'Usuario'  
+
+                let groupName =  
+                    'Privado'  
+
+                let groupMetadata = null  
+
+                let participants = []  
+
+                // 👥 metadata CACHE
+                if (isGroup) {  
+
+                    try {
+
+                        if (!global.groupCache[from]) {
+
+                            global.groupCache[from] =
+                                await sock.groupMetadata(from)
                         }
 
-                        // 👑 admin
-                        if (handler.admin) {
+                        groupMetadata =
+                            global.groupCache[from]
 
-                            const user =
-                                participants.find(
-                                    p =>
-                                        p.id === sender
-                                )
+                        participants =
+                            groupMetadata.participants
 
-                            const isAdmin =
-                                user?.admin === 'admin' ||
-                                user?.admin === 'superadmin'
+                        groupName =
+                            groupMetadata.subject
 
-                            if (!isAdmin)
-                                continue
-                        }
+                    } catch {  
 
-                        // 👑 owner
-                        if (handler.owner) {
+                        participants = []  
+                    }  
+                }  
 
-                            if (
-                                !config.owner.includes(sender)
-                            ) continue
-                        }
+                // ⚡ args  
+                const args =  
+                    msg  
+                        .slice(config.prefix.length)  
+                        .trim()  
+                        .split(/ +/)  
 
-                        await handler({
-                            sock,
-                            m,
-                            args,
-                            command,
-                            from,
-                            isGroup,
-                            sender,
-                            pushName,
-                            participants,
-                            groupMetadata
-                        })
-                    }
+                const command =  
+                    args.shift()  
+                        .toLowerCase()  
 
-                } catch (err) {
+                // 🔒 modoadmin  
+                const modoadmin =  
+                    getModoadmin()  
 
-                    console.log(
-                        chalk.red(
-                            'Error:'
-                        ),
-                        err
-                    )
-                }
-            })
-        }
-    )
+                const isBlockedGroup =  
+                    isGroup &&  
+                    modoadmin[from]  
 
-    // 🔄 reconexión
-    sock.ev.on(
-        'connection.update',
-        ({ connection }) => {
+                console.log(  
+                    chalk.cyan(  
+                        `\n📌 Comando: ${command}`  
+                    ) +  
+                    chalk.yellow(  
+                        `\n👤 Usuario: ${pushName}`  
+                    ) +  
+                    chalk.green(  
+                        `\n📍 Lugar: ${groupName}\n`  
+                    )  
+                )  
 
-            if (
-                connection === 'close'
-            ) {
+                for (const handler of plugins) {  
 
-                console.log(
-                    chalk.red(
-                        '🔄 Reiniciando bot...'
-                    )
-                )
+                    if (!handler.command)  
+                        continue  
 
-                setTimeout(
-                    start,
-                    2000
-                )
-            }
-        }
-    )
+                    const commands =  
+                        Array.isArray(  
+                            handler.command  
+                        )  
+                            ? handler.command  
+                            : [handler.command]  
+
+                    if (  
+                        !commands.includes(command)  
+                    ) continue  
+
+                    if (  
+                        handler.group &&  
+                        !isGroup  
+                    ) continue  
+
+                    if (  
+                        handler.private &&  
+                        isGroup  
+                    ) continue  
+
+                    // 🔒 modoadmin  
+                    const isGroupCommand =  
+                        handler.group === true  
+
+                    if (  
+                        isBlockedGroup &&  
+                        !isGroupCommand  
+                    ) {  
+
+                        const user =  
+                            participants.find(  
+                                p =>  
+                                    p.id === sender  
+                            )  
+
+                        const isAdmin =  
+                            user?.admin === 'admin' ||  
+                            user?.admin === 'superadmin'  
+
+                        if (!isAdmin)  
+                            return  
+                    }  
+
+                    // 👑 admin  
+                    if (handler.admin) {  
+
+                        const user =  
+                            participants.find(  
+                                p =>  
+                                    p.id === sender  
+                            )  
+
+                        const isAdmin =  
+                            user?.admin === 'admin' ||  
+                            user?.admin === 'superadmin'  
+
+                        if (!isAdmin)  
+                            continue  
+                    }  
+
+                    // 👑 owner  
+                    if (handler.owner) {  
+
+                        if (  
+                            !config.owner.includes(sender)  
+                        ) continue  
+                    }  
+
+                    await handler({  
+                        sock,  
+                        m,  
+                        args,  
+                        command,  
+                        from,  
+                        isGroup,  
+                        sender,  
+                        pushName,  
+                        participants,  
+                        groupMetadata  
+                    })  
+                }  
+
+            } catch (err) {  
+
+                console.log(  
+                    chalk.red('Error:'),  
+                    err  
+                )  
+            }  
+        })  
+    }  
+)  
+
+// 🔄 reconexión  
+sock.ev.on(  
+    'connection.update',  
+    ({ connection }) => {  
+
+        if (connection === 'close') {  
+
+            console.log(  
+                chalk.red(  
+                    '🔄 Reiniciando bot...'  
+                )  
+            )  
+
+            setTimeout(start, 2000)  
+        }  
+    }  
+)
+
 }
 
 start()
