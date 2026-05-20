@@ -7,7 +7,8 @@ const handler = async (ctx) => {
         m,
         from,
         sender,
-        isGroup
+        isGroup,
+        participants
     } = ctx
 
     if (!isGroup) {
@@ -17,63 +18,34 @@ const handler = async (ctx) => {
     }
 
     /* 🔒 MODODADMIN */
-    let groupSettings = {
-        enabled:false
-    }
-
-    const modoadminPath =
-        './data/modoadmin.json'
-
-    if (fs.existsSync(modoadminPath)) {
-
-        try {
-
-            const modoadminData =
-                JSON.parse(
-                    fs.readFileSync(
-                        modoadminPath
-                    )
-                )
-
-            groupSettings =
-                modoadminData[from] || {
-                    enabled:false
-                }
-
-        } catch {
-
-            groupSettings = {
-                enabled:false
-            }
-        }
-    }
-
-    let participants = []
+    let isBlockedGroup = false
 
     try {
 
-        const metadata =
-            await sock.groupMetadata(from)
+        const db = JSON.parse(
+            fs.readFileSync(
+                './data/modoadmin.json'
+            )
+        )
 
-        participants =
-            metadata.participants || []
+        isBlockedGroup = db[from]
 
     } catch {}
 
-    if (groupSettings.enabled) {
+    const user =
+        participants?.find(
+            p => p.id === sender
+        )
 
-        const isAdmin =
-            participants.some(
-                p =>
-                    p.id === sender &&
-                    (
-                        p.admin === 'admin' ||
-                        p.admin === 'superadmin'
-                    )
-            )
+    const isAdmin =
+        user?.admin === 'admin' ||
+        user?.admin === 'superadmin'
 
-        if (!isAdmin) return
-    }
+    // 🔥 silencioso
+    if (
+        isBlockedGroup &&
+        !isAdmin
+    ) return
 
     /* 🎯 OBJETIVO */
     let who
@@ -99,12 +71,12 @@ const handler = async (ctx) => {
 
     /* 🏷️ NOMBRES */
     const target =
-        participants.find(
+        participants?.find(
             p => p.id === who
         )
 
     const senderContact =
-        participants.find(
+        participants?.find(
             p => p.id === sender
         )
 
@@ -149,7 +121,7 @@ const handler = async (ctx) => {
 ╰━━╯-.        ╰╯...-    ╰ ╮
    .         . .  .  .. . . .  . .. .  ╰
 
-*[ 🔥 ] @${sender.split('@')[0]} SE HA CORRIDO GRACIAS A @${who.split('@')[0]}.*`
+*[ 🔥 ] @${name1} SE HA CORRIDO GRACIAS A @${name2}.*`
     ]
 
     /* 📩 MENSAJE */
