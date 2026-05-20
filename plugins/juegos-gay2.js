@@ -1,187 +1,184 @@
 import fs from 'fs'
 import axios from 'axios'
 
+const path = './data/modoadmin.json'
+
+// 📥 DB modoadmin
+function getDB() {
+
+    try {
+
+        if (!fs.existsSync(path))
+            return {}
+
+        return JSON.parse(
+            fs.readFileSync(
+                path,
+                'utf-8'
+            )
+        )
+
+    } catch {
+
+        return {}
+    }
+}
+
 const frases = [
 
-  '🏳️‍🌈 100% homosexual detectado',
-  '💅 El radar gay explotó',
-  '🌈 Confirmado por Spider Bot',
-  '🫦 Demasiado brillante para ser hetero',
-  '💖 Nivel de homosexualidad: EXTREMO',
-  '✨ Este usuario salió del clóset',
-  '🌈 Spider Bot detectó vibras sospechosas',
-  '💅 Más diva imposible',
-  '🕺 Homosexualidad encontrada',
-  '🏳️‍🌈 Certificado oficialmente'
+    '🏳️‍🌈 100% homosexual detectado',
+    '💅 El radar gay explotó',
+    '🌈 Confirmado por Spider Bot',
+    '🫦 Demasiado brillante para ser hetero',
+    '💖 Nivel de homosexualidad: EXTREMO',
+    '✨ Este usuario salió del clóset',
+    '🌈 Spider Bot detectó vibras sospechosas',
+    '💅 Más diva imposible',
+    '🕺 Homosexualidad encontrada',
+    '🏳️‍🌈 Certificado oficialmente'
 ]
 
-const handler = async (ctx) => {
-
-  const {
+const handler = async ({
     sock,
     m,
     from,
     sender,
     isGroup,
     participants
-  } = ctx
+}) => {
 
-  /* 🔒 MODODADMIN */
-  let groupSettings = {
-    enabled:false
-  }
+    if (!isGroup) return
 
-  const modoadminPath =
-    './data/modoadmin.json'
+    // 🔒 MODODADMIN
+    const db = getDB()
 
-  if (
-    fs.existsSync(modoadminPath)
-  ) {
-
-    try {
-
-      const data =
-        JSON.parse(
-          fs.readFileSync(
-            modoadminPath
-          )
-        )
-
-      groupSettings =
-        data[from] || {
-          enabled:false
-        }
-
-    } catch {}
-  }
-
-  if (
-    groupSettings.enabled &&
-    isGroup
-  ) {
+    const isBlockedGroup =
+        db[from]
 
     const user =
-      participants?.find(
-        p => p.id === sender
-      )
+        participants.find(
+            p => p.id === sender
+        )
 
     const isAdmin =
-      user?.admin === 'admin' ||
-      user?.admin === 'superadmin'
+        user?.admin === 'admin' ||
+        user?.admin === 'superadmin'
 
-    if (!isAdmin) return
-  }
+    if (
+        isBlockedGroup &&
+        !isAdmin
+    ) return
 
-  /* 👤 TARGET */
-  const msgCtx =
-    m.message?.extendedTextMessage?.contextInfo ||
-    m.message?.imageMessage?.contextInfo ||
-    m.message?.videoMessage?.contextInfo
+    /* 👤 TARGET */
+    const ctx =
+        m.message?.extendedTextMessage?.contextInfo ||
+        m.message?.imageMessage?.contextInfo ||
+        m.message?.videoMessage?.contextInfo
 
-  let who
+    let who
 
-  if (
-    msgCtx?.mentionedJid?.length
-  ) {
+    if (
+        ctx?.mentionedJid?.length
+    ) {
 
-    who =
-      msgCtx.mentionedJid[0]
+        who =
+            ctx.mentionedJid[0]
 
-  } else if (
-    msgCtx?.participant
-  ) {
+    } else if (
+        ctx?.participant
+    ) {
 
-    who =
-      msgCtx.participant
+        who =
+            ctx.participant
 
-  } else {
+    } else {
 
-    who = sender
-  }
-
-  /* ⚡ REACCIÓN */
-  await sock.sendMessage(from,{
-    react:{
-      text:'🏳️‍🌈',
-      key:m.key
+        who = sender
     }
-  })
 
-  try {
-
-    /* 📸 FOTO PERFIL */
-    let pfp
+    /* ⚡ REACCIÓN */
+    await sock.sendMessage(from,{
+        react:{
+            text:'🏳️‍🌈',
+            key:m.key
+        }
+    })
 
     try {
 
-      pfp =
-        await sock.profilePictureUrl(
-          who,
-          'image'
-        )
+        /* 📸 FOTO PERFIL */
+        let pfp
 
-    } catch {
+        try {
 
-      pfp =
+            pfp =
+                await sock.profilePictureUrl(
+                    who,
+                    'image'
+                )
+
+        } catch {
+
+            pfp =
 'https://telegra.ph/file/24fa902ead26340f3df2c.png'
-    }
+        }
 
-    /* 🌈 EFECTO GAY */
-    const api =
+        /* 🌈 EFECTO */
+        const api =
 `https://some-random-api.com/canvas/gay?avatar=${encodeURIComponent(pfp)}`
 
-    const res =
-      await axios.get(api,{
-        responseType:'arraybuffer'
-      })
+        const res =
+            await axios.get(api,{
+                responseType:'arraybuffer'
+            })
 
-    const frase =
-      frases[
-        Math.floor(
-          Math.random() *
-          frases.length
-        )
-      ]
+        const frase =
+            frases[
+                Math.floor(
+                    Math.random() *
+                    frases.length
+                )
+            ]
 
-    /* 📤 ENVIAR */
-    await sock.sendMessage(
-      from,
-      {
-        image: Buffer.from(res.data),
-        caption:
+        /* 📤 ENVIAR */
+        await sock.sendMessage(
+            from,
+            {
+                image: Buffer.from(res.data),
+                caption:
 `🏳️‍🌈 *GAY DETECTOR* 🏳️‍🌈
 
 👤 @${who.split('@')[0]}
 
 ${frase}`,
-        mentions:[who]
-      },
-      {
-        quoted:m
-      }
-    )
+                mentions:[who]
+            },
+            {
+                quoted:m
+            }
+        )
 
-    /* ✅ REACCIÓN FINAL */
-    await sock.sendMessage(from,{
-      react:{
-        text:'✅',
-        key:m.key
-      }
-    })
+        /* ✅ */
+        await sock.sendMessage(from,{
+            react:{
+                text:'✅',
+                key:m.key
+            }
+        })
 
-  } catch(e) {
+    } catch(e) {
 
-    console.log(
-      'GAY2 ERROR:',
-      e
-    )
+        console.log(
+            'GAY2 ERROR:',
+            e
+        )
 
-    await sock.sendMessage(from,{
-      text:'❌ Error al generar imagen'
-    },{
-      quoted:m
-    })
-  }
+        await sock.sendMessage(from,{
+            text:'❌ Error al generar imagen'
+        },{
+            quoted:m
+        })
+    }
 }
 
 handler.command = ['gay2']
