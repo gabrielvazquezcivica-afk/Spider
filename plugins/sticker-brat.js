@@ -101,10 +101,12 @@ async function createSticker(text) {
 
     const ff = spawn('ffmpeg',[
 
+      /* 🔥 canvas más ancho */
       '-f','lavfi',
-      '-i','color=c=white:s=512x512',
+      '-i','color=c=white:s=612x512',
 
       '-vf',
+
 `drawtext=
 fontfile=/system/fonts/Roboto-Bold.ttf:
 textfile='${txtFile}':
@@ -112,8 +114,9 @@ fontcolor=black:
 fontsize=${fontSize}:
 line_spacing=2:
 fix_bounds=true:
-x=25:
-y=(h-text_h)/2`,
+x=45:
+y=(h-text_h)/2,
+scale=512:512`,
 
       '-frames:v','1',
 
