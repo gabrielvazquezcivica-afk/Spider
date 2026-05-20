@@ -25,9 +25,6 @@ const handler = async (ctx) => {
         sender
     } = ctx
 
-    const botName =
-        sock.user?.name || 'SPIDER BOT 🕷️'
-
     /* 🔒 MODODADMIN */
     if (isGroup) {
 
@@ -56,14 +53,14 @@ const handler = async (ctx) => {
 
         return sock.sendMessage(from,{
             text:
-'🕷️ Uso correcto: .play <nombre de la canción>'
+'🎵 Usa:\n.play nombre de la canción'
         },{ quoted:m })
     }
 
     /* ⚡ REACCIÓN */
     await sock.sendMessage(from,{
         react:{
-            text:'🔎',
+            text:'🎧',
             key:m.key
         }
     })
@@ -78,7 +75,7 @@ const handler = async (ctx) => {
 
             return sock.sendMessage(from,{
                 text:
-'❌ No se encontraron resultados'
+'❌ No encontré resultados'
             },{ quoted:m })
         }
 
@@ -94,9 +91,9 @@ const handler = async (ctx) => {
             author
         } = video
 
-        /* 📡 API YTMP3 */
+        /* 📡 API */
         const api =
-            `https://api.delirius.store/download/ytmp3?url=${encodeURIComponent(url)}`
+`https://api.delirius.store/download/ytmp3?url=${encodeURIComponent(url)}`
 
         const { data } =
             await axios.get(api)
@@ -116,26 +113,28 @@ const handler = async (ctx) => {
         const audio =
             data.data.download
 
-        /* 🕷️ PANEL */
+        /* 🖼️ INFO */
         await sock.sendMessage(from,{
             image:{ url: thumbnail },
             caption:
-`╭━━━━━━━━━━━━╮
-┃ 🕷️ SPIDER 🕷️ ┃
-╰━━━━━━━━━━━━╯
-
-🎵 ${title}
-
-👤 ${author.name || 'Desconocido'}
-⏱️ ${timestamp}
-👁️ ${views.toLocaleString()}
-
-╭━━━━━━━━━━━━╮
-┃ ⚡ Audio listo
-╰━━━━━━━━━━━━╯`
+`╭━━━〔 🎵 SPIDER PLAY 〕━━━⬣
+┃
+┃ 🎶 ${title}
+┃
+┃ 👤 𝐂𝐀𝐍𝐀𝐋:
+┃ ${author.name || 'Desconocido'}
+┃
+┃ ⏱️ 𝐃𝐔𝐑𝐀𝐂𝐈𝐎𝐍:
+┃ ${timestamp}
+┃
+┃ 👁️ 𝐕𝐈𝐒𝐈𝐓𝐀𝐒:
+┃ ${views.toLocaleString()}
+┃
+┃ ⚡ Descargando audio...
+╰━━━━━━━━━━━━━━━━⬣`
         },{ quoted:m })
 
-        /* 🎧 ENVIAR AUDIO */
+        /* 🎧 AUDIO */
         await sock.sendMessage(from,{
             audio:{ url: audio },
             mimetype:'audio/mpeg',
@@ -157,7 +156,7 @@ const handler = async (ctx) => {
 
         sock.sendMessage(from,{
             text:
-'🕷️ Sistema Spider: Error interno'
+'❌ Ocurrió un error al descargar la canción'
         },{ quoted:m })
     }
 }
