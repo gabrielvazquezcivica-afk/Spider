@@ -3,6 +3,30 @@ import path from 'path'
 import os from 'os'
 import { spawn } from 'child_process'
 
+/* 🔒 MODODADMIN */
+const modoadminPath =
+  './data/modoadmin.json'
+
+function getModoadmin() {
+
+  try {
+
+    if (!fs.existsSync(modoadminPath))
+      return {}
+
+    return JSON.parse(
+      fs.readFileSync(
+        modoadminPath,
+        'utf-8'
+      )
+    )
+
+  } catch {
+
+    return {}
+  }
+}
+
 /* ───── AJUSTAR TEXTO AUTOMÁTICO ───── */
 function wrapText(text, maxWidth = 18) {
 
@@ -17,6 +41,7 @@ function wrapText(text, maxWidth = 18) {
     if (word.length > maxWidth) {
 
       if (line.trim()) {
+
         lines.push(line.trim())
         line = ''
       }
@@ -60,20 +85,23 @@ function calculateFont(lines) {
 
   const longest =
     Math.max(
-      ...lines.map(l => l.length)
+      ...lines.map(
+        l => l.length
+      )
     )
 
   const total =
     lines.length
 
-  // 🔥 mientras más texto:
-  // reduce tamaño y ensancha
+  if (
+    total <= 2 &&
+    longest <= 10
+  ) return 78
 
-  if (total <= 2 && longest <= 10)
-    return 78
-
-  if (total <= 4 && longest <= 15)
-    return 64
+  if (
+    total <= 4 &&
+    longest <= 15
+  ) return 64
 
   if (total <= 6)
     return 52
@@ -87,7 +115,6 @@ function calculateFont(lines) {
 /* ───── CREAR STICKER ───── */
 async function createSticker(text) {
 
-  // 🔥 ancho dinámico
   let maxWidth = 18
 
   if (text.length > 80)
@@ -99,7 +126,6 @@ async function createSticker(text) {
   if (text.length > 220)
     maxWidth = 30
 
-  // 🔥 acomodar texto
   const lines =
     wrapText(
       text,
@@ -109,7 +135,6 @@ async function createSticker(text) {
   const formatted =
     lines.join('\n')
 
-  // 🔥 fuente dinámica
   const fontSize =
     calculateFont(lines)
 
@@ -157,13 +182,14 @@ borderw=1`,
       output
     ])
 
-    // 🚫 quitar spam consola
     ff.stderr.on('data',()=>{})
 
     ff.on('close',code=>{
 
       try {
+
         fs.unlinkSync(txtFile)
+
       } catch {}
 
       if(code !== 0)
@@ -199,7 +225,8 @@ borderw=1`,
 function getQuotedText(m) {
 
   const ctx =
-    m.message?.extendedTextMessage?.contextInfo
+    m.message?.extendedTextMessage
+      ?.contextInfo
 
   const quoted =
     ctx?.quotedMessage
@@ -217,12 +244,40 @@ function getQuotedText(m) {
 }
 
 /* ───── COMANDO ───── */
-const handler = async ({
-  sock,
-  m,
-  from,
-  args
-}) => {
+const handler = async (ctx) => {
+
+  const {
+    sock,
+    m,
+    from,
+    sender,
+    isGroup,
+    participants,
+    args
+  } = ctx
+
+  /* 🔒 MODODADMIN */
+  const modoadmin =
+    getModoadmin()
+
+  const isBlockedGroup =
+    isGroup &&
+    modoadmin[from]?.enabled
+
+  if (isBlockedGroup) {
+
+    const user =
+      participants?.find(
+        p => p.id === sender
+      )
+
+    const isAdmin =
+      user?.admin === 'admin' ||
+      user?.admin === 'superadmin'
+
+    if (!isAdmin)
+      return
+  }
 
   // 🔥 prioridad:
   // texto escrito > reply
@@ -255,7 +310,7 @@ O responde un mensaje con:
     })
   }
 
-  // 🎨 reacción
+  /* 🎨 REACCIÓN */
   await sock.sendMessage(from,{
     react:{
       text:'🎨',
@@ -268,14 +323,14 @@ O responde un mensaje con:
     const sticker =
       await createSticker(text)
 
-    // 📤 enviar
+    /* 📤 ENVIAR */
     await sock.sendMessage(from,{
       sticker
     },{
       quoted:m
     })
 
-    // ✅ reacción
+    /* ✅ */
     await sock.sendMessage(from,{
       react:{
         text:'✅',
