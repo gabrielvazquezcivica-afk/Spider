@@ -3,139 +3,114 @@ import fs from 'fs'
 const audio =
 'https://files.catbox.moe/ipauj8.mp3'
 
+const path = './data/modoadmin.json'
+
+// 📥 DB modoadmin
+function getDB() {
+
+    try {
+
+        if (!fs.existsSync(path))
+            return {}
+
+        return JSON.parse(
+            fs.readFileSync(
+                path,
+                'utf-8'
+            )
+        )
+
+    } catch {
+
+        return {}
+    }
+}
+
 const frases = [
 
-  '🎂 Hoy es un día especial porque alguien increíble cumple años',
+    '🎂 Hoy es un día especial porque alguien increíble cumple años',
 
-  '🥳 Spider Bot vino a felicitarte en tu gran día',
+    '🥳 Spider Bot vino a felicitarte en tu gran día',
 
-  '🎉 Que nunca te falten risas, salud y dinero',
+    '🎉 Que nunca te falten risas, salud y dinero',
 
-  '🎁 Hoy se celebra el nacimiento de una leyenda',
+    '🎁 Hoy se celebra el nacimiento de una leyenda',
 
-  '🍰 Esperamos pastel para todos',
+    '🍰 Esperamos pastel para todos',
 
-  '🎊 Que cumplas muchos años más',
+    '🎊 Que cumplas muchos años más',
 
-  '🕷️ Spider Bot te desea lo mejor hoy y siempre'
+    '🕷️ Spider Bot te desea lo mejor hoy y siempre'
 ]
 
-const handler = async (ctx) => {
-
-  const {
+const handler = async ({
     sock,
     m,
     from,
     sender,
     isGroup,
     participants
-  } = ctx
+}) => {
 
-  if (!isGroup) return
+    if (!isGroup) return
 
-  /* 🔒 MODODADMIN */
-  let groupSettings = {
-    enabled:false
-  }
+    // 🔒 MODODADMIN
+    const db = getDB()
 
-  const modoadminPath =
-    './data/modoadmin.json'
-
-  if (
-    fs.existsSync(modoadminPath)
-  ) {
-
-    try {
-
-      const data =
-        JSON.parse(
-          fs.readFileSync(
-            modoadminPath
-          )
-        )
-
-      groupSettings =
-        data[from] || {
-          enabled:false
-        }
-
-    } catch {
-
-      groupSettings = {
-        enabled:false
-      }
-    }
-  }
-
-  if (
-    groupSettings.enabled &&
-    isGroup
-  ) {
+    const isBlockedGroup =
+        db[from]
 
     const user =
-      participants?.find(
-        p => p.id === sender
-      )
+        participants.find(
+            p => p.id === sender
+        )
 
     const isAdmin =
-      user?.admin === 'admin' ||
-      user?.admin === 'superadmin'
+        user?.admin === 'admin' ||
+        user?.admin === 'superadmin'
 
-    if (!isAdmin) return
-  }
+    if (
+        isBlockedGroup &&
+        !isAdmin
+    ) return
 
-  /* 👤 TARGET */
-  const ctxMsg =
-    m.message?.extendedTextMessage
-      ?.contextInfo ||
-    m.message?.imageMessage
-      ?.contextInfo ||
-    m.message?.videoMessage
-      ?.contextInfo
+    /* 👤 TARGET */
+    const ctx =
+        m.message?.extendedTextMessage?.contextInfo ||
+        m.message?.imageMessage?.contextInfo ||
+        m.message?.videoMessage?.contextInfo
 
-  let who
+    const who =
+        ctx?.mentionedJid?.[0] ||
+        ctx?.participant
 
-  if (
-    ctxMsg?.mentionedJid?.length
-  ) {
+    if (!who) {
 
-    who =
-      ctxMsg.mentionedJid[0]
-
-  } else if (
-    ctxMsg?.participant
-  ) {
-
-    who =
-      ctxMsg.participant
-
-  } else {
-
-    return sock.sendMessage(from,{
-      text:
+        return sock.sendMessage(from,{
+            text:
 '🎂 Menciona a alguien o responde un mensaje'
-    },{
-      quoted:m
-    })
-  }
-
-  /* ⚡ REACCIÓN */
-  await sock.sendMessage(from,{
-    react:{
-      text:'🎉',
-      key:m.key
+        },{
+            quoted:m
+        })
     }
-  })
 
-  const frase =
-    frases[
-      Math.floor(
-        Math.random() *
-        frases.length
-      )
-    ]
+    /* ⚡ REACCIÓN */
+    await sock.sendMessage(from,{
+        react:{
+            text:'🎉',
+            key:m.key
+        }
+    })
 
-  const texto =
+    const frase =
+        frases[
+            Math.floor(
+                Math.random() *
+                frases.length
+            )
+        ]
+
+    const texto =
 `╭━━━〔 🎂 FELIZ CUMPLEAÑOS 🎂 〕━━━⬣
 
 🎉 Felicidades @${who.split('@')[0]}
@@ -150,40 +125,40 @@ ${frase}
 
 > SPIDER BOT 🕷️`
 
-  /* 📤 TEXTO */
-  await sock.sendMessage(
-    from,
-    {
-      text:texto,
-      mentions:[who]
-    },
-    {
-      quoted:m
-    }
-  )
+    /* 📤 TEXTO */
+    await sock.sendMessage(
+        from,
+        {
+            text:texto,
+            mentions:[who]
+        },
+        {
+            quoted:m
+        }
+    )
 
-  /* 🔊 AUDIO */
-  await sock.sendMessage(
-    from,
-    {
-      audio:{
-        url:audio
-      },
-      mimetype:'audio/mpeg',
-      ptt:true
-    },
-    {
-      quoted:m
-    }
-  )
+    /* 🔊 AUDIO */
+    await sock.sendMessage(
+        from,
+        {
+            audio:{
+                url:audio
+            },
+            mimetype:'audio/mpeg',
+            ptt:true
+        },
+        {
+            quoted:m
+        }
+    )
 
-  /* ✅ REACCIÓN FINAL */
-  await sock.sendMessage(from,{
-    react:{
-      text:'🎂',
-      key:m.key
-    }
-  })
+    /* ✅ */
+    await sock.sendMessage(from,{
+        react:{
+            text:'🎂',
+            key:m.key
+        }
+    })
 }
 
 handler.command = ['cumple']
