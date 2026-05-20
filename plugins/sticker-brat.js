@@ -4,7 +4,7 @@ import os from 'os'
 import { spawn } from 'child_process'
 
 /* ───── ACOMODAR TEXTO ───── */
-function wrapText(text, maxChars = 14) {
+function wrapText(text, maxChars = 13) {
 
   const words = text.split(' ')
   const lines = []
@@ -13,9 +13,28 @@ function wrapText(text, maxChars = 14) {
 
   for (const word of words) {
 
-    // 🔥 si agregar palabra supera límite
+    // 🔥 palabra enorme
+    if (word.length > maxChars) {
+
+      if (current.trim()) {
+        lines.push(current.trim())
+        current = ''
+      }
+
+      for (let i = 0; i < word.length; i += maxChars) {
+        lines.push(
+          word.slice(i, i + maxChars)
+        )
+      }
+
+      continue
+    }
+
+    // 🔥 acomodar líneas
     if (
-      (current + ' ' + word).trim().length > maxChars
+      (current + ' ' + word)
+        .trim()
+        .length > maxChars
     ) {
 
       lines.push(current.trim())
@@ -33,6 +52,17 @@ function wrapText(text, maxChars = 14) {
   return lines.join('\n')
 }
 
+/* ───── CALCULAR TAMAÑO ───── */
+function getFontSize(linesCount) {
+
+  if (linesCount <= 2) return 80
+  if (linesCount <= 4) return 68
+  if (linesCount <= 6) return 58
+  if (linesCount <= 8) return 50
+
+  return 42
+}
+
 /* ───── CREAR STICKER ───── */
 async function createSticker(text) {
 
@@ -46,9 +76,16 @@ async function createSticker(text) {
     `brat_${Date.now()}.txt`
   )
 
-  // 🔥 acomoda texto automáticamente
+  // 🔥 texto acomodado
   const formatted =
     wrapText(text)
+
+  const linesCount =
+    formatted.split('\n').length
+
+  // 🔥 tamaño dinámico
+  const fontSize =
+    getFontSize(linesCount)
 
   fs.writeFileSync(
     txtFile,
@@ -67,8 +104,8 @@ async function createSticker(text) {
 fontfile=/system/fonts/Roboto-Bold.ttf:
 textfile='${txtFile}':
 fontcolor=black:
-fontsize=72:
-line_spacing=20:
+fontsize=${fontSize}:
+line_spacing=18:
 x=(w-text_w)/2:
 y=(h-text_h)/2`,
 
@@ -83,7 +120,7 @@ y=(h-text_h)/2`,
       output
     ])
 
-    // 🚫 sin spam consola
+    // 🚫 ocultar spam ffmpeg
     ff.stderr.on('data',()=>{})
 
     ff.on('close',code=>{
