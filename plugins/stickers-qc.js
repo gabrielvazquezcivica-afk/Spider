@@ -4,17 +4,17 @@ import os from 'os'
 import axios from 'axios'
 import { spawn } from 'child_process'
 
-// ───── PNG → STICKER ─────
+/* ───── PNG → STICKER ───── */
 async function createSticker(buffer) {
 
   const tmpIn = path.join(
     os.tmpdir(),
-    `qc_${Date.now()}.png`
+    `${Date.now()}.png`
   )
 
   const tmpOut = path.join(
     os.tmpdir(),
-    `qc_${Date.now()}.webp`
+    `${Date.now()}.webp`
   )
 
   fs.writeFileSync(tmpIn, buffer)
@@ -25,14 +25,14 @@ async function createSticker(buffer) {
 
       '-i', tmpIn,
 
-      '-vf',
-      'scale=512:512:force_original_aspect_ratio=increase,crop=512:512',
-
       '-vcodec', 'libwebp',
+
+      '-vf',
+      'scale=512:512:force_original_aspect_ratio=decrease,fps=15',
+
       '-lossless', '1',
-      '-q:v', '100',
-      '-preset', 'picture',
       '-loop', '0',
+      '-preset', 'default',
       '-an',
       '-vsync', '0',
       '-y',
@@ -40,8 +40,8 @@ async function createSticker(buffer) {
       tmpOut
     ])
 
-    // 🚫 sin spam
-    ff.stderr.on('data', () => {})
+    // 🔇 evitar spam consola
+    ff.stderr.on('data',()=>{})
 
     ff.on(
       'close',
@@ -79,144 +79,126 @@ async function createSticker(buffer) {
   return result
 }
 
-// ───── COMANDO QC ─────
-export const handler = async (m, {
+/* ───── COMANDO QC ───── */
+const handler = async ({
   sock,
+  m,
   from,
   args,
   isGroup,
   sender,
-  reply
+  participants
 }) => {
 
-  /* ───── 🔒 MODO ADMIN SILENCIOSO ───── */
-  let groupSettings = { enabled:false }
+  /* 🔒 MODODADMIN */
+  let isBlockedGroup = false
 
-  const modoadminPath =
-    './data/modoadmin.json'
+  try {
 
-  if (
-    fs.existsSync(modoadminPath)
-  ) {
-
-    try {
-
-      const modoadminData =
-        JSON.parse(
-          fs.readFileSync(
-            modoadminPath
-          )
-        )
-
-      groupSettings =
-        modoadminData[from] ||
-        { enabled:false }
-
-    } catch {}
-  }
-
-  if (
-    groupSettings.enabled &&
-    isGroup
-  ) {
-
-    let isAdmin = false
-
-    try {
-
-      const metadata =
-        await sock.groupMetadata(from)
-
-      const participants =
-        metadata.participants || []
-
-      isAdmin = participants.some(
-        p =>
-          p.id === sender &&
-          (
-            p.admin === 'admin' ||
-            p.admin === 'superadmin'
-          )
+    const db = JSON.parse(
+      fs.readFileSync(
+        './data/modoadmin.json'
       )
+    )
 
-    } catch {}
+    isBlockedGroup = db[from]
 
-    if (!isAdmin) return
-  }
+  } catch {}
 
-  /* ───── TEXTO ───── */
+  const user =
+    participants?.find(
+      p => p.id === sender
+    )
+
+  const isAdmin =
+    user?.admin === 'admin' ||
+    user?.admin === 'superadmin'
+
+  // 🔥 silencioso
+  if (
+    isBlockedGroup &&
+    !isAdmin
+  ) return
+
+  /* 📝 TEXTO */
   let text =
     args.join(' ').trim()
 
-  // 📌 responder mensaje
+  // 📩 responder mensaje
   if (
     !text &&
-    m.quoted
+    (
+      m.message?.extendedTextMessage
+        ?.contextInfo
+        ?.quotedMessage
+    )
   ) {
 
+    const quoted =
+      m.message.extendedTextMessage
+        .contextInfo
+        .quotedMessage
+
     text =
-      m.quoted.text ||
-      m.quoted.caption ||
+      quoted?.conversation ||
+      quoted?.extendedTextMessage?.text ||
+      quoted?.imageMessage?.caption ||
+      quoted?.videoMessage?.caption ||
       ''
   }
 
   if (!text) {
 
-    return reply(
+    return sock.sendMessage(from,{
+      text:
 `❌ Escribe un texto
 
 Ejemplo:
-.qc hola spider
-
-o responde un mensaje`
-    )
+.qc hola mundo`
+    },{ quoted:m })
   }
 
-  // ✂️ limitar
-  if (text.length > 300) {
-    text = text.slice(0,300)
+  // 🔥 límite
+  if (text.length > 200) {
+
+    return sock.sendMessage(from,{
+      text:
+'❌ Máximo 200 caracteres'
+    },{ quoted:m })
   }
 
-  // 👤 nombre
+  /* 👤 NOMBRE */
   const name =
     m.pushName ||
     sender.split('@')[0]
 
-  // 🖼️ foto
-  let avatar
+  /* 🖼️ FOTO */
+  const avatar =
+    await sock.profilePictureUrl(
+      sender,
+      'image'
+    ).catch(()=>
+      'https://i.imgur.com/JP2jKzD.png'
+    )
+
+  // 🎨 reacción
+  await sock.sendMessage(from,{
+    react:{
+      text:'🖌️',
+      key:m.key
+    }
+  })
 
   try {
 
-    avatar =
-      await sock.profilePictureUrl(
-        sender,
-        'image'
-      )
-
-  } catch {
-
-    avatar =
-      'https://files.catbox.moe/7an4l5.png'
-  }
-
-  try {
-
-    // 🎨 reacción
-    await sock.sendMessage(from,{
-      react:{
-        text:'🖌️',
-        key:m.key
-      }
-    })
-
-    // ───── API QC ─────
+    /* 🔥 API QC */
     const body = {
 
       type:'quote',
 
       format:'png',
 
-      backgroundColor:'#FFFFFF',
+      backgroundColor:'#1b1429',
 
       width:512,
 
@@ -249,7 +231,7 @@ o responde un mensaje`
         {
           headers:{
             'Content-Type':
-              'application/json'
+            'application/json'
           }
         }
       )
@@ -258,32 +240,30 @@ o responde un mensaje`
       !res.data?.result?.image
     ) {
 
-      throw 'API inválida'
+      throw new Error(
+        'API inválida'
+      )
     }
 
-    // 🖼️ buffer
-    const imageBuffer =
+    /* 🖼️ buffer */
+    const buffer =
       Buffer.from(
         res.data.result.image,
         'base64'
       )
 
-    // 🕷️ sticker
+    /* 🕷️ sticker */
     const sticker =
       await createSticker(
-        imageBuffer
+        buffer
       )
 
-    // 📤 enviar
-    await sock.sendMessage(
-      from,
-      {
-        sticker
-      },
-      {
-        quoted:m
-      }
-    )
+    /* 📤 enviar */
+    await sock.sendMessage(from,{
+      sticker
+    },{
+      quoted:m
+    })
 
     // ✅ reacción
     await sock.sendMessage(from,{
@@ -300,9 +280,12 @@ o responde un mensaje`
       e
     )
 
-    reply(
+    await sock.sendMessage(from,{
+      text:
       '❌ Error al generar QC'
-    )
+    },{
+      quoted:m
+    })
   }
 }
 
@@ -310,6 +293,5 @@ handler.command = ['qc']
 handler.tags = ['stickers']
 handler.help = ['qc <texto>']
 handler.menu = true
-handler.group = false
 
 export default handler
