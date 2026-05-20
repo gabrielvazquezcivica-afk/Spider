@@ -20,14 +20,16 @@ const frases = [
   '🕷️ Spider Bot te desea lo mejor hoy y siempre'
 ]
 
-const handler = async ({
-  sock,
-  m,
-  from,
-  sender,
-  isGroup,
-  participants
-}) => {
+const handler = async (ctx) => {
+
+  const {
+    sock,
+    m,
+    from,
+    sender,
+    isGroup,
+    participants
+  } = ctx
 
   if (!isGroup) return
 
@@ -65,7 +67,7 @@ const handler = async ({
   ) {
 
     const user =
-      participants.find(
+      participants?.find(
         p => p.id === sender
       )
 
@@ -77,26 +79,29 @@ const handler = async ({
   }
 
   /* 👤 TARGET */
-  const ctx =
-    m.message?.extendedTextMessage?.contextInfo ||
-    m.message?.imageMessage?.contextInfo ||
-    m.message?.videoMessage?.contextInfo
+  const ctxMsg =
+    m.message?.extendedTextMessage
+      ?.contextInfo ||
+    m.message?.imageMessage
+      ?.contextInfo ||
+    m.message?.videoMessage
+      ?.contextInfo
 
   let who
 
   if (
-    ctx?.mentionedJid?.length
+    ctxMsg?.mentionedJid?.length
   ) {
 
     who =
-      ctx.mentionedJid[0]
+      ctxMsg.mentionedJid[0]
 
   } else if (
-    ctx?.participant
+    ctxMsg?.participant
   ) {
 
     who =
-      ctx.participant
+      ctxMsg.participant
 
   } else {
 
@@ -159,7 +164,7 @@ ${frase}
         url:audio
       },
       mimetype:'audio/mpeg',
-      ptt:false
+      ptt:true
     },
     {
       quoted:m
