@@ -108,7 +108,7 @@ const handler = async (ctx) => {
 
   await sock.sendMessage(from, {
     image: {
-      url: 'https://i.postimg.cc/GpTgKWYp/file-00000000c6a4720caff9cf521ed86667.png'
+      url: 'https://files.catbox.moe/2dx6ft.jpg'
     },
     caption: menu
   }, { quoted: m })
