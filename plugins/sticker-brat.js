@@ -6,69 +6,71 @@ import { spawn } from 'child_process'
 /* ───── WRAP TEXTO ───── */
 function wrapText(text, maxWidth = 18) {
 
+  // 🔥 conservar espacios reales
   const words =
-    text.split(/\s+/)
+    text.replace(/\n/g, ' \n ')
+      .split(/(\s+)/)
 
   const lines = []
 
   let line = ''
 
-  for (const word of words) {
+  for (const part of words) {
 
-    // 🔥 palabras enormes
-    if (word.length > maxWidth) {
+    // salto manual
+    if (part === '\n') {
 
-      if (line.trim()) {
+      lines.push(line.trimEnd())
+      line = ''
+      continue
+    }
 
-        lines.push(
-          line.trim()
-        )
+    // espacios
+    if (/^\s+$/.test(part)) {
 
-        line = ''
-      }
+      line += part
+      continue
+    }
+
+    // palabra enorme
+    if (part.length > maxWidth) {
+
+      if (line.trim())
+        lines.push(line.trimEnd())
+
+      line = ''
 
       for (
         let i = 0;
-        i < word.length;
+        i < part.length;
         i += maxWidth
       ) {
 
         lines.push(
-          word.slice(
-            i,
-            i + maxWidth
-          )
+          part.slice(i, i + maxWidth)
         )
       }
 
       continue
     }
 
-    const test =
-      (line + ' ' + word)
-        .trim()
-
+    // overflow
     if (
-      test.length > maxWidth
+      line.length + part.length >
+      maxWidth
     ) {
 
-      if (line.trim())
-        lines.push(
-          line.trim()
-        )
-
-      line = word
+      lines.push(line.trimEnd())
+      line = part
 
     } else {
 
-      line = test
+      line += part
     }
   }
 
   if (line.trim())
-    lines.push(
-      line.trim()
-    )
+    lines.push(line.trimEnd())
 
   return lines
 }
@@ -86,34 +88,30 @@ function getFontSize(lines) {
       )
     )
 
-  // 🔥 GRANDE
-  // sin cortar letras
-
+  // 🔥 más grande sin cortar
   if (
     total <= 2 &&
-    longest <= 10
-  ) return 92
-
-  if (
-    total <= 3 &&
-    longest <= 14
+    longest <= 12
   ) return 82
 
   if (
     total <= 4 &&
     longest <= 18
-  ) return 72
+  ) return 68
 
-  if (total <= 6)
-    return 62
+  if (
+    total <= 6
+  ) return 56
 
-  if (total <= 8)
-    return 54
+  if (
+    total <= 8
+  ) return 48
 
-  if (total <= 10)
-    return 46
+  if (
+    total <= 10
+  ) return 42
 
-  return 40
+  return 36
 }
 
 /* ───── CREAR STICKER ───── */
@@ -121,20 +119,17 @@ async function createSticker(text) {
 
   let maxWidth = 18
 
-  if (text.length > 40)
+  if (text.length > 50)
     maxWidth = 22
 
-  if (text.length > 80)
+  if (text.length > 100)
     maxWidth = 26
 
-  if (text.length > 160)
+  if (text.length > 180)
     maxWidth = 30
 
   const lines =
-    wrapText(
-      text,
-      maxWidth
-    )
+    wrapText(text, maxWidth)
 
   const formatted =
     lines.join('\n')
@@ -161,11 +156,9 @@ async function createSticker(text) {
 
     const ff = spawn('ffmpeg',[
 
-      /* 🔥 canvas enorme */
+      // 🔥 canvas MUCHO más grande
       '-f','lavfi',
-
-      '-i',
-      'color=c=white:s=1200x1200',
+      '-i','color=c=white:s=900x900',
 
       '-vf',
 
@@ -174,10 +167,12 @@ fontfile=/system/fonts/Roboto-Bold.ttf:
 textfile='${txtFile}':
 fontcolor=black:
 fontsize=${fontSize}:
-line_spacing=18:
+line_spacing=10:
 fix_bounds=true:
 x=(w-text_w)/2:
-y=(h-text_h)/2`,
+y=(h-text_h)/2:
+borderw=0,
+scale=512:512`,
 
       '-frames:v','1',
 
@@ -186,17 +181,11 @@ y=(h-text_h)/2`,
       '-q:v','100',
       '-preset','picture',
 
-      '-vf',
-      'scale=512:512',
-
       '-y',
       output
     ])
 
-    ff.stderr.on(
-      'data',
-      ()=>{}
-    )
+    ff.stderr.on('data',()=>{})
 
     ff.on('close',code=>{
 
