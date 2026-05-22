@@ -4,73 +4,33 @@ import os from 'os'
 import { spawn } from 'child_process'
 
 /* ───── WRAP TEXTO ───── */
-function wrapText(text, maxWidth = 18) {
+function wrapText(text, maxWidth = 22) {
 
-  // 🔥 conservar espacios reales
-  const words =
-    text.replace(/\n/g, ' \n ')
-      .split(/(\s+)/)
-
+  const words = text.split(/\s+/)
   const lines = []
 
   let line = ''
 
-  for (const part of words) {
+  for (const word of words) {
 
-    // salto manual
-    if (part === '\n') {
+    const test =
+      (line + ' ' + word).trim()
 
-      lines.push(line.trimEnd())
-      line = ''
-      continue
-    }
+    if (test.length > maxWidth) {
 
-    // espacios
-    if (/^\s+$/.test(part)) {
+      if (line)
+        lines.push(line)
 
-      line += part
-      continue
-    }
-
-    // palabra enorme
-    if (part.length > maxWidth) {
-
-      if (line.trim())
-        lines.push(line.trimEnd())
-
-      line = ''
-
-      for (
-        let i = 0;
-        i < part.length;
-        i += maxWidth
-      ) {
-
-        lines.push(
-          part.slice(i, i + maxWidth)
-        )
-      }
-
-      continue
-    }
-
-    // overflow
-    if (
-      line.length + part.length >
-      maxWidth
-    ) {
-
-      lines.push(line.trimEnd())
-      line = part
+      line = word
 
     } else {
 
-      line += part
+      line = test
     }
   }
 
-  if (line.trim())
-    lines.push(line.trimEnd())
+  if (line)
+    lines.push(line)
 
   return lines
 }
@@ -83,21 +43,21 @@ function getFontSize(lines) {
 
   const longest =
     Math.max(
-      ...lines.map(
-        l => l.length
-      )
+      ...lines.map(l => l.length)
     )
 
-  // 🔥 más grande sin cortar
+  // 🔥 letras MÁS grandes
+  // pero sin cortarse
+
   if (
     total <= 2 &&
     longest <= 12
-  ) return 82
+  ) return 78
 
   if (
     total <= 4 &&
     longest <= 18
-  ) return 68
+  ) return 66
 
   if (
     total <= 6
@@ -117,16 +77,16 @@ function getFontSize(lines) {
 /* ───── CREAR STICKER ───── */
 async function createSticker(text) {
 
-  let maxWidth = 18
+  let maxWidth = 22
 
-  if (text.length > 50)
-    maxWidth = 22
-
-  if (text.length > 100)
+  if (text.length > 60)
     maxWidth = 26
 
-  if (text.length > 180)
+  if (text.length > 120)
     maxWidth = 30
+
+  if (text.length > 200)
+    maxWidth = 34
 
   const lines =
     wrapText(text, maxWidth)
@@ -149,30 +109,30 @@ async function createSticker(text) {
 
   fs.writeFileSync(
     txtFile,
-    formatted
+    formatted,
+    'utf-8'
   )
 
   return new Promise((resolve,reject)=>{
 
     const ff = spawn('ffmpeg',[
 
-      // 🔥 canvas MUCHO más grande
+      // 🔥 canvas MÁS grande
       '-f','lavfi',
-      '-i','color=c=white:s=900x900',
+      '-i','color=c=white:s=820x820',
 
       '-vf',
 
 `drawtext=
 fontfile=/system/fonts/Roboto-Bold.ttf:
 textfile='${txtFile}':
+reload=1:
 fontcolor=black:
 fontsize=${fontSize}:
 line_spacing=10:
 fix_bounds=true:
 x=(w-text_w)/2:
-y=(h-text_h)/2:
-borderw=0,
-scale=512:512`,
+y=(h-text_h)/2`,
 
       '-frames:v','1',
 
