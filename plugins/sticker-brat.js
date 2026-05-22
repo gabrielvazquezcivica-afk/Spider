@@ -3,70 +3,72 @@ import path from 'path'
 import os from 'os'
 import { spawn } from 'child_process'
 
-/* ───── WRAP TEXTO REAL ───── */
+/* ───── WRAP TEXTO ───── */
 function wrapText(text, maxWidth = 18) {
 
-  // 🔥 respetar espacios y saltos
-  const paragraphs = text
-    .replace(/\r/g, '')
-    .split('\n')
+  const words =
+    text.split(/\s+/)
 
   const lines = []
 
-  for (const paragraph of paragraphs) {
+  let line = ''
 
-    const words = paragraph.split(' ')
-    let line = ''
+  for (const word of words) {
 
-    for (const word of words) {
+    // 🔥 palabras enormes
+    if (word.length > maxWidth) {
 
-      // 🔥 palabras enormes
-      if (word.length > maxWidth) {
+      if (line.trim()) {
 
-        if (line.trim()) {
-          lines.push(line.trim())
-          line = ''
-        }
+        lines.push(
+          line.trim()
+        )
 
-        for (
-          let i = 0;
-          i < word.length;
-          i += maxWidth
-        ) {
+        line = ''
+      }
 
-          lines.push(
-            word.slice(i, i + maxWidth)
+      for (
+        let i = 0;
+        i < word.length;
+        i += maxWidth
+      ) {
+
+        lines.push(
+          word.slice(
+            i,
+            i + maxWidth
           )
-        }
-
-        continue
+        )
       }
 
-      const test =
-        line.length
-          ? line + ' ' + word
-          : word
-
-      if (test.length > maxWidth) {
-
-        if (line.trim())
-          lines.push(line.trim())
-
-        line = word
-
-      } else {
-
-        line = test
-      }
+      continue
     }
 
-    if (line.trim())
-      lines.push(line.trim())
+    const test =
+      (line + ' ' + word)
+        .trim()
 
-    // 🔥 respetar enter
-    if (!paragraph.trim())
-      lines.push('')
+    if (
+      test.length > maxWidth
+    ) {
+
+      if (line.trim())
+        lines.push(
+          line.trim()
+        )
+
+      line = word
+
+    } else {
+
+      line = test
+    }
   }
+
+  if (line.trim())
+    lines.push(
+      line.trim()
+    )
 
   return lines
 }
@@ -74,24 +76,44 @@ function wrapText(text, maxWidth = 18) {
 /* ───── FUENTE DINÁMICA ───── */
 function getFontSize(lines) {
 
-  const total = lines.length
+  const total =
+    lines.length
 
-  if (total <= 2)
-    return 72
+  const longest =
+    Math.max(
+      ...lines.map(
+        l => l.length
+      )
+    )
 
-  if (total <= 4)
-    return 60
+  // 🔥 GRANDE
+  // sin cortar letras
+
+  if (
+    total <= 2 &&
+    longest <= 10
+  ) return 92
+
+  if (
+    total <= 3 &&
+    longest <= 14
+  ) return 82
+
+  if (
+    total <= 4 &&
+    longest <= 18
+  ) return 72
 
   if (total <= 6)
-    return 50
+    return 62
 
   if (total <= 8)
-    return 42
+    return 54
 
   if (total <= 10)
-    return 36
+    return 46
 
-  return 30
+  return 40
 }
 
 /* ───── CREAR STICKER ───── */
@@ -99,20 +121,20 @@ async function createSticker(text) {
 
   let maxWidth = 18
 
-  if (text.length > 50)
+  if (text.length > 40)
     maxWidth = 22
 
-  if (text.length > 100)
+  if (text.length > 80)
     maxWidth = 26
 
-  if (text.length > 180)
+  if (text.length > 160)
     maxWidth = 30
 
-  if (text.length > 260)
-    maxWidth = 34
-
   const lines =
-    wrapText(text, maxWidth)
+    wrapText(
+      text,
+      maxWidth
+    )
 
   const formatted =
     lines.join('\n')
@@ -132,17 +154,18 @@ async function createSticker(text) {
 
   fs.writeFileSync(
     txtFile,
-    formatted,
-    'utf-8'
+    formatted
   )
 
   return new Promise((resolve,reject)=>{
 
     const ff = spawn('ffmpeg',[
 
-      // 🔥 canvas MÁS GRANDE
+      /* 🔥 canvas enorme */
       '-f','lavfi',
-      '-i','color=c=white:s=900x900',
+
+      '-i',
+      'color=c=white:s=1200x1200',
 
       '-vf',
 
@@ -151,12 +174,10 @@ fontfile=/system/fonts/Roboto-Bold.ttf:
 textfile='${txtFile}':
 fontcolor=black:
 fontsize=${fontSize}:
-line_spacing=12:
+line_spacing=18:
 fix_bounds=true:
 x=(w-text_w)/2:
-y=(h-text_h)/2:
-borderw=0,
-scale=512:512`,
+y=(h-text_h)/2`,
 
       '-frames:v','1',
 
@@ -165,11 +186,17 @@ scale=512:512`,
       '-q:v','100',
       '-preset','picture',
 
+      '-vf',
+      'scale=512:512',
+
       '-y',
       output
     ])
 
-    ff.stderr.on('data',()=>{})
+    ff.stderr.on(
+      'data',
+      ()=>{}
+    )
 
     ff.on('close',code=>{
 
@@ -288,7 +315,7 @@ const handler = async ({
 
   /* 🔥 TEXTO */
   let text =
-    args.join(' ')
+    args.join(' ').trim()
 
   if (!text) {
 
@@ -310,17 +337,6 @@ Ejemplo:
 
 O responde un mensaje con:
 .brat`
-    },{
-      quoted:m
-    })
-  }
-
-  // 🔥 limitar exageraciones
-  if (text.length > 500) {
-
-    return sock.sendMessage(from,{
-      text:
-'❌ Texto demasiado largo'
     },{
       quoted:m
     })
