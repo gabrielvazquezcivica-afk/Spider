@@ -4,22 +4,60 @@ import os from 'os'
 import { spawn } from 'child_process'
 
 /* ───── WRAP TEXTO ───── */
-function wrapText(text, maxWidth = 22) {
+function wrapText(text, maxWidth = 18) {
 
-  const words = text.split(/\s+/)
+  const words =
+    text.split(/\s+/)
+
   const lines = []
 
   let line = ''
 
   for (const word of words) {
 
+    // 🔥 palabras enormes
+    if (word.length > maxWidth) {
+
+      if (line.trim()) {
+
+        lines.push(
+          line.trim()
+        )
+
+        line = ''
+      }
+
+      for (
+        let i = 0;
+        i < word.length;
+        i += maxWidth
+      ) {
+
+        lines.push(
+          word.slice(
+            i,
+            i + maxWidth
+          )
+        )
+      }
+
+      continue
+    }
+
     const test =
-      (line + ' ' + word).trim()
+      (line + ' ' + word)
+        .trim()
 
-    if (test.length > maxWidth) {
+    if (
+      test.length > maxWidth
+    ) {
 
-      if (line)
-        lines.push(line)
+      if (line.trim()) {
+
+        lines.push(
+          line.trim()
+        )
+      }
 
       line = word
 
@@ -29,8 +67,12 @@ function wrapText(text, maxWidth = 22) {
     }
   }
 
-  if (line)
-    lines.push(line)
+  if (line.trim()) {
+
+    lines.push(
+      line.trim()
+    )
+  }
 
   return lines
 }
@@ -43,53 +85,57 @@ function getFontSize(lines) {
 
   const longest =
     Math.max(
-      ...lines.map(l => l.length)
+      ...lines.map(
+        l => l.length
+      )
     )
 
-  // 🔥 letras MÁS grandes
-  // pero sin cortarse
+  // 🔥 LETRAS MUCHO MÁS GRANDES
 
   if (
     total <= 2 &&
     longest <= 12
-  ) return 78
+  ) return 96
 
   if (
     total <= 4 &&
     longest <= 18
-  ) return 66
+  ) return 84
 
   if (
     total <= 6
-  ) return 56
+  ) return 72
 
   if (
     total <= 8
-  ) return 48
+  ) return 62
 
   if (
     total <= 10
-  ) return 42
+  ) return 54
 
-  return 36
+  return 46
 }
 
 /* ───── CREAR STICKER ───── */
 async function createSticker(text) {
 
-  let maxWidth = 22
+  let maxWidth = 18
 
-  if (text.length > 60)
+  if (text.length > 40)
+    maxWidth = 22
+
+  if (text.length > 80)
     maxWidth = 26
 
-  if (text.length > 120)
+  if (text.length > 160)
     maxWidth = 30
 
-  if (text.length > 200)
-    maxWidth = 34
-
   const lines =
-    wrapText(text, maxWidth)
+    wrapText(
+      text,
+      maxWidth
+    )
 
   const formatted =
     lines.join('\n')
@@ -109,27 +155,29 @@ async function createSticker(text) {
 
   fs.writeFileSync(
     txtFile,
-    formatted,
-    'utf-8'
+    formatted
   )
 
-  return new Promise((resolve,reject)=>{
+  return new Promise(
+    (resolve,reject)=>{
+    
+    const ff = spawn(
+      'ffmpeg',
+      [
 
-    const ff = spawn('ffmpeg',[
-
-      // 🔥 canvas MÁS grande
+      /* 🔥 canvas MUCHO MÁS GRANDE */
       '-f','lavfi',
-      '-i','color=c=white:s=820x820',
+      '-i',
+      'color=c=white:s=900x900',
 
       '-vf',
 
 `drawtext=
 fontfile=/system/fonts/Roboto-Bold.ttf:
 textfile='${txtFile}':
-reload=1:
 fontcolor=black:
 fontsize=${fontSize}:
-line_spacing=10:
+line_spacing=8:
 fix_bounds=true:
 x=(w-text_w)/2:
 y=(h-text_h)/2`,
@@ -145,27 +193,42 @@ y=(h-text_h)/2`,
       output
     ])
 
-    ff.stderr.on('data',()=>{})
+    ff.stderr.on(
+      'data',
+      ()=>{}
+    )
 
-    ff.on('close',code=>{
+    ff.on(
+      'close',
+      code=>{
 
       try {
-        fs.unlinkSync(txtFile)
+
+        fs.unlinkSync(
+          txtFile
+        )
+
       } catch {}
 
-      if(code !== 0)
+      if (code !== 0) {
+
         return reject(
           new Error(
             'FFmpeg falló'
           )
         )
+      }
 
       try {
 
         const buffer =
-          fs.readFileSync(output)
+          fs.readFileSync(
+            output
+          )
 
-        fs.unlinkSync(output)
+        fs.unlinkSync(
+          output
+        )
 
         resolve(buffer)
 
@@ -186,7 +249,8 @@ y=(h-text_h)/2`,
 function getQuotedText(m) {
 
   const ctx =
-    m.message?.extendedTextMessage
+    m.message
+      ?.extendedTextMessage
       ?.contextInfo
 
   const quoted =
@@ -197,9 +261,15 @@ function getQuotedText(m) {
 
   return (
     quoted.conversation ||
-    quoted.extendedTextMessage?.text ||
-    quoted.imageMessage?.caption ||
-    quoted.videoMessage?.caption ||
+    quoted
+      .extendedTextMessage
+      ?.text ||
+    quoted
+      .imageMessage
+      ?.caption ||
+    quoted
+      .videoMessage
+      ?.caption ||
     null
   )
 }
@@ -212,8 +282,11 @@ function getDB() {
     const pathDB =
       './data/modoadmin.json'
 
-    if (!fs.existsSync(pathDB))
-      return {}
+    if (
+      !fs.existsSync(
+        pathDB
+      )
+    ) return {}
 
     return JSON.parse(
       fs.readFileSync(
@@ -252,19 +325,24 @@ const handler = async ({
 
     const user =
       participants?.find(
-        p => p.id === sender
+        p =>
+          p.id === sender
       )
 
     const isAdmin =
-      user?.admin === 'admin' ||
-      user?.admin === 'superadmin'
+      user?.admin ===
+        'admin' ||
+      user?.admin ===
+        'superadmin'
 
-    if (!isAdmin) return
+    if (!isAdmin)
+      return
   }
 
   /* 🔥 TEXTO */
   let text =
-    args.join(' ').trim()
+    args.join(' ')
+      .trim()
 
   if (!text) {
 
@@ -277,7 +355,9 @@ const handler = async ({
 
   if (!text) {
 
-    return sock.sendMessage(from,{
+    return sock.sendMessage(
+      from,
+      {
       text:
 `❌ Escribe un texto
 
@@ -292,7 +372,9 @@ O responde un mensaje con:
   }
 
   /* 🎨 REACCIÓN */
-  await sock.sendMessage(from,{
+  await sock.sendMessage(
+    from,
+    {
     react:{
       text:'🎨',
       key:m.key
@@ -302,17 +384,23 @@ O responde un mensaje con:
   try {
 
     const sticker =
-      await createSticker(text)
+      await createSticker(
+        text
+      )
 
     /* 📤 ENVIAR */
-    await sock.sendMessage(from,{
+    await sock.sendMessage(
+      from,
+      {
       sticker
     },{
       quoted:m
     })
 
     /* ✅ */
-    await sock.sendMessage(from,{
+    await sock.sendMessage(
+      from,
+      {
       react:{
         text:'✅',
         key:m.key
@@ -326,7 +414,9 @@ O responde un mensaje con:
       e
     )
 
-    await sock.sendMessage(from,{
+    await sock.sendMessage(
+      from,
+      {
       text:
 '❌ Error al generar sticker'
     },{
