@@ -3,11 +3,67 @@ import path from 'path'
 import os from 'os'
 import { spawn } from 'child_process'
 
-/* ───── WRAP TEXTO ───── */
-function wrapText(text, maxWidth = 28) {
+/* ───── MODODADMIN DB ───── */
+function getDB() {
+
+  try {
+
+    const file =
+      './data/modoadmin.json'
+
+    if (!fs.existsSync(file))
+      return {}
+
+    return JSON.parse(
+      fs.readFileSync(
+        file,
+        'utf8'
+      )
+    )
+
+  } catch {
+
+    return {}
+  }
+}
+
+/* ───── TEXTO RESPONDIDO ───── */
+function getQuotedText(m) {
+
+  const ctx =
+    m.message
+      ?.extendedTextMessage
+      ?.contextInfo
+
+  const quoted =
+    ctx?.quotedMessage
+
+  if (!quoted)
+    return null
+
+  return (
+    quoted.conversation ||
+    quoted
+      ?.extendedTextMessage
+      ?.text ||
+    quoted
+      ?.imageMessage
+      ?.caption ||
+    quoted
+      ?.videoMessage
+      ?.caption ||
+    null
+  )
+}
+
+/* ───── WRAP REAL ───── */
+function wrapText(
+  text,
+  max = 18
+) {
 
   const words =
-    text.split(/\s+/)
+    text.split(' ')
 
   const lines = []
 
@@ -15,49 +71,16 @@ function wrapText(text, maxWidth = 28) {
 
   for (const word of words) {
 
-    // 🔥 palabras enormes
-    if (word.length > maxWidth) {
-
-      if (line.trim()) {
-
-        lines.push(
-          line.trim()
-        )
-
-        line = ''
-      }
-
-      for (
-        let i = 0;
-        i < word.length;
-        i += maxWidth
-      ) {
-
-        lines.push(
-          word.slice(
-            i,
-            i + maxWidth
-          )
-        )
-      }
-
-      continue
-    }
-
     const test =
       (line + ' ' + word)
         .trim()
 
     if (
-      test.length > maxWidth
+      test.length > max
     ) {
 
-      if (line.trim()) {
-
-        lines.push(
-          line.trim()
-        )
-      }
+      if (line)
+        lines.push(line)
 
       line = word
 
@@ -67,79 +90,82 @@ function wrapText(text, maxWidth = 28) {
     }
   }
 
-  if (line.trim()) {
-
-    lines.push(
-      line.trim()
-    )
-  }
+  if (line)
+    lines.push(line)
 
   return lines
 }
 
-/* ───── FUENTE DINÁMICA ───── */
-function getFontSize(lines) {
+/* ───── TAMAÑO ───── */
+function getFontSize(
+  lines
+) {
 
-  const total =
+  const amount =
     lines.length
 
-  if (total <= 1)
-    return 90
+  if (amount <= 1)
+    return 95
 
-  if (total <= 2)
+  if (amount <= 2)
     return 82
 
-  if (total <= 3)
+  if (amount <= 3)
     return 74
 
-  if (total <= 4)
+  if (amount <= 4)
     return 66
 
-  if (total <= 5)
+  if (amount <= 5)
     return 58
 
-  if (total <= 6)
-    return 52
+  if (amount <= 6)
+    return 50
 
-  return 46
+  return 42
 }
 
 /* ───── CREAR STICKER ───── */
 async function createSticker(text) {
 
-  let maxWidth = 28
+  // 🔥 emojis compatibles
+  text = text
+    .replace(/\n/g,' ')
+    .trim()
 
-  if (text.length > 80)
-    maxWidth = 34
+  let width = 18
 
-  if (text.length > 160)
-    maxWidth = 40
+  if (text.length > 60)
+    width = 22
+
+  if (text.length > 120)
+    width = 26
+
+  if (text.length > 200)
+    width = 30
 
   const lines =
-    wrapText(
-      text,
-      maxWidth
-    )
+    wrapText(text,width)
 
-  const formatted =
+  const finalText =
     lines.join('\n')
 
   const fontSize =
     getFontSize(lines)
+
+  const txt = path.join(
+    os.tmpdir(),
+    `brat_${Date.now()}.txt`
+  )
 
   const output = path.join(
     os.tmpdir(),
     `brat_${Date.now()}.webp`
   )
 
-  const txtFile = path.join(
-    os.tmpdir(),
-    `brat_${Date.now()}.txt`
-  )
-
   fs.writeFileSync(
-    txtFile,
-    formatted,
+    txt,
+    finalText,
     'utf8'
   )
 
@@ -150,21 +176,21 @@ async function createSticker(text) {
       'ffmpeg',
       [
 
-      // 🔥 RECTANGULAR
+      // 🔥 estilo REAL
       '-f','lavfi',
       '-i',
-      'color=c=white:s=900x700',
+      'color=c=white:s=1024x1024',
 
       '-vf',
 
 `drawtext=
-fontfile=/system/fonts/Roboto-Bold.ttf:
-textfile='${txtFile}':
-fontcolor=black:
+fontfile=/system/fonts/NotoSans-Bold.ttf:
+textfile='${txt}':
 fontsize=${fontSize}:
-line_spacing=8:
-fix_bounds=true:
+fontcolor=black:
+line_spacing=12:
 text_shaping=1:
+fix_bounds=true:
 x=(w-text_w)/2:
 y=(h-text_h)/2`,
 
@@ -173,7 +199,7 @@ y=(h-text_h)/2`,
       '-vcodec','libwebp',
       '-lossless','1',
       '-q:v','100',
-      '-preset','picture',
+      '-preset','drawing',
 
       '-y',
       output
@@ -193,11 +219,7 @@ y=(h-text_h)/2`,
       code => {
 
       try {
-
-        fs.unlinkSync(
-          txtFile
-        )
-
+        fs.unlinkSync(txt)
       } catch {}
 
       if (code !== 0) {
@@ -237,62 +259,6 @@ y=(h-text_h)/2`,
   })
 }
 
-/* ───── TEXTO RESPONDIDO ───── */
-function getQuotedText(m) {
-
-  const ctx =
-    m.message
-      ?.extendedTextMessage
-      ?.contextInfo
-
-  const quoted =
-    ctx?.quotedMessage
-
-  if (!quoted)
-    return null
-
-  return (
-    quoted.conversation ||
-    quoted
-      .extendedTextMessage
-      ?.text ||
-    quoted
-      .imageMessage
-      ?.caption ||
-    quoted
-      .videoMessage
-      ?.caption ||
-    null
-  )
-}
-
-/* ───── DB MODODADMIN ───── */
-function getDB() {
-
-  try {
-
-    const pathDB =
-      './data/modoadmin.json'
-
-    if (
-      !fs.existsSync(
-        pathDB
-      )
-    ) return {}
-
-    return JSON.parse(
-      fs.readFileSync(
-        pathDB,
-        'utf-8'
-      )
-    )
-
-  } catch {
-
-    return {}
-  }
-}
-
 /* ───── COMANDO ───── */
 const handler = async ({
   sock,
@@ -307,11 +273,11 @@ const handler = async ({
   /* 🔒 MODODADMIN */
   const db = getDB()
 
-  const isBlockedGroup =
+  const enabled =
     db[from]
 
   if (
-    isBlockedGroup &&
+    enabled &&
     isGroup
   ) {
 
@@ -338,11 +304,11 @@ const handler = async ({
 
   if (!text) {
 
-    const quotedText =
+    const quoted =
       getQuotedText(m)
 
-    if (quotedText)
-      text = quotedText
+    if (quoted)
+      text = quoted
   }
 
   if (!text) {
@@ -354,16 +320,13 @@ const handler = async ({
 `❌ Escribe un texto
 
 Ejemplo:
-.brat hola
-
-O responde un mensaje con:
-.brat`
+.brat hola 😹`
     },{
       quoted:m
     })
   }
 
-  /* 🎨 REACCIÓN */
+  /* 🎨 */
   await sock.sendMessage(
     from,
     {
@@ -380,7 +343,7 @@ O responde un mensaje con:
         text
       )
 
-    /* 📤 ENVIAR */
+    /* 📤 */
     await sock.sendMessage(
       from,
       {
@@ -399,7 +362,7 @@ O responde un mensaje con:
       }
     })
 
-  } catch(e) {
+  } catch(e){
 
     console.log(
       'BRAT ERROR:',
@@ -410,7 +373,7 @@ O responde un mensaje con:
       from,
       {
       text:
-'❌ Error al generar sticker'
+'❌ Error al crear sticker'
     },{
       quoted:m
     })
