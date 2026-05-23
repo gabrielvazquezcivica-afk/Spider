@@ -1,23 +1,21 @@
 import fs from 'fs'
-import path from 'path'
-import os from 'os'
-import { spawn } from 'child_process'
+import axios from 'axios'
 
-/* ───── DB MODODADMIN ───── */
+/* 📂 DB MODODADMIN */
 function getDB() {
 
   try {
 
-    const file =
+    const pathDB =
       './data/modoadmin.json'
 
-    if (!fs.existsSync(file))
+    if (!fs.existsSync(pathDB))
       return {}
 
     return JSON.parse(
       fs.readFileSync(
-        file,
-        'utf8'
+        pathDB,
+        'utf-8'
       )
     )
 
@@ -27,12 +25,65 @@ function getDB() {
   }
 }
 
-/* ───── TEXTO RESPONDIDO ───── */
+/* ⏳ DELAY */
+const delay = (ms) =>
+  new Promise(resolve =>
+    setTimeout(resolve, ms)
+  )
+
+/* 🎨 OBTENER IMAGEN BRAT */
+const fetchSticker = async (
+  text,
+  attempt = 1
+) => {
+
+  try {
+
+    const response =
+      await axios.get(
+        'https://kepolu-brat.hf.space/brat',
+        {
+          params: {
+            q: text
+          },
+          responseType:
+            'arraybuffer'
+        }
+      )
+
+    return response.data
+
+  } catch (error) {
+
+    if (
+      error.response?.status === 429 &&
+      attempt <= 3
+    ) {
+
+      const retryAfter =
+        error.response.headers[
+          'retry-after'
+        ] || 5
+
+      await delay(
+        retryAfter * 1000
+      )
+
+      return fetchSticker(
+        text,
+        attempt + 1
+      )
+    }
+
+    throw error
+  }
+}
+
+/* 💬 TEXTO RESPONDIDO */
 function getQuotedText(m) {
 
   const ctx =
-    m.message
-      ?.extendedTextMessage
+    m.message?.extendedTextMessage
       ?.contextInfo
 
   const quoted =
@@ -43,216 +94,11 @@ function getQuotedText(m) {
 
   return (
     quoted.conversation ||
-    quoted?.extendedTextMessage?.text ||
-    quoted?.imageMessage?.caption ||
-    quoted?.videoMessage?.caption ||
+    quoted.extendedTextMessage?.text ||
+    quoted.imageMessage?.caption ||
+    quoted.videoMessage?.caption ||
     null
   )
-}
-
-/* ───── WRAP TEXTO ───── */
-function wrapText(
-  text,
-  maxWidth = 15
-) {
-
-  const words =
-    text.split(/\s+/)
-
-  const lines = []
-
-  let line = ''
-
-  for (const word of words) {
-
-    const test =
-      (line + ' ' + word)
-        .trim()
-
-    if (
-      test.length > maxWidth
-    ) {
-
-      if (line)
-        lines.push(line)
-
-      line = word
-
-    } else {
-
-      line = test
-    }
-  }
-
-  if (line)
-    lines.push(line)
-
-  return lines
-}
-
-/* ───── FUENTE DINÁMICA ───── */
-function getFontSize(lines) {
-
-  const total =
-    lines.length
-
-  if (total <= 1)
-    return 170
-
-  if (total <= 2)
-    return 150
-
-  if (total <= 3)
-    return 132
-
-  if (total <= 4)
-    return 118
-
-  if (total <= 5)
-    return 104
-
-  if (total <= 6)
-    return 92
-
-  if (total <= 7)
-    return 82
-
-  return 72
-}
-
-/* ───── ESCAPAR TEXTO ───── */
-function escapeText(text) {
-
-  return text
-    .replace(/\\/g,'\\\\')
-    .replace(/:/g,'\\:')
-    .replace(/'/g,"\\'")
-    .replace(/\[/g,'\\[')
-    .replace(/\]/g,'\\]')
-    .replace(/,/g,'\\,')
-    .replace(/\n/g,'\\n')
-}
-
-/* ───── CREAR STICKER ───── */
-async function createSticker(text) {
-
-  text = text.trim()
-
-  let maxWidth = 15
-
-  if (text.length > 50)
-    maxWidth = 18
-
-  if (text.length > 100)
-    maxWidth = 21
-
-  if (text.length > 170)
-    maxWidth = 24
-
-  const lines =
-    wrapText(
-      text,
-      maxWidth
-    )
-
-  const finalText =
-    lines.join('\n')
-
-  const fontSize =
-    getFontSize(lines)
-
-  const output = path.join(
-    os.tmpdir(),
-    `brat_${Date.now()}.webp`
-  )
-
-  const escaped =
-    escapeText(finalText)
-
-  return new Promise(
-    (resolve,reject)=>{
-
-    const ff = spawn(
-      'ffmpeg',
-      [
-
-      '-f','lavfi',
-      '-i',
-      'color=c=white:s=1400x1400',
-
-      '-vf',
-
-`drawtext=
-fontfile=/system/fonts/Roboto-Bold.ttf:
-text='${escaped}':
-fontsize=${fontSize}:
-fontcolor=black:
-line_spacing=20:
-text_shaping=1:
-fix_bounds=true:
-x=(w-text_w)/2:
-y=(h-text_h)/2,
-scale=512:512`,
-
-      '-frames:v','1',
-
-      '-vcodec','libwebp',
-      '-lossless','1',
-      '-q:v','100',
-      '-preset','picture',
-
-      '-y',
-      output
-    ])
-
-    let err = ''
-
-    ff.stderr.on(
-      'data',
-      d => {
-
-      err += d.toString()
-    })
-
-    ff.on(
-      'close',
-      code => {
-
-      if (code !== 0) {
-
-        console.log(err)
-
-        return reject(
-          new Error(
-            'FFmpeg falló'
-          )
-        )
-      }
-
-      try {
-
-        const buffer =
-          fs.readFileSync(
-            output
-          )
-
-        fs.unlinkSync(
-          output
-        )
-
-        resolve(buffer)
-
-      } catch(e){
-
-        reject(e)
-      }
-    })
-
-    ff.on(
-      'error',
-      reject
-    )
-  })
 }
 
 /* ───── COMANDO ───── */
@@ -269,42 +115,37 @@ const handler = async ({
   /* 🔒 MODODADMIN */
   const db = getDB()
 
-  const enabled =
+  const isBlockedGroup =
     db[from]
 
   if (
-    enabled &&
+    isBlockedGroup &&
     isGroup
   ) {
 
     const user =
       participants?.find(
-        p =>
-          p.id === sender
+        p => p.id === sender
       )
 
     const isAdmin =
-      user?.admin ===
-        'admin' ||
-      user?.admin ===
-        'superadmin'
+      user?.admin === 'admin' ||
+      user?.admin === 'superadmin'
 
-    if (!isAdmin)
-      return
+    if (!isAdmin) return
   }
 
   /* 🔥 TEXTO */
   let text =
-    args.join(' ')
-      .trim()
+    args.join(' ').trim()
 
   if (!text) {
 
-    const quoted =
+    const quotedText =
       getQuotedText(m)
 
-    if (quoted)
-      text = quoted
+    if (quotedText)
+      text = quotedText
   }
 
   if (!text) {
@@ -312,20 +153,23 @@ const handler = async ({
     return sock.sendMessage(
       from,
       {
-      text:
+        text:
 `❌ Escribe un texto
 
 Ejemplo:
-.brat hola 😹`
-    },{
-      quoted:m
-    })
+.brat hola
+
+O responde un mensaje con:
+.brat`
+      },
+      {
+        quoted:m
+      }
+    )
   }
 
-  /* 🎨 */
-  await sock.sendMessage(
-    from,
-    {
+  /* 🎨 REACCIÓN */
+  await sock.sendMessage(from,{
     react:{
       text:'🎨',
       key:m.key
@@ -334,31 +178,30 @@ Ejemplo:
 
   try {
 
-    const sticker =
-      await createSticker(
-        text
-      )
+    /* 🖼️ OBTENER IMAGEN */
+    const buffer =
+      await fetchSticker(text)
 
-    /* 📤 */
+    /* 📤 ENVIAR STICKER */
     await sock.sendMessage(
       from,
       {
-      sticker
-    },{
-      quoted:m
-    })
-
-    /* ✅ */
-    await sock.sendMessage(
-      from,
+        sticker: buffer
+      },
       {
+        quoted:m
+      }
+    )
+
+    /* ✅ REACCIÓN */
+    await sock.sendMessage(from,{
       react:{
         text:'✅',
         key:m.key
       }
     })
 
-  } catch(e){
+  } catch (e) {
 
     console.log(
       'BRAT ERROR:',
@@ -368,11 +211,13 @@ Ejemplo:
     await sock.sendMessage(
       from,
       {
-      text:
-'❌ Error al crear sticker'
-    },{
-      quoted:m
-    })
+        text:
+'❌ Error al generar sticker'
+      },
+      {
+        quoted:m
+      }
+    )
   }
 }
 
