@@ -3,7 +3,7 @@ import path from 'path'
 import os from 'os'
 import { spawn } from 'child_process'
 
-/* ───── DB ───── */
+/* ───── DB MODODADMIN ───── */
 function getDB() {
 
   try {
@@ -50,7 +50,7 @@ function getQuotedText(m) {
   )
 }
 
-/* ───── WRAP REAL ───── */
+/* ───── WRAP TEXTO ───── */
 function wrapText(
   text,
   maxWidth = 15
@@ -90,37 +90,34 @@ function wrapText(
   return lines
 }
 
-/* ───── TAMAÑO PERFECTO ───── */
-function getFontSize(
-  lines
-) {
+/* ───── FUENTE DINÁMICA ───── */
+function getFontSize(lines) {
 
   const total =
     lines.length
 
-  // 🔥 LETRAS GRANDES
   if (total <= 1)
     return 170
 
   if (total <= 2)
-    return 145
+    return 150
 
   if (total <= 3)
-    return 128
+    return 132
 
   if (total <= 4)
-    return 114
+    return 118
 
   if (total <= 5)
-    return 100
+    return 104
 
   if (total <= 6)
-    return 88
+    return 92
 
   if (total <= 7)
-    return 78
+    return 82
 
-  return 68
+  return 72
 }
 
 /* ───── ESCAPAR TEXTO ───── */
@@ -141,7 +138,6 @@ async function createSticker(text) {
 
   text = text.trim()
 
-  // 🔥 MÁS ANCHO
   let maxWidth = 15
 
   if (text.length > 50)
@@ -180,7 +176,6 @@ async function createSticker(text) {
       'ffmpeg',
       [
 
-      // 🔥 CANVAS GIGANTE
       '-f','lavfi',
       '-i',
       'color=c=white:s=1400x1400',
@@ -188,7 +183,7 @@ async function createSticker(text) {
       '-vf',
 
 `drawtext=
-fontfile=/system/fonts/NotoSans-Bold.ttf:
+fontfile=/system/fonts/NotoColorEmoji.ttf:
 text='${escaped}':
 fontsize=${fontSize}:
 fontcolor=black:
@@ -198,6 +193,8 @@ fix_bounds=true:
 x=(w-text_w)/2:
 y=(h-text_h)/2,
 scale=512:512`,
+
+      '-frames:v','1',
 
       '-vcodec','libwebp',
       '-lossless','1',
