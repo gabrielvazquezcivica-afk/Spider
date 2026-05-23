@@ -3,7 +3,7 @@ import path from 'path'
 import os from 'os'
 import { spawn } from 'child_process'
 
-/* ───── DB MODODADMIN ───── */
+/* ───── DB ───── */
 function getDB() {
 
   try {
@@ -43,17 +43,23 @@ function getQuotedText(m) {
 
   return (
     quoted.conversation ||
-    quoted?.extendedTextMessage?.text ||
-    quoted?.imageMessage?.caption ||
-    quoted?.videoMessage?.caption ||
+    quoted
+      ?.extendedTextMessage
+      ?.text ||
+    quoted
+      ?.imageMessage
+      ?.caption ||
+    quoted
+      ?.videoMessage
+      ?.caption ||
     null
   )
 }
 
-/* ───── WRAP TEXTO ───── */
+/* ───── WRAP ───── */
 function wrapText(
   text,
-  maxWidth = 18
+  maxWidth = 14
 ) {
 
   const words =
@@ -90,7 +96,7 @@ function wrapText(
   return lines
 }
 
-/* ───── TAMAÑO LETRA ───── */
+/* ───── FUENTE ───── */
 function getFontSize(
   lines
 ) {
@@ -99,41 +105,45 @@ function getFontSize(
     lines.length
 
   if (total <= 1)
-    return 120
+    return 150
 
   if (total <= 2)
-    return 104
+    return 130
 
   if (total <= 3)
-    return 92
+    return 118
 
   if (total <= 4)
-    return 82
+    return 106
 
   if (total <= 5)
-    return 72
+    return 94
 
   if (total <= 6)
-    return 64
+    return 82
 
-  return 56
+  return 70
 }
 
 /* ───── CREAR STICKER ───── */
 async function createSticker(text) {
 
-  text = text.trim()
+  // ❌ quitar emojis
+  text = text.replace(
+    /[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu,
+    ''
+  ).trim()
 
-  let maxWidth = 18
+  let maxWidth = 14
 
-  if (text.length > 70)
-    maxWidth = 22
+  if (text.length > 50)
+    maxWidth = 16
 
-  if (text.length > 140)
-    maxWidth = 26
+  if (text.length > 100)
+    maxWidth = 18
 
-  if (text.length > 220)
-    maxWidth = 30
+  if (text.length > 160)
+    maxWidth = 20
 
   const lines =
     wrapText(
@@ -147,7 +157,7 @@ async function createSticker(text) {
   const fontSize =
     getFontSize(lines)
 
-  const txtPath = path.join(
+  const txtFile = path.join(
     os.tmpdir(),
     `brat_${Date.now()}.txt`
   )
@@ -158,7 +168,7 @@ async function createSticker(text) {
   )
 
   fs.writeFileSync(
-    txtPath,
+    txtFile,
     formatted,
     'utf8'
   )
@@ -170,23 +180,20 @@ async function createSticker(text) {
       'ffmpeg',
       [
 
-      // 🔥 CANVAS GRANDE
+      // 🔥 MISMO ESTILO
       '-f','lavfi',
       '-i',
       'color=c=white:s=1024x1024',
 
       '-vf',
 
-      // 🔥 FUENTE GRUESA + EMOJIS
 `drawtext=
-fontfile=/system/fonts/NotoSansCJK-Bold.ttc:
-textfile='${txtPath}':
-fontsize=${fontSize}:
+fontfile=/system/fonts/Roboto-Bold.ttf:
+textfile='${txtFile}':
 fontcolor=black:
-line_spacing=14:
-text_shaping=1:
+fontsize=${fontSize}:
+line_spacing=16:
 fix_bounds=true:
-borderw=0:
 x=(w-text_w)/2:
 y=(h-text_h)/2`,
 
@@ -217,7 +224,7 @@ y=(h-text_h)/2`,
       try {
 
         fs.unlinkSync(
-          txtPath
+          txtFile
         )
 
       } catch {}
@@ -320,7 +327,7 @@ const handler = async ({
 `❌ Escribe un texto
 
 Ejemplo:
-.brat hola 😹`
+.brat hola`
     },{
       quoted:m
     })
