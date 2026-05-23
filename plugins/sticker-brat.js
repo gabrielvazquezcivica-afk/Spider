@@ -1,11 +1,7 @@
 import fs from 'fs'
-import axios from 'axios'
-
-/* ───── DELAY ───── */
-const delay = ms =>
-  new Promise(resolve =>
-    setTimeout(resolve, ms)
-  )
+import path from 'path'
+import os from 'os'
+import { spawn } from 'child_process'
 
 /* ───── MODODADMIN ───── */
 function getDB() {
@@ -31,51 +27,191 @@ function getDB() {
   }
 }
 
-/* ───── API BRAT ───── */
-async function fetchSticker(
+/* ───── EMOJIS ───── */
+function cleanText(text='') {
+
+  return text
+    .replace(
+      /[\u{1F300}-\u{1FAFF}]/gu,
+      ''
+    )
+    .replace(
+      /[\u2600-\u27BF]/g,
+      ''
+    )
+    .trim()
+}
+
+/* ───── WRAP ───── */
+function wrapText(
   text,
-  attempt = 1
+  maxChars = 10
 ) {
 
-  try {
+  const words =
+    text.split(/\s+/)
 
-    const res =
-      await axios.get(
-        'https://kepolu-brat.hf.space/brat',
-        {
-          params:{ q:text },
-          responseType:'arraybuffer'
-        }
-      )
+  const lines = []
 
-    return Buffer.from(res.data)
+  let line = ''
 
-  } catch(e) {
+  for (const word of words) {
+
+    const test =
+      (line + ' ' + word)
+      .trim()
 
     if (
-      e.response?.status === 429 &&
-      attempt <= 3
+      test.length > maxChars
     ) {
 
-      const retry =
-        Number(
-          e.response.headers[
-            'retry-after'
-          ]
-        ) || 5
+      if (line)
+        lines.push(line)
 
-      await delay(
-        retry * 1000
-      )
+      line = word
 
-      return fetchSticker(
-        text,
-        attempt + 1
-      )
+    } else {
+
+      line = test
     }
-
-    throw e
   }
+
+  if (line)
+    lines.push(line)
+
+  return lines
+}
+
+/* ───── STICKER ───── */
+async function createSticker(text) {
+
+  text =
+    cleanText(text)
+
+  const lines =
+    wrapText(text, 10)
+
+  const formatted =
+    lines.join('\n')
+
+  const txtPath =
+    path.join(
+      os.tmpdir(),
+      `txt_${Date.now()}.txt`
+    )
+
+  const outPath =
+    path.join(
+      os.tmpdir(),
+      `sticker_${Date.now()}.webp`
+    )
+
+  fs.writeFileSync(
+    txtPath,
+    formatted
+  )
+
+  const totalLines =
+    lines.length
+
+  let fontSize = 120
+
+  if (totalLines >= 3)
+    fontSize = 105
+
+  if (totalLines >= 5)
+    fontSize = 92
+
+  if (totalLines >= 7)
+    fontSize = 80
+
+  if (totalLines >= 9)
+    fontSize = 68
+
+  return new Promise(
+    (resolve,reject)=>{
+
+    const ff =
+      spawn('ffmpeg',[
+
+      '-f','lavfi',
+      '-i',
+      'color=c=white:s=900x900',
+
+      '-vf',
+
+`drawtext=
+fontfile=/system/fonts/Roboto-Bold.ttf:
+textfile='${txtPath}':
+fontcolor=black:
+fontsize=${fontSize}:
+line_spacing=18:
+x=(w-text_w)/2:
+y=(h-text_h)/2`,
+
+      '-vcodec',
+      'libwebp',
+
+      '-lossless',
+      '1',
+
+      '-q:v',
+      '100',
+
+      '-preset',
+      'picture',
+
+      '-frames:v',
+      '1',
+
+      '-y',
+      outPath
+    ])
+
+    ff.stderr.on(
+      'data',
+      ()=>{}
+    )
+
+    ff.on(
+      'close',
+      code=>{
+
+      try {
+        fs.unlinkSync(txtPath)
+      } catch {}
+
+      if (code !== 0)
+        return reject(
+          new Error(
+            'FFmpeg falló'
+          )
+        )
+
+      try {
+
+        const buffer =
+          fs.readFileSync(
+            outPath
+          )
+
+        fs.unlinkSync(
+          outPath
+        )
+
+        resolve(buffer)
+
+      } catch(e){
+
+        reject(e)
+      }
+    })
+
+    ff.on(
+      'error',
+      reject
+    )
+  })
 }
 
 /* ───── TEXTO RESPONDIDO ───── */
@@ -154,16 +290,13 @@ const handler = async ({
 `❌ Escribe un texto
 
 Ejemplo:
-.brat hola
-
-O responde un mensaje con:
-.brat`
+.brat Hola`
     },{
       quoted:m
     })
   }
 
-  /* 🎨 REACCIÓN */
+  /* 🎨 */
   await sock.sendMessage(from,{
     react:{
       text:'🎨',
@@ -173,11 +306,9 @@ O responde un mensaje con:
 
   try {
 
-    /* 📥 IMG */
     const sticker =
-      await fetchSticker(text)
+      await createSticker(text)
 
-    /* 📤 ENVIAR */
     await sock.sendMessage(
       from,
       {
