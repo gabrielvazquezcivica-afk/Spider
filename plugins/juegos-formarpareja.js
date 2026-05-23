@@ -1,22 +1,77 @@
+import fs from 'fs'
+
+/* ───── DB MODODADMIN ───── */
+function getDB() {
+
+  try {
+
+    const pathDB =
+      './data/modoadmin.json'
+
+    if (!fs.existsSync(pathDB))
+      return {}
+
+    return JSON.parse(
+      fs.readFileSync(
+        pathDB,
+        'utf-8'
+      )
+    )
+
+  } catch {
+
+    return {}
+  }
+}
+
 const handler = async ({
   sock,
   m,
   from,
+  isGroup,
+  sender,
   participants
 }) => {
 
-  if (!participants || participants.length < 2) {
+  /* 🔒 MODODADMIN */
+  const db = getDB()
+
+  const isBlockedGroup =
+    db[from]
+
+  if (
+    isBlockedGroup &&
+    isGroup
+  ) {
+
+    const user =
+      participants?.find(
+        p => p.id === sender
+      )
+
+    const isAdmin =
+      user?.admin === 'admin' ||
+      user?.admin === 'superadmin'
+
+    if (!isAdmin) return
+  }
+
+  /* 👥 mínimo */
+  if (
+    !participants ||
+    participants.length < 2
+  ) {
 
     return sock.sendMessage(from,{
       text:'❌ Se necesitan mínimo 2 personas.'
     },{ quoted:m })
   }
 
-  /* 👥 usuarios */
+  /* 👤 usuarios */
   const users =
     participants.map(v => v.id)
 
-  /* 🎲 aleatorios */
+  /* 🎲 random */
   const user1 =
     users[
       Math.floor(
@@ -81,7 +136,7 @@ const handler = async ({
       )
     ]
 
-  /* 📩 */
+  /* 📩 mensaje */
   await sock.sendMessage(from,{
 
     text:
