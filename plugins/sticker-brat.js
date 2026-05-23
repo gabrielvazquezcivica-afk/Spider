@@ -3,7 +3,7 @@ import path from 'path'
 import os from 'os'
 import { spawn } from 'child_process'
 
-/* ───── MODODADMIN DB ───── */
+/* ───── DB MODODADMIN ───── */
 function getDB() {
 
   try {
@@ -43,27 +43,21 @@ function getQuotedText(m) {
 
   return (
     quoted.conversation ||
-    quoted
-      ?.extendedTextMessage
-      ?.text ||
-    quoted
-      ?.imageMessage
-      ?.caption ||
-    quoted
-      ?.videoMessage
-      ?.caption ||
+    quoted?.extendedTextMessage?.text ||
+    quoted?.imageMessage?.caption ||
+    quoted?.videoMessage?.caption ||
     null
   )
 }
 
-/* ───── WRAP REAL ───── */
+/* ───── WRAP TEXTO ───── */
 function wrapText(
   text,
-  max = 18
+  maxWidth = 18
 ) {
 
   const words =
-    text.split(' ')
+    text.split(/\s+/)
 
   const lines = []
 
@@ -76,7 +70,7 @@ function wrapText(
         .trim()
 
     if (
-      test.length > max
+      test.length > maxWidth
     ) {
 
       if (line)
@@ -96,64 +90,64 @@ function wrapText(
   return lines
 }
 
-/* ───── TAMAÑO ───── */
+/* ───── TAMAÑO LETRA ───── */
 function getFontSize(
   lines
 ) {
 
-  const amount =
+  const total =
     lines.length
 
-  if (amount <= 1)
-    return 95
+  if (total <= 1)
+    return 120
 
-  if (amount <= 2)
+  if (total <= 2)
+    return 104
+
+  if (total <= 3)
+    return 92
+
+  if (total <= 4)
     return 82
 
-  if (amount <= 3)
-    return 74
+  if (total <= 5)
+    return 72
 
-  if (amount <= 4)
-    return 66
+  if (total <= 6)
+    return 64
 
-  if (amount <= 5)
-    return 58
-
-  if (amount <= 6)
-    return 50
-
-  return 42
+  return 56
 }
 
 /* ───── CREAR STICKER ───── */
 async function createSticker(text) {
 
-  // 🔥 emojis compatibles
-  text = text
-    .replace(/\n/g,' ')
-    .trim()
+  text = text.trim()
 
-  let width = 18
+  let maxWidth = 18
 
-  if (text.length > 60)
-    width = 22
+  if (text.length > 70)
+    maxWidth = 22
 
-  if (text.length > 120)
-    width = 26
+  if (text.length > 140)
+    maxWidth = 26
 
-  if (text.length > 200)
-    width = 30
+  if (text.length > 220)
+    maxWidth = 30
 
   const lines =
-    wrapText(text,width)
+    wrapText(
+      text,
+      maxWidth
+    )
 
-  const finalText =
+  const formatted =
     lines.join('\n')
 
   const fontSize =
     getFontSize(lines)
 
-  const txt = path.join(
+  const txtPath = path.join(
     os.tmpdir(),
     `brat_${Date.now()}.txt`
   )
@@ -164,8 +158,8 @@ async function createSticker(text) {
   )
 
   fs.writeFileSync(
-    txt,
-    finalText,
+    txtPath,
+    formatted,
     'utf8'
   )
 
@@ -176,21 +170,23 @@ async function createSticker(text) {
       'ffmpeg',
       [
 
-      // 🔥 estilo REAL
+      // 🔥 CANVAS GRANDE
       '-f','lavfi',
       '-i',
       'color=c=white:s=1024x1024',
 
       '-vf',
 
+      // 🔥 FUENTE GRUESA + EMOJIS
 `drawtext=
-fontfile=/system/fonts/NotoSans-Bold.ttf:
-textfile='${txt}':
+fontfile=/system/fonts/NotoSansCJK-Bold.ttc:
+textfile='${txtPath}':
 fontsize=${fontSize}:
 fontcolor=black:
-line_spacing=12:
+line_spacing=14:
 text_shaping=1:
 fix_bounds=true:
+borderw=0:
 x=(w-text_w)/2:
 y=(h-text_h)/2`,
 
@@ -199,7 +195,7 @@ y=(h-text_h)/2`,
       '-vcodec','libwebp',
       '-lossless','1',
       '-q:v','100',
-      '-preset','drawing',
+      '-preset','picture',
 
       '-y',
       output
@@ -219,7 +215,11 @@ y=(h-text_h)/2`,
       code => {
 
       try {
-        fs.unlinkSync(txt)
+
+        fs.unlinkSync(
+          txtPath
+        )
+
       } catch {}
 
       if (code !== 0) {
