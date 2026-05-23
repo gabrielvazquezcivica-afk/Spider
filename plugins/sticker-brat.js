@@ -196,12 +196,8 @@ line_spacing=20:
 text_shaping=1:
 fix_bounds=true:
 x=(w-text_w)/2:
-y=(h-text_h)/2`,
-
-      '-frames:v','1',
-
-      '-vf',
-      'scale=512:512',
+y=(h-text_h)/2,
+scale=512:512`,
 
       '-vcodec','libwebp',
       '-lossless','1',
