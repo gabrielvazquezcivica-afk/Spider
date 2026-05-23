@@ -43,15 +43,9 @@ function getQuotedText(m) {
 
   return (
     quoted.conversation ||
-    quoted
-      ?.extendedTextMessage
-      ?.text ||
-    quoted
-      ?.imageMessage
-      ?.caption ||
-    quoted
-      ?.videoMessage
-      ?.caption ||
+    quoted?.extendedTextMessage?.text ||
+    quoted?.imageMessage?.caption ||
+    quoted?.videoMessage?.caption ||
     null
   )
 }
@@ -96,7 +90,7 @@ function wrapText(
   return lines
 }
 
-/* ───── FUENTE ───── */
+/* ───── TAMAÑO ───── */
 function getFontSize(
   lines
 ) {
@@ -105,34 +99,42 @@ function getFontSize(
     lines.length
 
   if (total <= 1)
-    return 150
+    return 145
 
   if (total <= 2)
-    return 130
+    return 125
 
   if (total <= 3)
-    return 118
+    return 112
 
   if (total <= 4)
-    return 106
+    return 100
 
   if (total <= 5)
-    return 94
+    return 88
 
   if (total <= 6)
-    return 82
+    return 76
 
-  return 70
+  return 64
+}
+
+/* ───── ESCAPAR TEXTO ───── */
+function escapeText(text) {
+
+  return text
+    .replace(/\\/g,'\\\\')
+    .replace(/:/g,'\\:')
+    .replace(/'/g,"\\'")
+    .replace(/\[/g,'\\[')
+    .replace(/\]/g,'\\]')
+    .replace(/,/g,'\\,')
 }
 
 /* ───── CREAR STICKER ───── */
 async function createSticker(text) {
 
-  // ❌ quitar emojis
-  text = text.replace(
-    /[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu,
-    ''
-  ).trim()
+  text = text.trim()
 
   let maxWidth = 14
 
@@ -151,27 +153,27 @@ async function createSticker(text) {
       maxWidth
     )
 
-  const formatted =
+  const finalText =
     lines.join('\n')
 
   const fontSize =
     getFontSize(lines)
-
-  const txtFile = path.join(
-    os.tmpdir(),
-    `brat_${Date.now()}.txt`
-  )
 
   const output = path.join(
     os.tmpdir(),
     `brat_${Date.now()}.webp`
   )
 
-  fs.writeFileSync(
-    txtFile,
-    formatted,
-    'utf8'
-  )
+  // 🔥 fuente emojis Android
+  const font =
+'/system/fonts/NotoColorEmoji.ttf'
+
+  // 🔥 fallback
+  const normalFont =
+'/system/fonts/Roboto-Bold.ttf'
+
+  const escaped =
+    escapeText(finalText)
 
   return new Promise(
     (resolve,reject)=>{
@@ -180,7 +182,6 @@ async function createSticker(text) {
       'ffmpeg',
       [
 
-      // 🔥 MISMO ESTILO
       '-f','lavfi',
       '-i',
       'color=c=white:s=1024x1024',
@@ -188,11 +189,12 @@ async function createSticker(text) {
       '-vf',
 
 `drawtext=
-fontfile=/system/fonts/Roboto-Bold.ttf:
-textfile='${txtFile}':
-fontcolor=black:
+fontfile=${normalFont}:
+text='${escaped}':
 fontsize=${fontSize}:
-line_spacing=16:
+fontcolor=black:
+line_spacing=18:
+text_shaping=1:
 fix_bounds=true:
 x=(w-text_w)/2:
 y=(h-text_h)/2`,
@@ -220,14 +222,6 @@ y=(h-text_h)/2`,
     ff.on(
       'close',
       code => {
-
-      try {
-
-        fs.unlinkSync(
-          txtFile
-        )
-
-      } catch {}
 
       if (code !== 0) {
 
@@ -327,7 +321,7 @@ const handler = async ({
 `❌ Escribe un texto
 
 Ejemplo:
-.brat hola`
+.brat hola 😹`
     },{
       quoted:m
     })
