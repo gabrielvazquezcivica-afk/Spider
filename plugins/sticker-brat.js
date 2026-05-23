@@ -90,31 +90,32 @@ function getFontSize(lines) {
       )
     )
 
-  // 🔥 LETRAS MUCHO MÁS GRANDES
+  // 🔥 LETRAS MÁS GRANDES
+  // SIN COMERSE TEXTO
 
   if (
     total <= 2 &&
-    longest <= 12
-  ) return 96
+    longest <= 10
+  ) return 112
 
   if (
     total <= 4 &&
-    longest <= 18
-  ) return 84
+    longest <= 16
+  ) return 96
 
   if (
     total <= 6
-  ) return 72
+  ) return 82
 
   if (
     total <= 8
-  ) return 62
+  ) return 70
 
   if (
     total <= 10
-  ) return 54
+  ) return 60
 
-  return 46
+  return 52
 }
 
 /* ───── CREAR STICKER ───── */
@@ -155,30 +156,32 @@ async function createSticker(text) {
 
   fs.writeFileSync(
     txtFile,
-    formatted
+    formatted,
+    'utf8'
   )
 
   return new Promise(
     (resolve,reject)=>{
-    
+
     const ff = spawn(
       'ffmpeg',
       [
 
-      /* 🔥 canvas MUCHO MÁS GRANDE */
+      /* 🔥 canvas gigante */
       '-f','lavfi',
       '-i',
-      'color=c=white:s=900x900',
+      'color=c=white:s=1200x1200',
 
       '-vf',
 
 `drawtext=
-fontfile=/system/fonts/Roboto-Bold.ttf:
+fontfile=/system/fonts/NotoColorEmoji.ttf:
 textfile='${txtFile}':
 fontcolor=black:
 fontsize=${fontSize}:
-line_spacing=8:
+line_spacing=14:
 fix_bounds=true:
+text_shaping=1:
 x=(w-text_w)/2:
 y=(h-text_h)/2`,
 
@@ -362,7 +365,7 @@ const handler = async ({
 `❌ Escribe un texto
 
 Ejemplo:
-.brat hola
+.brat hola 😎🔥
 
 O responde un mensaje con:
 .brat`
