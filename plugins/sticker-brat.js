@@ -183,7 +183,7 @@ async function createSticker(text) {
       '-vf',
 
 `drawtext=
-fontfile=/system/fonts/NotoColorEmoji.ttf:
+fontfile=/system/fonts/Roboto-Bold.ttf:
 text='${escaped}':
 fontsize=${fontSize}:
 fontcolor=black:
