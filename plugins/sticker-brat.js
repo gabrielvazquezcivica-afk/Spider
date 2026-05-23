@@ -1,6 +1,5 @@
 import fs from 'fs'
 import axios from 'axios'
-import { sticker } from '../lib/sticker.js'
 
 /* ───── DELAY ───── */
 const delay = ms =>
@@ -49,7 +48,7 @@ async function fetchSticker(
         }
       )
 
-    return res.data
+    return Buffer.from(res.data)
 
   } catch(e) {
 
@@ -135,7 +134,7 @@ const handler = async ({
     if (!isAdmin) return
   }
 
-  /* 🔥 TEXO */
+  /* 🔥 TEXTO */
   let text =
     args.join(' ').trim()
 
@@ -174,29 +173,15 @@ O responde un mensaje con:
 
   try {
 
-    /* 📥 IMG API */
-    const buffer =
+    /* 📥 IMG */
+    const sticker =
       await fetchSticker(text)
-
-    /* 🖼️ STICKER */
-    const stiker =
-      await sticker(
-        buffer,
-        false,
-        'Spider Bot',
-        'SoyGabo'
-      )
-
-    if (!stiker)
-      throw new Error(
-        'No se pudo crear'
-      )
 
     /* 📤 ENVIAR */
     await sock.sendMessage(
       from,
       {
-        sticker: stiker
+        sticker
       },
       {
         quoted:m
