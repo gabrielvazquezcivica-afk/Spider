@@ -50,10 +50,10 @@ function getQuotedText(m) {
   )
 }
 
-/* ───── WRAP ───── */
+/* ───── WRAP REAL ───── */
 function wrapText(
   text,
-  maxWidth = 14
+  maxWidth = 15
 ) {
 
   const words =
@@ -90,7 +90,7 @@ function wrapText(
   return lines
 }
 
-/* ───── TAMAÑO ───── */
+/* ───── TAMAÑO PERFECTO ───── */
 function getFontSize(
   lines
 ) {
@@ -98,25 +98,29 @@ function getFontSize(
   const total =
     lines.length
 
+  // 🔥 LETRAS GRANDES
   if (total <= 1)
-    return 145
+    return 170
 
   if (total <= 2)
-    return 125
+    return 145
 
   if (total <= 3)
-    return 112
+    return 128
 
   if (total <= 4)
-    return 100
+    return 114
 
   if (total <= 5)
-    return 88
+    return 100
 
   if (total <= 6)
-    return 76
+    return 88
 
-  return 64
+  if (total <= 7)
+    return 78
+
+  return 68
 }
 
 /* ───── ESCAPAR TEXTO ───── */
@@ -129,6 +133,7 @@ function escapeText(text) {
     .replace(/\[/g,'\\[')
     .replace(/\]/g,'\\]')
     .replace(/,/g,'\\,')
+    .replace(/\n/g,'\\n')
 }
 
 /* ───── CREAR STICKER ───── */
@@ -136,16 +141,17 @@ async function createSticker(text) {
 
   text = text.trim()
 
-  let maxWidth = 14
+  // 🔥 MÁS ANCHO
+  let maxWidth = 15
 
   if (text.length > 50)
-    maxWidth = 16
-
-  if (text.length > 100)
     maxWidth = 18
 
-  if (text.length > 160)
-    maxWidth = 20
+  if (text.length > 100)
+    maxWidth = 21
+
+  if (text.length > 170)
+    maxWidth = 24
 
   const lines =
     wrapText(
@@ -164,14 +170,6 @@ async function createSticker(text) {
     `brat_${Date.now()}.webp`
   )
 
-  // 🔥 fuente emojis Android
-  const font =
-'/system/fonts/NotoColorEmoji.ttf'
-
-  // 🔥 fallback
-  const normalFont =
-'/system/fonts/Roboto-Bold.ttf'
-
   const escaped =
     escapeText(finalText)
 
@@ -182,24 +180,28 @@ async function createSticker(text) {
       'ffmpeg',
       [
 
+      // 🔥 CANVAS GIGANTE
       '-f','lavfi',
       '-i',
-      'color=c=white:s=1024x1024',
+      'color=c=white:s=1400x1400',
 
       '-vf',
 
 `drawtext=
-fontfile=${normalFont}:
+fontfile=/system/fonts/NotoSans-Bold.ttf:
 text='${escaped}':
 fontsize=${fontSize}:
 fontcolor=black:
-line_spacing=18:
+line_spacing=20:
 text_shaping=1:
 fix_bounds=true:
 x=(w-text_w)/2:
 y=(h-text_h)/2`,
 
       '-frames:v','1',
+
+      '-vf',
+      'scale=512:512',
 
       '-vcodec','libwebp',
       '-lossless','1',
