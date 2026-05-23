@@ -4,26 +4,20 @@ import os from 'os'
 import { spawn } from 'child_process'
 
 /* ───── WRAP TEXTO ───── */
-function wrapText(text, maxWidth = 18) {
+function wrapText(text, maxWidth = 16) {
 
-  const words =
-    text.split(/\s+/)
-
+  const words = text.split(/\s+/)
   const lines = []
 
   let line = ''
 
   for (const word of words) {
 
-    // 🔥 palabras enormes
+    // 🔥 evitar palabras gigantes
     if (word.length > maxWidth) {
 
       if (line.trim()) {
-
-        lines.push(
-          line.trim()
-        )
-
+        lines.push(line.trim())
         line = ''
       }
 
@@ -34,10 +28,7 @@ function wrapText(text, maxWidth = 18) {
       ) {
 
         lines.push(
-          word.slice(
-            i,
-            i + maxWidth
-          )
+          word.slice(i, i + maxWidth)
         )
       }
 
@@ -45,19 +36,12 @@ function wrapText(text, maxWidth = 18) {
     }
 
     const test =
-      (line + ' ' + word)
-        .trim()
+      (line + ' ' + word).trim()
 
-    if (
-      test.length > maxWidth
-    ) {
+    if (test.length > maxWidth) {
 
-      if (line.trim()) {
-
-        lines.push(
-          line.trim()
-        )
-      }
+      if (line.trim())
+        lines.push(line.trim())
 
       line = word
 
@@ -67,12 +51,8 @@ function wrapText(text, maxWidth = 18) {
     }
   }
 
-  if (line.trim()) {
-
-    lines.push(
-      line.trim()
-    )
-  }
+  if (line.trim())
+    lines.push(line.trim())
 
   return lines
 }
@@ -83,60 +63,46 @@ function getFontSize(lines) {
   const total =
     lines.length
 
-  const longest =
-    Math.max(
-      ...lines.map(
-        l => l.length
-      )
-    )
+  if (total <= 1)
+    return 120
 
-  // 🔥 LETRAS MÁS GRANDES
-  // SIN COMERSE TEXTO
+  if (total <= 2)
+    return 105
 
-  if (
-    total <= 2 &&
-    longest <= 10
-  ) return 112
+  if (total <= 3)
+    return 92
 
-  if (
-    total <= 4 &&
-    longest <= 16
-  ) return 96
+  if (total <= 4)
+    return 82
 
-  if (
-    total <= 6
-  ) return 82
+  if (total <= 5)
+    return 72
 
-  if (
-    total <= 8
-  ) return 70
+  if (total <= 6)
+    return 64
 
-  if (
-    total <= 10
-  ) return 60
+  if (total <= 8)
+    return 56
 
-  return 52
+  return 48
 }
 
 /* ───── CREAR STICKER ───── */
 async function createSticker(text) {
 
-  let maxWidth = 18
+  let maxWidth = 16
 
   if (text.length > 40)
-    maxWidth = 22
+    maxWidth = 18
 
   if (text.length > 80)
-    maxWidth = 26
+    maxWidth = 20
 
   if (text.length > 160)
-    maxWidth = 30
+    maxWidth = 24
 
   const lines =
-    wrapText(
-      text,
-      maxWidth
-    )
+    wrapText(text, maxWidth)
 
   const formatted =
     lines.join('\n')
@@ -160,14 +126,10 @@ async function createSticker(text) {
     'utf8'
   )
 
-  return new Promise(
-    (resolve,reject)=>{
+  return new Promise((resolve,reject)=>{
 
-    const ff = spawn(
-      'ffmpeg',
-      [
+    const ff = spawn('ffmpeg',[
 
-      /* 🔥 canvas gigante */
       '-f','lavfi',
       '-i',
       'color=c=white:s=1200x1200',
@@ -175,7 +137,7 @@ async function createSticker(text) {
       '-vf',
 
 `drawtext=
-fontfile=/system/fonts/NotoColorEmoji.ttf:
+fontfile=/system/fonts/Roboto-Bold.ttf:
 textfile='${txtFile}':
 fontcolor=black:
 fontsize=${fontSize}:
@@ -183,7 +145,8 @@ line_spacing=14:
 fix_bounds=true:
 text_shaping=1:
 x=(w-text_w)/2:
-y=(h-text_h)/2`,
+y=(h-text_h)/2,
+scale=512:512`,
 
       '-frames:v','1',
 
@@ -196,24 +159,22 @@ y=(h-text_h)/2`,
       output
     ])
 
-    ff.stderr.on(
-      'data',
-      ()=>{}
-    )
+    let errorLog = ''
 
-    ff.on(
-      'close',
-      code=>{
+    ff.stderr.on('data',data=>{
+
+      errorLog += data.toString()
+    })
+
+    ff.on('close',code=>{
 
       try {
-
-        fs.unlinkSync(
-          txtFile
-        )
-
+        fs.unlinkSync(txtFile)
       } catch {}
 
-      if (code !== 0) {
+      if(code !== 0){
+
+        console.log(errorLog)
 
         return reject(
           new Error(
@@ -225,13 +186,9 @@ y=(h-text_h)/2`,
       try {
 
         const buffer =
-          fs.readFileSync(
-            output
-          )
+          fs.readFileSync(output)
 
-        fs.unlinkSync(
-          output
-        )
+        fs.unlinkSync(output)
 
         resolve(buffer)
 
@@ -252,8 +209,7 @@ y=(h-text_h)/2`,
 function getQuotedText(m) {
 
   const ctx =
-    m.message
-      ?.extendedTextMessage
+    m.message?.extendedTextMessage
       ?.contextInfo
 
   const quoted =
@@ -264,15 +220,9 @@ function getQuotedText(m) {
 
   return (
     quoted.conversation ||
-    quoted
-      .extendedTextMessage
-      ?.text ||
-    quoted
-      .imageMessage
-      ?.caption ||
-    quoted
-      .videoMessage
-      ?.caption ||
+    quoted.extendedTextMessage?.text ||
+    quoted.imageMessage?.caption ||
+    quoted.videoMessage?.caption ||
     null
   )
 }
@@ -285,11 +235,8 @@ function getDB() {
     const pathDB =
       './data/modoadmin.json'
 
-    if (
-      !fs.existsSync(
-        pathDB
-      )
-    ) return {}
+    if (!fs.existsSync(pathDB))
+      return {}
 
     return JSON.parse(
       fs.readFileSync(
@@ -328,24 +275,19 @@ const handler = async ({
 
     const user =
       participants?.find(
-        p =>
-          p.id === sender
+        p => p.id === sender
       )
 
     const isAdmin =
-      user?.admin ===
-        'admin' ||
-      user?.admin ===
-        'superadmin'
+      user?.admin === 'admin' ||
+      user?.admin === 'superadmin'
 
-    if (!isAdmin)
-      return
+    if (!isAdmin) return
   }
 
   /* 🔥 TEXTO */
   let text =
-    args.join(' ')
-      .trim()
+    args.join(' ').trim()
 
   if (!text) {
 
@@ -358,14 +300,12 @@ const handler = async ({
 
   if (!text) {
 
-    return sock.sendMessage(
-      from,
-      {
+    return sock.sendMessage(from,{
       text:
 `❌ Escribe un texto
 
 Ejemplo:
-.brat hola 😎🔥
+.brat hola
 
 O responde un mensaje con:
 .brat`
@@ -375,9 +315,7 @@ O responde un mensaje con:
   }
 
   /* 🎨 REACCIÓN */
-  await sock.sendMessage(
-    from,
-    {
+  await sock.sendMessage(from,{
     react:{
       text:'🎨',
       key:m.key
@@ -387,23 +325,17 @@ O responde un mensaje con:
   try {
 
     const sticker =
-      await createSticker(
-        text
-      )
+      await createSticker(text)
 
     /* 📤 ENVIAR */
-    await sock.sendMessage(
-      from,
-      {
+    await sock.sendMessage(from,{
       sticker
     },{
       quoted:m
     })
 
     /* ✅ */
-    await sock.sendMessage(
-      from,
-      {
+    await sock.sendMessage(from,{
       react:{
         text:'✅',
         key:m.key
@@ -417,9 +349,7 @@ O responde un mensaje con:
       e
     )
 
-    await sock.sendMessage(
-      from,
-      {
+    await sock.sendMessage(from,{
       text:
 '❌ Error al generar sticker'
     },{
