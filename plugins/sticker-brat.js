@@ -1,7 +1,14 @@
 import fs from 'fs'
 import axios from 'axios'
+import { sticker } from '../lib/sticker.js'
 
-/* 📂 DB MODODADMIN */
+/* ───── DELAY ───── */
+const delay = ms =>
+  new Promise(resolve =>
+    setTimeout(resolve, ms)
+  )
+
+/* ───── MODODADMIN ───── */
 function getDB() {
 
   try {
@@ -25,48 +32,41 @@ function getDB() {
   }
 }
 
-/* ⏳ DELAY */
-const delay = (ms) =>
-  new Promise(resolve =>
-    setTimeout(resolve, ms)
-  )
-
-/* 🎨 OBTENER IMAGEN BRAT */
-const fetchSticker = async (
+/* ───── API BRAT ───── */
+async function fetchSticker(
   text,
   attempt = 1
-) => {
+) {
 
   try {
 
-    const response =
+    const res =
       await axios.get(
         'https://kepolu-brat.hf.space/brat',
         {
-          params: {
-            q: text
-          },
-          responseType:
-            'arraybuffer'
+          params:{ q:text },
+          responseType:'arraybuffer'
         }
       )
 
-    return response.data
+    return res.data
 
-  } catch (error) {
+  } catch(e) {
 
     if (
-      error.response?.status === 429 &&
+      e.response?.status === 429 &&
       attempt <= 3
     ) {
 
-      const retryAfter =
-        error.response.headers[
-          'retry-after'
-        ] || 5
+      const retry =
+        Number(
+          e.response.headers[
+            'retry-after'
+          ]
+        ) || 5
 
       await delay(
-        retryAfter * 1000
+        retry * 1000
       )
 
       return fetchSticker(
@@ -75,11 +75,11 @@ const fetchSticker = async (
       )
     }
 
-    throw error
+    throw e
   }
 }
 
-/* 💬 TEXTO RESPONDIDO */
+/* ───── TEXTO RESPONDIDO ───── */
 function getQuotedText(m) {
 
   const ctx =
@@ -135,25 +135,23 @@ const handler = async ({
     if (!isAdmin) return
   }
 
-  /* 🔥 TEXTO */
+  /* 🔥 TEXO */
   let text =
     args.join(' ').trim()
 
   if (!text) {
 
-    const quotedText =
+    const quoted =
       getQuotedText(m)
 
-    if (quotedText)
-      text = quotedText
+    if (quoted)
+      text = quoted
   }
 
   if (!text) {
 
-    return sock.sendMessage(
-      from,
-      {
-        text:
+    return sock.sendMessage(from,{
+      text:
 `❌ Escribe un texto
 
 Ejemplo:
@@ -161,11 +159,9 @@ Ejemplo:
 
 O responde un mensaje con:
 .brat`
-      },
-      {
-        quoted:m
-      }
-    )
+    },{
+      quoted:m
+    })
   }
 
   /* 🎨 REACCIÓN */
@@ -178,22 +174,36 @@ O responde un mensaje con:
 
   try {
 
-    /* 🖼️ OBTENER IMAGEN */
+    /* 📥 IMG API */
     const buffer =
       await fetchSticker(text)
 
-    /* 📤 ENVIAR STICKER */
+    /* 🖼️ STICKER */
+    const stiker =
+      await sticker(
+        buffer,
+        false,
+        'Spider Bot',
+        'SoyGabo'
+      )
+
+    if (!stiker)
+      throw new Error(
+        'No se pudo crear'
+      )
+
+    /* 📤 ENVIAR */
     await sock.sendMessage(
       from,
       {
-        sticker: buffer
+        sticker: stiker
       },
       {
         quoted:m
       }
     )
 
-    /* ✅ REACCIÓN */
+    /* ✅ */
     await sock.sendMessage(from,{
       react:{
         text:'✅',
@@ -201,23 +211,19 @@ O responde un mensaje con:
       }
     })
 
-  } catch (e) {
+  } catch(e) {
 
     console.log(
       'BRAT ERROR:',
       e
     )
 
-    await sock.sendMessage(
-      from,
-      {
-        text:
+    await sock.sendMessage(from,{
+      text:
 '❌ Error al generar sticker'
-      },
-      {
-        quoted:m
-      }
-    )
+    },{
+      quoted:m
+    })
   }
 }
 
