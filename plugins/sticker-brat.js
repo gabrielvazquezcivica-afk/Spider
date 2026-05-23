@@ -27,7 +27,7 @@ function getDB() {
   }
 }
 
-/* ───── EMOJIS ───── */
+/* ───── QUITAR EMOJIS ───── */
 function cleanText(text='') {
 
   return text
@@ -42,10 +42,10 @@ function cleanText(text='') {
     .trim()
 }
 
-/* ───── WRAP ───── */
+/* ───── ACOMODAR TEXTO ───── */
 function wrapText(
   text,
-  maxChars = 10
+  maxChars = 18
 ) {
 
   const words =
@@ -88,11 +88,44 @@ async function createSticker(text) {
   text =
     cleanText(text)
 
+  /* 🔥 ancho dinámico */
+  let maxChars = 18
+
+  if (text.length > 40)
+    maxChars = 22
+
+  if (text.length > 80)
+    maxChars = 28
+
+  if (text.length > 140)
+    maxChars = 34
+
   const lines =
-    wrapText(text, 10)
+    wrapText(
+      text,
+      maxChars
+    )
 
   const formatted =
     lines.join('\n')
+
+  const totalLines =
+    lines.length
+
+  /* 🔥 letra grande */
+  let fontSize = 110
+
+  if (totalLines >= 3)
+    fontSize = 95
+
+  if (totalLines >= 5)
+    fontSize = 82
+
+  if (totalLines >= 7)
+    fontSize = 72
+
+  if (totalLines >= 9)
+    fontSize = 62
 
   const txtPath =
     path.join(
@@ -111,23 +144,6 @@ async function createSticker(text) {
     formatted
   )
 
-  const totalLines =
-    lines.length
-
-  let fontSize = 120
-
-  if (totalLines >= 3)
-    fontSize = 105
-
-  if (totalLines >= 5)
-    fontSize = 92
-
-  if (totalLines >= 7)
-    fontSize = 80
-
-  if (totalLines >= 9)
-    fontSize = 68
-
   return new Promise(
     (resolve,reject)=>{
 
@@ -135,8 +151,9 @@ async function createSticker(text) {
       spawn('ffmpeg',[
 
       '-f','lavfi',
+
       '-i',
-      'color=c=white:s=900x900',
+      'color=c=white:s=1200x1200',
 
       '-vf',
 
@@ -145,9 +162,11 @@ fontfile=/system/fonts/Roboto-Bold.ttf:
 textfile='${txtPath}':
 fontcolor=black:
 fontsize=${fontSize}:
-line_spacing=18:
+line_spacing=20:
 x=(w-text_w)/2:
 y=(h-text_h)/2`,
+
+      '-frames:v','1',
 
       '-vcodec',
       'libwebp',
@@ -160,9 +179,6 @@ y=(h-text_h)/2`,
 
       '-preset',
       'picture',
-
-      '-frames:v',
-      '1',
 
       '-y',
       outPath
@@ -290,7 +306,7 @@ const handler = async ({
 `❌ Escribe un texto
 
 Ejemplo:
-.brat Hola`
+.brat Hola mundo`
     },{
       quoted:m
     })
