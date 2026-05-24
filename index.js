@@ -124,21 +124,6 @@ async function loadPlugins() {
     )
 }
 
-/* 👀 autoreload */
-fs.watch(pluginsPath, async (_, file) => {
-
-    if (!file?.endsWith('.js'))
-        return
-
-    console.log(
-        chalk.yellow(
-            `♻️ Recargando ${file}...`
-        )
-    )
-
-    await loadPlugins()
-})
-
 /* 🚀 iniciar */
 async function start() {
 
@@ -219,7 +204,37 @@ async function start() {
         }
     )
 
-  
+    /* 🕷️ cambios grupo */
+    sock.ev.on(
+        'groups.update',
+        async (update) => {
+
+            try {
+
+                for (const group of update) {
+
+                    if (group?.id) {
+                        delete global.groupCache[group.id]
+                    }
+                }
+
+                for (const plugin of plugins) {
+
+                    if (
+                        typeof plugin.before === 'function'
+                    ) {
+
+                        plugin.before({
+                            sock,
+                            groupsUpdate: update
+                        }).catch(() => {})
+                    }
+                }
+
+            } catch {}
+        }
+    )
+
     /* 📨 mensajes */
     sock.ev.on(
         'messages.upsert',
@@ -288,18 +303,25 @@ async function start() {
             if (bloqueado)
                 return
 
-            /* 🔥 antilink */
-            const eliminado =
-                await verificarAntilink({
-                    sock,
-                    m,
-                    from,
-                    sender,
-                    isGroup
-                })
+            /* 🔥 antilink SOLO si parece link */
+            if (
+                msg.includes('http') ||
+                msg.includes('.com') ||
+                msg.includes('wa.me')
+            ) {
 
-            if (eliminado)
-                return
+                const eliminado =
+                    await verificarAntilink({
+                        sock,
+                        m,
+                        from,
+                        sender,
+                        isGroup
+                    })
+
+                if (eliminado)
+                    return
+            }
 
             setImmediate(async () => {
 
@@ -307,9 +329,6 @@ async function start() {
 
                     let pushName =
                         m.pushName || 'Usuario'
-
-                    let groupName =
-                        'Privado'
 
                     let groupMetadata = null
 
@@ -332,9 +351,6 @@ async function start() {
                             participants =
                                 groupMetadata.participants
 
-                            groupName =
-                                groupMetadata.subject
-
                         } catch {
 
                             participants = []
@@ -349,8 +365,14 @@ async function start() {
                             .split(/ +/)
 
                     const command =
-                        args.shift()
-                            .toLowerCase()
+    args.shift()
+        .toLowerCase()
+
+console.log(
+    chalk.cyan(`[CMD]`) +
+    chalk.white(` ${command}`) +
+    chalk.gray(` | ${pushName}`)
+)
 
                     /* 🔒 modoadmin cache */
                     const isBlockedGroup =
@@ -372,18 +394,6 @@ async function start() {
                                     )
                             )
                     }
-
-                    console.log(
-                        chalk.cyan(
-                            `\n📌 ${command}`
-                        ) +
-                        chalk.yellow(
-                            ` | 👤 ${pushName}`
-                        ) +
-                        chalk.green(
-                            ` | 📍 ${groupName}`
-                        )
-                    )
 
                     for (const handler of plugins) {
 
