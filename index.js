@@ -124,6 +124,21 @@ async function loadPlugins() {
     )
 }
 
+/* 👀 autoreload */
+fs.watch(pluginsPath, async (_, file) => {
+
+    if (!file?.endsWith('.js'))
+        return
+
+    console.log(
+        chalk.yellow(
+            `♻️ Recargando ${file}...`
+        )
+    )
+
+    await loadPlugins()
+})
+
 /* 🚀 iniciar */
 async function start() {
 
@@ -290,45 +305,15 @@ async function start() {
             sock.readMessages([m.key])
                 .catch(() => {})
 
-            /* 🔇 mute */
-            const bloqueado =
-                await verificarMuteados({
-                    sock,
-                    m,
-                    from,
-                    sender,
-                    isGroup
-                })
-
-            if (bloqueado)
-                return
-
-            /* 🔥 antilink SOLO si parece link */
-            if (
-                msg.includes('http') ||
-                msg.includes('.com') ||
-                msg.includes('wa.me')
-            ) {
-
-                const eliminado =
-                    await verificarAntilink({
-                        sock,
-                        m,
-                        from,
-                        sender,
-                        isGroup
-                    })
-
-                if (eliminado)
-                    return
-            }
-
             setImmediate(async () => {
 
                 try {
 
                     let pushName =
                         m.pushName || 'Usuario'
+
+                    let groupName =
+                        'Privado'
 
                     let groupMetadata = null
 
@@ -351,11 +336,32 @@ async function start() {
                             participants =
                                 groupMetadata.participants
 
+                            groupName =
+                                groupMetadata.subject
+
                         } catch {
 
                             participants = []
                         }
                     }
+
+                    /* 🔇 mute */
+                    verificarMuteados({
+                        sock,
+                        m,
+                        from,
+                        sender,
+                        isGroup
+                    }).catch(() => {})
+
+                    /* 🔥 antilink */
+                    verificarAntilink({
+                        sock,
+                        m,
+                        from,
+                        sender,
+                        isGroup
+                    }).catch(() => {})
 
                     /* ⚡ args */
                     const args =
@@ -365,14 +371,8 @@ async function start() {
                             .split(/ +/)
 
                     const command =
-    args.shift()
-        .toLowerCase()
-
-console.log(
-    chalk.cyan(`[CMD]`) +
-    chalk.white(` ${command}`) +
-    chalk.gray(` | ${pushName}`)
-)
+                        args.shift()
+                            .toLowerCase()
 
                     /* 🔒 modoadmin cache */
                     const isBlockedGroup =
@@ -394,6 +394,18 @@ console.log(
                                     )
                             )
                     }
+
+                    console.log(
+                        chalk.cyan(
+                            `\n📌 ${command}`
+                        ) +
+                        chalk.yellow(
+                            ` | 👤 ${pushName}`
+                        ) +
+                        chalk.green(
+                            ` | 📍 ${groupName}`
+                        )
+                    )
 
                     for (const handler of plugins) {
 
