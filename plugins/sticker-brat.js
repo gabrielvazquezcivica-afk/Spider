@@ -1,172 +1,247 @@
+import axios from 'axios'
 import fs from 'fs'
-import path from 'path'
-import os from 'os'
-import { spawn } from 'child_process'
+import { exec } from 'child_process'
 
-/* ───── MODODADMIN ───── */
-function getDB() {
-  try {
-    const pathDB = './data/modoadmin.json'
-    if (!fs.existsSync(pathDB)) return {}
-    return JSON.parse(fs.readFileSync(pathDB, 'utf-8'))
-  } catch {
-    return {}
-  }
+/* 🔒 MODODADMIN */
+const modoadminPath = './data/modoadmin.json'
+
+function getModoadmin() {
+
+    try {
+
+        if (!fs.existsSync(modoadminPath))
+            return {}
+
+        return JSON.parse(
+            fs.readFileSync(
+                modoadminPath,
+                'utf-8'
+            )
+        )
+
+    } catch {
+
+        return {}
+    }
 }
 
-/* ───── SEPARAR TEXTO Y EMOJIS (FUNCIONA AL 100%) ───── */
-function cleanText(text = '') {
-  const emojis = text.match(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27FF}\u{2B00}-\u{2BFF}\u{FE00}-\u{FE0F}]/gu) || [];
-  const soloTexto = text
-    .replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27FF}\u{2B00}-\u{2BFF}\u{FE00}-\u{FE0F}]/gu, '')
-    .trim();
-  return { soloTexto, emojis };
-}
+/* 📝 WRAP TEXTO */
+function wrap(text, max = 28) {
 
-/* ───── CORTE EXACTO: 6 LETRAS MÁXIMO ───── */
-function wrapText(text, maxChars = 6) {
-  const words = text.split(/\s+/);
-  const lines = [];
-  let line = '';
+    let words = text.split(' ')
+    let lines = []
+    let current = []
 
-  for (const word of words) {
-    if (word.length > maxChars) {
-      const partes = word.match(new RegExp('.{1,' + maxChars + '}', 'g')) || [];
-      partes.forEach(p => lines.push(p));
-      line = '';
-      continue;
+    for (let word of words) {
+
+        if (
+            (current.join(' ').length +
+            word.length + 1) > max
+        ) {
+
+            lines.push(
+                current.join(' ')
+            )
+
+            current = [word]
+
+        } else {
+
+            current.push(word)
+        }
     }
 
-    const test = (line + ' ' + word).trim();
-    if (test.length > maxChars) {
-      if (line) lines.push(line);
-      line = word;
-    } else {
-      line = test;
+    if (current.length)
+        lines.push(
+            current.join(' ')
+        )
+
+    return lines.join('\n')
+}
+
+/* 🚀 COMANDO */
+const handler = async ({
+    sock,
+    m,
+    from,
+    sender,
+    isGroup,
+    participants,
+    args,
+    command
+}) => {
+
+    /* 🔒 MODODADMIN */
+    const db = getModoadmin()
+
+    const isBlockedGroup =
+        db[from]?.enabled
+
+    if (
+        isBlockedGroup &&
+        isGroup
+    ) {
+
+        const user =
+            participants?.find(
+                p => p.id === sender
+            )
+
+        const isAdmin =
+            user?.admin === 'admin' ||
+            user?.admin === 'superadmin'
+
+        if (!isAdmin)
+            return
     }
-  }
-  if (line) lines.push(line);
-  return lines;
+
+    /* 📝 TEXTO */
+    let text =
+        args.join(' ').trim()
+
+    if (!text) {
+
+        text =
+            m.message?.extendedTextMessage
+                ?.contextInfo
+                ?.quotedMessage
+                ?.conversation ||
+
+            m.message?.extendedTextMessage
+                ?.contextInfo
+                ?.quotedMessage
+                ?.extendedTextMessage
+                ?.text ||
+
+            null
+    }
+
+    if (!text) {
+
+        return sock.sendMessage(from,{
+            text:
+`⚡ Escribe un texto
+
+Ejemplo:
+.${command} Hola mundo`
+        },{
+            quoted:m
+        })
+    }
+
+
+    /* ⏳ REACCIÓN */
+    await sock.sendMessage(from,{
+        react:{
+            text:'🎨',
+            key:m.key
+        }
+    })
+
+    try {
+
+        const formatted =
+            wrap(text, 28)
+
+        const key =
+            Buffer
+                .from(
+                    'c3lscGh5LTZmMTUwZA==',
+                    'base64'
+                )
+                .toString('utf-8')
+
+        const url =
+`https://sylphyy.xyz/tools/brat?text=${encodeURIComponent(formatted)}&color=black&fondo=white&type=Nose&api_key=${key}`
+
+        /* 📥 DESCARGAR */
+        const res =
+            await axios.get(url,{
+                responseType:'arraybuffer'
+            })
+
+        const img =
+            `./tmp-${Date.now()}.png`
+
+        const webp =
+            `./tmp-${Date.now()}.webp`
+
+        fs.writeFileSync(
+            img,
+            res.data
+        )
+
+        /* 🎨 PNG → WEBP */
+        await new Promise((resolve,reject)=>{
+
+            exec(
+
+`ffmpeg -i ${img} -vcodec libwebp -vf "scale=512:512:force_original_aspect_ratio=decrease,format=rgba,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=#00000000" -y ${webp}`,
+
+                (err)=>{
+
+                    if(err)
+                        reject(err)
+
+                    else
+                        resolve()
+                }
+            )
+        })
+
+        /* 📤 ENVIAR */
+        await sock.sendMessage(from,{
+            sticker:
+                fs.readFileSync(webp)
+        },{
+            quoted:m
+        })
+
+        /* ✅ */
+        await sock.sendMessage(from,{
+            react:{
+                text:'✅',
+                key:m.key
+            }
+        })
+
+        /* 🗑️ BORRAR TMP */
+        try {
+
+            if (fs.existsSync(img))
+                fs.unlinkSync(img)
+
+            if (fs.existsSync(webp))
+                fs.unlinkSync(webp)
+
+        } catch {}
+
+    } catch(e){
+
+        console.log(
+            'BRAT ERROR:',
+            e
+        )
+
+        await sock.sendMessage(from,{
+            react:{
+                text:'❌',
+                key:m.key
+            }
+        })
+
+        await sock.sendMessage(from,{
+            text:
+'❌ Error al generar sticker'
+        },{
+            quoted:m
+        })
+    }
 }
 
-/* ───── STICKER PERFECTO, SIN ERRORES ───── */
-async function createSticker(text) {
-  const { soloTexto, emojis } = cleanText(text);
+handler.command = ['brat']
+handler.tags = ['stickers']
+handler.help = ['brat <texto>']
+handler.menu = true
 
-  const lines = wrapText(soloTexto, 6);
-  
-  if (emojis.length > 0) lines.push(emojis.join(' '));
-
-  const formatted = lines.join('\n');
-  const totalLines = lines.length;
-
-  let fontSize = 145;
-  if (totalLines >= 2) fontSize = 130;
-  if (totalLines >= 3) fontSize = 115;
-  if (totalLines >= 4) fontSize = 105;
-  if (totalLines >= 6) fontSize = 95;
-  if (totalLines >= 8) fontSize = 88;
-  if (totalLines >= 10) fontSize = 80;
-  if (totalLines >= 12) fontSize = 72;
-  if (totalLines >= 15) fontSize = 65;
-
-  const tmpDir = os.tmpdir();
-  const txtPath = path.join(tmpDir, `txt_${Date.now()}.txt`);
-  const outPath = path.join(tmpDir, `sticker_${Date.now()}.webp`);
-
-  fs.writeFileSync(txtPath, formatted);
-
-  return new Promise((resolve, reject) => {
-    const ff = spawn('ffmpeg', [
-      '-f', 'lavfi',
-      '-i', 'color=c=white:s=520x520',
-      '-vf',
-`drawtext=font='sans-bold':textfile='${txtPath.replace(/'/g, "'\\\\''")}':fontcolor=black:fontsize=${fontSize}:line_spacing=4:x=(w-text_w)/2:y=(h-text_h)/2`,
-      '-frames:v', '1',
-      '-vcodec', 'libwebp',
-      '-lossless', '1',
-      '-q:v', '100',
-      '-preset', 'picture',
-      '-y', outPath
-    ]);
-
-    let errorLog = '';
-    ff.stderr.on('data', data => { errorLog += data.toString() });
-
-    ff.on('close', code => {
-      try { fs.unlinkSync(txtPath) } catch {}
-      if (code !== 0) {
-        console.log('FFMPEG ERROR:\n', errorLog);
-        return reject(new Error('FFmpeg falló'));
-      }
-
-      try {
-        const buffer = fs.readFileSync(outPath);
-        fs.unlinkSync(outPath);
-        resolve(buffer);
-      } catch (e) { reject(e) }
-    });
-
-    ff.on('error', err => {
-      console.log('SPAWN ERROR:', err);
-      reject(err);
-    });
-  });
-}
-
-/* ───── TEXTO RESPONDIDO ───── */
-function getQuotedText(m) {
-  const ctx = m.message?.extendedTextMessage?.contextInfo;
-  const quoted = ctx?.quotedMessage;
-  if (!quoted) return null;
-
-  return (
-    quoted.conversation ||
-    quoted.extendedTextMessage?.text ||
-    quoted.imageMessage?.caption ||
-    quoted.videoMessage?.caption ||
-    null
-  );
-}
-
-/* ───── COMANDO ───── */
-const handler = async ({ sock, m, from, sender, isGroup, participants, args }) => {
-  const db = getDB();
-  const isBlockedGroup = db[from];
-  if (isBlockedGroup && isGroup) {
-    const user = participants?.find(p => p.id === sender);
-    const isAdmin = user?.admin === 'admin' || user?.admin === 'superadmin';
-    if (!isAdmin) return;
-  }
-
-  let text = args.join(' ').trim();
-  if (!text) {
-    const quoted = getQuotedText(m);
-    if (quoted) text = quoted;
-  }
-
-  if (!text) {
-    return sock.sendMessage(from, {
-      text: `❌ Escribe un texto\n\nEjemplo:\n.brat -1 una mrda 😒`
-    }, { quoted: m });
-  }
-
-  await sock.sendMessage(from, { react: { text: '🎨', key: m.key } });
-
-  try {
-    const sticker = await createSticker(text);
-    await sock.sendMessage(from, { sticker }, { quoted: m });
-    await sock.sendMessage(from, { react: { text: '✅', key: m.key } });
-
-  } catch (e) {
-    console.log('BRAT ERROR:', e);
-    await sock.sendMessage(from, { text: '❌ Error al generar sticker' }, { quoted: m });
-  }
-};
-
-handler.command = ['brat'];
-handler.tags = ['stickers'];
-handler.help = ['brat <texto>'];
-handler.menu = true;
-
-export default handler;
+export default handler
