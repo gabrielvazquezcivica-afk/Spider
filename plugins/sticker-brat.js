@@ -24,8 +24,8 @@ function cleanText(text = '') {
   return { soloTexto, emojis }
 }
 
-/* ───── AJUSTAR TEXTO IGUAL QUE TU IMAGEN ───── */
-function wrapText(text, maxChars = 8) { // Más corto para que quede como "-1 / una / mrda"
+/* ───── AJUSTAR TEXTO CORTO ───── */
+function wrapText(text, maxChars = 8) {
   const words = text.split(/\s+/)
   const lines = []
   let line = ''
@@ -47,7 +47,6 @@ function wrapText(text, maxChars = 8) { // Más corto para que quede como "-1 / 
 async function createSticker(text) {
   const { soloTexto, emojis } = cleanText(text)
 
-  // Ajuste de corte de palabras
   let maxChars = 8
   if (soloTexto.length > 15) maxChars = 9
   if (soloTexto.length > 30) maxChars = 10
@@ -58,8 +57,8 @@ async function createSticker(text) {
   const formatted = lines.join('\n')
   const totalLines = lines.length
 
-  // 🔥 LETRA GRANDE, GRUESA, COMO TU EJEMPLO
-  let fontSize = 140 // Muy grande
+  // TAMAÑO DE LETRA GRANDE Y GRUESA
+  let fontSize = 140
   if (totalLines >= 2) fontSize = 125
   if (totalLines >= 3) fontSize = 110
   if (totalLines >= 4) fontSize = 95
@@ -74,14 +73,14 @@ async function createSticker(text) {
   return new Promise((resolve, reject) => {
     const ff = spawn('ffmpeg', [
       '-f', 'lavfi',
-      '-i', 'color=c=white:s=600x600', // TAMAÑO PEQUEÑO = TEXTO GRANDE
+      '-i', 'color=c=white:s=600x600',
       '-vf',
 `drawtext=
-font='Arial Bold':  /* ✅ NEGRITA, IGUAL QUE TU IMAGEN */
+font='sans-bold':
 textfile='${txtPath.replace(/'/g, "'\\\\''")}':
 fontcolor=black:
 fontsize=${fontSize}:
-line_spacing=5:  /* ✅ POCO ESPACIO ENTRE LÍNEAS */
+line_spacing=5:
 x=(w-text_w)/2:
 y=(h-text_h)/2`,
 
