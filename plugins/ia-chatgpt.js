@@ -170,7 +170,7 @@ Ejemplo:
     }
 }
 
-handler.command = ['chatgpt']
+handler.command = ['ia']
 handler.tags = ['ia']
 handler.help = ['ia <texto>']
 handler.menu = true
