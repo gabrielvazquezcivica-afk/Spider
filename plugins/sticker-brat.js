@@ -16,7 +16,6 @@ function getDB() {
 
 /* ───── QUITAR EMOJIS SOLO DEL TEXTO, PERO MANTENERLOS AL FINAL ───── */
 function cleanText(text = '') {
-  // Separamos texto y emojis
   const emojis = text.match(/[\u{1F300}-\u{1FAFF}\u2600-\u27BF]/gu) || []
   const soloTexto = text
     .replace(/[\u{1F300}-\u{1FAFF}]/gu, '')
@@ -26,7 +25,7 @@ function cleanText(text = '') {
 }
 
 /* ───── AJUSTAR TEXTO EN LÍNEAS CORTO ───── */
-function wrapText(text, maxChars = 10) { // Más corto para que se vea como la imagen
+function wrapText(text, maxChars = 10) {
   const words = text.split(/\s+/)
   const lines = []
   let line = ''
@@ -48,43 +47,41 @@ function wrapText(text, maxChars = 10) { // Más corto para que se vea como la i
 async function createSticker(text) {
   const { soloTexto, emojis } = cleanText(text)
 
-  // Ajustes para que se vea IGUAL a la imagen
-  let maxChars = 10 // Muy corto, como el ejemplo
+  let maxChars = 10
   if (soloTexto.length > 20) maxChars = 12
   if (soloTexto.length > 40) maxChars = 15
 
   const lines = wrapText(soloTexto, maxChars)
-  // Agregamos emojis al final si hay
   if (emojis.length > 0) lines.push(emojis.join(' '))
 
   const formatted = lines.join('\n')
   const totalLines = lines.length
 
-  // TAMAÑO DE LETRA PEQUEÑO, COMO EN LA IMAGEN
-  let fontSize = 70 // Base pequeña
+  let fontSize = 70
   if (totalLines >= 2) fontSize = 65
   if (totalLines >= 3) fontSize = 60
   if (totalLines >= 4) fontSize = 55
 
-  const txtPath = path.join(os.tmpdir(), `txt_${Date.now()}.txt`)
-  const outPath = path.join(os.tmpdir(), `sticker_${Date.now()}.webp`)
+  const tmpDir = os.tmpdir()
+  const txtPath = path.join(tmpDir, `txt_${Date.now()}.txt`)
+  const outPath = path.join(tmpDir, `sticker_${Date.now()}.webp`)
 
   fs.writeFileSync(txtPath, formatted)
 
   return new Promise((resolve, reject) => {
+    // ✅ CAMBIO IMPORTANTE: Usamos fuente por defecto de FFmpeg (funciona en Termux)
     const ff = spawn('ffmpeg', [
       '-f', 'lavfi',
-      '-i', 'color=c=white:s=800x800', // Tamaño más pequeño, cuadrado
+      '-i', 'color=c=white:s=800x800',
       '-vf',
 `drawtext=
-fontfile=/system/fonts/Roboto-Regular.ttf:  /* Fuente normal, no negrita */
-textfile='${txtPath}':
+font='Arial':
+textfile='${txtPath.replace(/'/g, "'\\\\''")}':
 fontcolor=black:
 fontsize=${fontSize}:
-line_spacing=10:  /* Espacio entre líneas pequeño */
+line_spacing=10:
 x=(w-text_w)/2:
-y=(h-text_h)/2:
-align=center`, // Centrado perfecto
+y=(h-text_h)/2`,
 
       '-frames:v', '1',
       '-vcodec', 'libwebp',
@@ -94,11 +91,15 @@ align=center`, // Centrado perfecto
       '-y', outPath
     ])
 
-    ff.stderr.on('data', () => {})
+    let errorLog = ''
+    ff.stderr.on('data', data => { errorLog += data.toString() })
 
     ff.on('close', code => {
       try { fs.unlinkSync(txtPath) } catch {}
-      if (code !== 0) return reject(new Error('FFmpeg falló'))
+      if (code !== 0) {
+        console.log('FFMPEG ERROR:\n', errorLog)
+        return reject(new Error('FFmpeg falló'))
+      }
 
       try {
         const buffer = fs.readFileSync(outPath)
@@ -107,7 +108,10 @@ align=center`, // Centrado perfecto
       } catch (e) { reject(e) }
     })
 
-    ff.on('error', reject)
+    ff.on('error', err => {
+      console.log('SPAWN ERROR:', err)
+      reject(err)
+    })
   })
 }
 
@@ -128,7 +132,6 @@ function getQuotedText(m) {
 
 /* ───── COMANDO ───── */
 const handler = async ({ sock, m, from, sender, isGroup, participants, args }) => {
-  /* 🔒 MODODADMIN */
   const db = getDB()
   const isBlockedGroup = db[from]
   if (isBlockedGroup && isGroup) {
@@ -137,7 +140,6 @@ const handler = async ({ sock, m, from, sender, isGroup, participants, args }) =
     if (!isAdmin) return
   }
 
-  /* 🔥 TEXTO */
   let text = args.join(' ').trim()
   if (!text) {
     const quoted = getQuotedText(m)
@@ -150,7 +152,6 @@ const handler = async ({ sock, m, from, sender, isGroup, participants, args }) =
     }, { quoted: m })
   }
 
-  /* 🎨 */
   await sock.sendMessage(from, { react: { text: '🎨', key: m.key } })
 
   try {
