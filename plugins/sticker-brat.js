@@ -14,25 +14,22 @@ function getDB() {
   }
 }
 
-/* ───── SEPARAR TEXTO Y EMOJIS (AHORA SÍ FUNCIONA) ───── */
+/* ───── SEPARAR TEXTO Y EMOJIS (FUNCIONA AL 100%) ───── */
 function cleanText(text = '') {
-  // Captura TODOS los emojis existentes
   const emojis = text.match(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27FF}\u{2B00}-\u{2BFF}\u{FE00}-\u{FE0F}]/gu) || [];
-  // Quitamos solo emojis del texto
   const soloTexto = text
     .replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27FF}\u{2B00}-\u{2BFF}\u{FE00}-\u{FE0F}]/gu, '')
     .trim();
   return { soloTexto, emojis };
 }
 
-/* ───── CORTE EXACTO: MÁXIMO 6 LETRAS POR LÍNEA ───── */
-function wrapText(text, maxChars = 6) { // CORTE CORTO, IGUAL AL EJEMPLO
+/* ───── CORTE EXACTO: 6 LETRAS MÁXIMO ───── */
+function wrapText(text, maxChars = 6) {
   const words = text.split(/\s+/);
   const lines = [];
   let line = '';
 
   for (const word of words) {
-    // Si la palabra es sola y muy larga, la cortamos por letras
     if (word.length > maxChars) {
       const partes = word.match(new RegExp('.{1,' + maxChars + '}', 'g')) || [];
       partes.forEach(p => lines.push(p));
@@ -52,20 +49,17 @@ function wrapText(text, maxChars = 6) { // CORTE CORTO, IGUAL AL EJEMPLO
   return lines;
 }
 
-/* ───── STICKER FORMATO PERFECTO ───── */
+/* ───── STICKER PERFECTO, SIN ERRORES ───── */
 async function createSticker(text) {
   const { soloTexto, emojis } = cleanText(text);
 
-  // Siempre cortar a 6 caracteres, como tu ejemplo
   const lines = wrapText(soloTexto, 6);
   
-  // ✅ EMOJIS: VAN AL FINAL, COMPLETOS, SIEMPRE
   if (emojis.length > 0) lines.push(emojis.join(' '));
 
   const formatted = lines.join('\n');
   const totalLines = lines.length;
 
-  // ✅ TAMAÑO DE LETRA: SE AJUSTA PERO SIEMPRE GRANDE
   let fontSize = 145;
   if (totalLines >= 2) fontSize = 130;
   if (totalLines >= 3) fontSize = 115;
@@ -85,17 +79,9 @@ async function createSticker(text) {
   return new Promise((resolve, reject) => {
     const ff = spawn('ffmpeg', [
       '-f', 'lavfi',
-      '-i', 'color=c=white:s=520x520', // Tamaño exacto
+      '-i', 'color=c=white:s=520x520',
       '-vf',
-`drawtext=
-font='sans-bold':
-textfile='${txtPath.replace(/'/g, "'\\\\''")}':
-fontcolor=black:
-fontsize=${fontSize}:
-line_spacing=4:  // ✅ MUY JUNTO, IGUAL AL EJEMPLO
-x=(w-text_w)/2:
-y=(h-text_h)/2`,
-
+`drawtext=font='sans-bold':textfile='${txtPath.replace(/'/g, "'\\\\''")}':fontcolor=black:fontsize=${fontSize}:line_spacing=4:x=(w-text_w)/2:y=(h-text_h)/2`,
       '-frames:v', '1',
       '-vcodec', 'libwebp',
       '-lossless', '1',
