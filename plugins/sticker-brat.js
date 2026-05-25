@@ -129,11 +129,10 @@ Ejemplo:
         })
     }
 
-
     /* ⏳ REACCIÓN */
     await sock.sendMessage(from,{
         react:{
-            text:'🎨',
+            text:'🕒',
             key:m.key
         }
     })
