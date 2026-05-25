@@ -2,29 +2,6 @@ import axios from 'axios'
 import fs from 'fs'
 import { exec } from 'child_process'
 
-/* 🔒 MODODADMIN */
-const modoadminPath = './data/modoadmin.json'
-
-function getModoadmin() {
-
-    try {
-
-        if (!fs.existsSync(modoadminPath))
-            return {}
-
-        return JSON.parse(
-            fs.readFileSync(
-                modoadminPath,
-                'utf-8'
-            )
-        )
-
-    } catch {
-
-        return {}
-    }
-}
-
 /* 📝 WRAP TEXTO */
 function wrap(text, max = 28) {
 
@@ -64,36 +41,36 @@ const handler = async ({
     sock,
     m,
     from,
-    sender,
-    isGroup,
     participants,
+    sender,
     args,
     command
 }) => {
 
-    /* 🔒 MODODADMIN */
-    const db = getModoadmin()
+    // 🔒 MODODADMIN
+    let isBlockedGroup = false
 
-    const isBlockedGroup =
-        db[from]?.enabled
+    try {
 
-    if (
-        isBlockedGroup &&
-        isGroup
-    ) {
+        const db = JSON.parse(
+            fs.readFileSync('./data/modoadmin.json')
+        )
 
-        const user =
-            participants?.find(
-                p => p.id === sender
-            )
+        isBlockedGroup = db[from]
 
-        const isAdmin =
-            user?.admin === 'admin' ||
-            user?.admin === 'superadmin'
+    } catch {}
 
-        if (!isAdmin)
-            return
-    }
+    const user = participants?.find(
+        p => p.id === sender
+    )
+
+    const isAdmin =
+        user?.admin === 'admin' ||
+        user?.admin === 'superadmin'
+
+    // 🔥 silencioso
+    if (isBlockedGroup && !isAdmin)
+        return
 
     /* 📝 TEXTO */
     let text =
@@ -242,5 +219,6 @@ handler.command = ['brat']
 handler.tags = ['stickers']
 handler.help = ['brat <texto>']
 handler.menu = true
+handler.group = true
 
 export default handler
