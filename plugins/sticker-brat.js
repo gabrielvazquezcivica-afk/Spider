@@ -24,8 +24,8 @@ function cleanText(text = '') {
   return { soloTexto, emojis }
 }
 
-/* ───── AJUSTAR TEXTO EN LÍNEAS CORTO ───── */
-function wrapText(text, maxChars = 10) {
+/* ───── AJUSTAR TEXTO IGUAL QUE TU IMAGEN ───── */
+function wrapText(text, maxChars = 8) { // Más corto para que quede como "-1 / una / mrda"
   const words = text.split(/\s+/)
   const lines = []
   let line = ''
@@ -43,13 +43,14 @@ function wrapText(text, maxChars = 10) {
   return lines
 }
 
-/* ───── STICKER FORMATO IMAGEN ───── */
+/* ───── STICKER FORMATO EXACTO ───── */
 async function createSticker(text) {
   const { soloTexto, emojis } = cleanText(text)
 
-  let maxChars = 10
-  if (soloTexto.length > 20) maxChars = 12
-  if (soloTexto.length > 40) maxChars = 15
+  // Ajuste de corte de palabras
+  let maxChars = 8
+  if (soloTexto.length > 15) maxChars = 9
+  if (soloTexto.length > 30) maxChars = 10
 
   const lines = wrapText(soloTexto, maxChars)
   if (emojis.length > 0) lines.push(emojis.join(' '))
@@ -57,10 +58,12 @@ async function createSticker(text) {
   const formatted = lines.join('\n')
   const totalLines = lines.length
 
-  let fontSize = 70
-  if (totalLines >= 2) fontSize = 65
-  if (totalLines >= 3) fontSize = 60
-  if (totalLines >= 4) fontSize = 55
+  // 🔥 LETRA GRANDE, GRUESA, COMO TU EJEMPLO
+  let fontSize = 140 // Muy grande
+  if (totalLines >= 2) fontSize = 125
+  if (totalLines >= 3) fontSize = 110
+  if (totalLines >= 4) fontSize = 95
+  if (totalLines >= 5) fontSize = 85
 
   const tmpDir = os.tmpdir()
   const txtPath = path.join(tmpDir, `txt_${Date.now()}.txt`)
@@ -69,17 +72,16 @@ async function createSticker(text) {
   fs.writeFileSync(txtPath, formatted)
 
   return new Promise((resolve, reject) => {
-    // ✅ CAMBIO IMPORTANTE: Usamos fuente por defecto de FFmpeg (funciona en Termux)
     const ff = spawn('ffmpeg', [
       '-f', 'lavfi',
-      '-i', 'color=c=white:s=800x800',
+      '-i', 'color=c=white:s=600x600', // TAMAÑO PEQUEÑO = TEXTO GRANDE
       '-vf',
 `drawtext=
-font='Arial':
+font='Arial Bold':  /* ✅ NEGRITA, IGUAL QUE TU IMAGEN */
 textfile='${txtPath.replace(/'/g, "'\\\\''")}':
 fontcolor=black:
 fontsize=${fontSize}:
-line_spacing=10:
+line_spacing=5:  /* ✅ POCO ESPACIO ENTRE LÍNEAS */
 x=(w-text_w)/2:
 y=(h-text_h)/2`,
 
