@@ -14,23 +14,32 @@ function getDB() {
   }
 }
 
-/* ───── SEPARAR TEXTO Y EMOJIS (AHORA CORRECTO) ───── */
+/* ───── SEPARAR TEXTO Y EMOJIS (AHORA SÍ FUNCIONA) ───── */
 function cleanText(text = '') {
-  // Separamos emojis y texto, aseguramos que no se corten
-  const emojis = text.match(/[\u{1F300}-\u{1F6FF}\u{1F900}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu) || [];
+  // Captura TODOS los emojis existentes
+  const emojis = text.match(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27FF}\u{2B00}-\u{2BFF}\u{FE00}-\u{FE0F}]/gu) || [];
+  // Quitamos solo emojis del texto
   const soloTexto = text
-    .replace(/[\u{1F300}-\u{1F6FF}\u{1F900}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')
+    .replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27FF}\u{2B00}-\u{2BFF}\u{FE00}-\u{FE0F}]/gu, '')
     .trim();
   return { soloTexto, emojis };
 }
 
-/* ───── CORTE DE PALABRAS IGUAL A TU EJEMPLO ───── */
-function wrapText(text, maxChars = 7) { // MÁS CORTO, igual que "-1 / una / mrda"
+/* ───── CORTE EXACTO: MÁXIMO 6 LETRAS POR LÍNEA ───── */
+function wrapText(text, maxChars = 6) { // CORTE CORTO, IGUAL AL EJEMPLO
   const words = text.split(/\s+/);
   const lines = [];
   let line = '';
 
   for (const word of words) {
+    // Si la palabra es sola y muy larga, la cortamos por letras
+    if (word.length > maxChars) {
+      const partes = word.match(new RegExp('.{1,' + maxChars + '}', 'g')) || [];
+      partes.forEach(p => lines.push(p));
+      line = '';
+      continue;
+    }
+
     const test = (line + ' ' + word).trim();
     if (test.length > maxChars) {
       if (line) lines.push(line);
@@ -43,32 +52,29 @@ function wrapText(text, maxChars = 7) { // MÁS CORTO, igual que "-1 / una / mrd
   return lines;
 }
 
-/* ───── STICKER PERFECTO ───── */
+/* ───── STICKER FORMATO PERFECTO ───── */
 async function createSticker(text) {
   const { soloTexto, emojis } = cleanText(text);
 
-  // Ajuste de corte según largo del texto
-  let maxChars = 7;
-  if (soloTexto.length > 20) maxChars = 8;
-  if (soloTexto.length > 50) maxChars = 9;
-  if (soloTexto.length > 100) maxChars = 10;
-
-  const lines = wrapText(soloTexto, maxChars);
+  // Siempre cortar a 6 caracteres, como tu ejemplo
+  const lines = wrapText(soloTexto, 6);
   
-  // Poner emojis AL FINAL, completos y separados
+  // ✅ EMOJIS: VAN AL FINAL, COMPLETOS, SIEMPRE
   if (emojis.length > 0) lines.push(emojis.join(' '));
 
   const formatted = lines.join('\n');
   const totalLines = lines.length;
 
-  // 🔥 TAMAÑO DE LETRA: NUNCA MUY CHICA, AJUSTADA
-  let fontSize = 145; // Texto corto: GRANDE
+  // ✅ TAMAÑO DE LETRA: SE AJUSTA PERO SIEMPRE GRANDE
+  let fontSize = 145;
   if (totalLines >= 2) fontSize = 130;
   if (totalLines >= 3) fontSize = 115;
-  if (totalLines >= 4) fontSize = 100;
-  if (totalLines >= 6) fontSize = 90;
-  if (totalLines >= 8) fontSize = 80;
-  if (totalLines >= 10) fontSize = 70; // Incluso muy largo, se ve bien
+  if (totalLines >= 4) fontSize = 105;
+  if (totalLines >= 6) fontSize = 95;
+  if (totalLines >= 8) fontSize = 88;
+  if (totalLines >= 10) fontSize = 80;
+  if (totalLines >= 12) fontSize = 72;
+  if (totalLines >= 15) fontSize = 65;
 
   const tmpDir = os.tmpdir();
   const txtPath = path.join(tmpDir, `txt_${Date.now()}.txt`);
@@ -79,14 +85,14 @@ async function createSticker(text) {
   return new Promise((resolve, reject) => {
     const ff = spawn('ffmpeg', [
       '-f', 'lavfi',
-      '-i', 'color=c=white:s=550x550', // Tamaño exacto para que texto se vea grande
+      '-i', 'color=c=white:s=520x520', // Tamaño exacto
       '-vf',
 `drawtext=
 font='sans-bold':
 textfile='${txtPath.replace(/'/g, "'\\\\''")}':
 fontcolor=black:
 fontsize=${fontSize}:
-line_spacing=6:
+line_spacing=4:  // ✅ MUY JUNTO, IGUAL AL EJEMPLO
 x=(w-text_w)/2:
 y=(h-text_h)/2`,
 
