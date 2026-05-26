@@ -72,7 +72,7 @@ const handler = async (ctx) => {
 ┃ ⚡ Escribe un prompt
 ┃
 ┃ 📌 Ejemplo:
-┃ .iaimage Cyberpunk City
+┃ .aiimage Cyberpunk City
 ┃
 ╰━━━━━━━━━━━━━━━━⬣`
         },{
@@ -93,37 +93,32 @@ const handler = async (ctx) => {
         const key =
             'sasuke'
 
-        const res =
-            await fetch(
+        const api =
 `https://api.evogb.org/ai/nanobanana?prompt=${encodeURIComponent(text)}&key=${key}`
-            )
+
+        const res =
+            await fetch(api)
 
         if (!res.ok)
-            throw new Error()
+            throw new Error(
+                `HTTP ${res.status}`
+            )
 
-        const contentType =
-            res.headers.get('content-type')
-
-        let imageUrl
+        const json =
+            await res.json()
 
         if (
-            contentType &&
-            contentType.includes(
-                'application/json'
-            )
+            !json.status ||
+            !json.result
         ) {
 
-            const json =
-                await res.json()
-
-            imageUrl =
-                json.result
-
-        } else {
-
-            imageUrl =
-                res.url
+            throw new Error(
+                'API inválida'
+            )
         }
+
+        const imageUrl =
+            json.result
 
         const ui =
 `╭━━━〔 🧠 SPIDER AI IMAGE 〕━━━⬣
@@ -159,7 +154,7 @@ const handler = async (ctx) => {
     } catch(e){
 
         console.log(
-            'AI IMAGE ERROR:',
+            'IMAGE ERROR:',
             e
         )
 
@@ -170,7 +165,7 @@ const handler = async (ctx) => {
             }
         })
 
-        sock.sendMessage(from,{
+        await sock.sendMessage(from,{
             text:
 '❌ Error al generar imagen'
         },{
@@ -179,7 +174,7 @@ const handler = async (ctx) => {
     }
 }
 
-handler.command = ['iaimage']
+handler.command = ['aiimage']
 handler.tags = ['ia']
 handler.group = true
 handler.menu = true
