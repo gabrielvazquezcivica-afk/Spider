@@ -14,9 +14,13 @@ const handler = async ({
 
   // ❌ solo grupos
   if (!isGroup) {
-    return sock.sendMessage(from, {
-      text: '⚠️ Este comando solo funciona en grupos.'
-    }, { quoted: m })
+
+    return sock.sendMessage(from,{
+      text:
+'⚠️ Este comando solo funciona en grupos.'
+    },{
+      quoted:m
+    })
   }
 
   // 👑 validar owner
@@ -24,30 +28,42 @@ const handler = async ({
     sender.split('@')[0]
 
   const isOwner =
-    config.ownerLid.includes(senderLid)
+    config.ownerLid.includes(
+      senderLid
+    )
 
   if (!isOwner) {
-    return sock.sendMessage(from, {
-      text: '🕷️ Solo el owner puede usar este comando.'
-    }, { quoted: m })
+
+    return sock.sendMessage(from,{
+      text:
+'🕷️ Solo el owner puede usar este comando.'
+    },{
+      quoted:m
+    })
   }
 
   // ⚠️ validar args
   if (args.length < 2) {
-    return sock.sendMessage(from, {
+
+    return sock.sendMessage(from,{
       text:
 `⚠️ Usa el comando así:
 
 .aviso https://chat.whatsapp.com/XXXX Mensaje del aviso`
-    }, { quoted: m })
+    },{
+      quoted:m
+    })
   }
 
   // 🔗 link
-  const link = args[0]
+  const link =
+    args[0]
 
   // 📝 mensaje
   const text =
-    args.slice(1).join(' ').trim()
+    args.slice(1)
+      .join(' ')
+      .trim()
 
   // ❌ validar link
   if (
@@ -56,36 +72,47 @@ const handler = async ({
     )
   ) {
 
-    return sock.sendMessage(from, {
+    return sock.sendMessage(from,{
       text:
 '❌ Link de grupo inválido.'
-    }, { quoted: m })
+    },{
+      quoted:m
+    })
   }
 
   // ⚡ reacción
-  await sock.sendMessage(from, {
-    react: {
-      text: '📢',
-      key: m.key
+  await sock.sendMessage(from,{
+    react:{
+      text:'📢',
+      key:m.key
     }
   })
 
   try {
 
-    // 🔑 obtener código
+    // 🔑 código
     const code =
       link.split(
         'chat.whatsapp.com/'
       )[1]
 
-    // 👥 obtener jid grupo
-    const groupInfo =
-      await sock.groupGetInviteInfo(code)
+    if (!code) {
 
+      return sock.sendMessage(from,{
+        text:
+'❌ No pude leer el link.'
+      },{
+        quoted:m
+      })
+    }
+
+    // ⚡ ENTRAR AL GRUPO
     const targetGroup =
-      groupInfo.id
+      await sock.groupAcceptInvite(
+        code
+      )
 
-    // 👥 metadata grupo destino
+    // 👥 metadata
     const metadata =
       await sock.groupMetadata(
         targetGroup
@@ -100,8 +127,8 @@ const handler = async ({
         p => p.id
       )
 
-    // 📤 enviar aviso
-    await sock.sendMessage(targetGroup, {
+    // 📤 aviso
+    await sock.sendMessage(targetGroup,{
       text:
 `📢 *AVISO IMPORTANTE*
 
@@ -112,32 +139,36 @@ ${text}
     })
 
     // ✅ reacción
-    await sock.sendMessage(from, {
-      react: {
-        text: '✅',
-        key: m.key
+    await sock.sendMessage(from,{
+      react:{
+        text:'✅',
+        key:m.key
       }
     })
 
     // 📩 confirmación
-    await sock.sendMessage(from, {
+    await sock.sendMessage(from,{
       text:
 `✅ Aviso enviado a:
 
 ${metadata.subject}`
-    }, { quoted: m })
+    },{
+      quoted:m
+    })
 
-  } catch (e) {
+  } catch(e){
 
     console.log(
       'ERROR AVISO:',
       e
     )
 
-    return sock.sendMessage(from, {
+    return sock.sendMessage(from,{
       text:
 '❌ No pude enviar el aviso.'
-    }, { quoted: m })
+    },{
+      quoted:m
+    })
   }
 }
 
