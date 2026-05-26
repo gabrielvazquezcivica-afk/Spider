@@ -5,25 +5,10 @@ const handler = async ({
   m,
   from,
   sender,
-  isGroup,
   args
 }) => {
 
-  // 🚫 evitar mensajes del bot
-  if (m.key.fromMe) return
-
-  // ❌ solo grupos
-  if (!isGroup) {
-
-    return sock.sendMessage(from,{
-      text:
-'⚠️ Este comando solo funciona en grupos.'
-    },{
-      quoted:m
-    })
-  }
-
-  // 👑 validar owner
+  // 👑 OWNER
   const senderLid =
     sender.split('@')[0]
 
@@ -42,14 +27,17 @@ const handler = async ({
     })
   }
 
-  // ⚠️ validar args
+  // ⚠️ validar
   if (args.length < 2) {
 
     return sock.sendMessage(from,{
       text:
-`⚠️ Usa el comando así:
+`⚠️ Usa así:
 
-.aviso https://chat.whatsapp.com/XXXX Mensaje del aviso`
+.aviso LINK mensaje
+
+Ejemplo:
+.aviso https://chat.whatsapp.com/XXXX Hola grupo`
     },{
       quoted:m
     })
@@ -65,7 +53,7 @@ const handler = async ({
       .join(' ')
       .trim()
 
-  // ❌ validar link
+  // ❌ validar
   if (
     !link.includes(
       'chat.whatsapp.com/'
@@ -74,7 +62,7 @@ const handler = async ({
 
     return sock.sendMessage(from,{
       text:
-'❌ Link de grupo inválido.'
+'❌ Link inválido.'
     },{
       quoted:m
     })
@@ -96,21 +84,15 @@ const handler = async ({
         'chat.whatsapp.com/'
       )[1]
 
-    if (!code) {
-
-      return sock.sendMessage(from,{
-        text:
-'❌ No pude leer el link.'
-      },{
-        quoted:m
-      })
-    }
-
-    // ⚡ ENTRAR AL GRUPO
-    const targetGroup =
-      await sock.groupAcceptInvite(
+    // 📡 obtener info
+    const invite =
+      await sock.groupGetInviteInfo(
         code
       )
+
+    // 👥 ID grupo
+    const targetGroup =
+      invite.id
 
     // 👥 metadata
     const metadata =
@@ -165,7 +147,7 @@ ${metadata.subject}`
 
     return sock.sendMessage(from,{
       text:
-'❌ No pude enviar el aviso.'
+'❌ El bot no está en ese grupo o el link es inválido.'
     },{
       quoted:m
     })
@@ -174,7 +156,6 @@ ${metadata.subject}`
 
 handler.command = ['aviso']
 handler.tags = ['owner']
-handler.group = true
 handler.menu = true
 
 export default handler
