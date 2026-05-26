@@ -81,18 +81,21 @@ const handler = async ({ sock, m, from }) => {
     const type = Object.keys(quotedMsg)[0]
 
     // 📄 texto citado
-    if (type === 'conversation' || type === 'extendedTextMessage') {
+if (type === 'conversation' || type === 'extendedTextMessage') {
 
-      const t =
-        quotedMsg.conversation ||
-        quotedMsg.extendedTextMessage?.text ||
-        ''
+  const quotedText =
+    quotedMsg.conversation ||
+    quotedMsg.extendedTextMessage?.text ||
+    ''
 
-      return sock.sendMessage(from, {
-        text: t + footer(),
-        mentions
-      }, { quoted: m })
-    }
+  const finalText =
+    clean || quotedText
+
+  return sock.sendMessage(from, {
+    text: finalText + footer(),
+    mentions
+  }, { quoted: m })
+}
 
     const mediaType = type.replace('Message', '')
 
