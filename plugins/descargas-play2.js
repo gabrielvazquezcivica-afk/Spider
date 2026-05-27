@@ -75,7 +75,7 @@ const handler = async ({
 `🎬 Escribe el nombre del video
 
 Ejemplo:
-.play2 Bad Bunny`
+.play2 Maluma`
     },{
       quoted:m
     })
