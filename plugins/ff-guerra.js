@@ -90,7 +90,7 @@ const handler = async ({
 No olviden hacer la guerra que se les pidió.
 
 🔥 Todos atentos y activos.
-🏆 Den lo mejor por el clan + footer(),
+🏆 Den lo mejor por el clan.` + footer(),
         mentions
     },{
         quoted:m
