@@ -19,7 +19,7 @@ function getDB() {
     }
 }
 
-function sumarHoraMX(mx) {
+function sumarHoras(mx, plus) {
 
     try {
 
@@ -31,10 +31,10 @@ function sumarHoraMX(mx) {
         let min =
             partes[1] || '00'
 
-        hora += 1
+        hora += plus
 
         if (hora >= 24)
-            hora = 0
+            hora -= 24
 
         return `${hora}:${min}`
 
@@ -59,7 +59,7 @@ const handler = async ({
 
         return sock.sendMessage(from,{
             text:
-'⚠️ Este comando solo funciona en grupos.'
+'⚠️ Solo funciona en grupos.'
         },{
             quoted:m
         })
@@ -97,13 +97,19 @@ const handler = async ({
     const mx =
         args[0] || null
 
-    // 🇨🇴 automática
+    // 🇨🇴 +1
     const col =
         mx
-        ? sumarHoraMX(mx)
+        ? sumarHoras(mx, 1)
         : null
 
-    // 📋 lista
+    // 🇦🇷 +3
+    const ar =
+        mx
+        ? sumarHoras(mx, 3)
+        : null
+
+    // 📋 mensaje
     const text =
 mx
 ? `╭━━━〔 ⚔️ 4 VS 4 〕━━━⬣
@@ -111,6 +117,7 @@ mx
 ┃ 🕒 HORA:
 ┃ 🇲🇽 MX: ${mx}
 ┃ 🇨🇴 COL: ${col}
+┃ 🇦🇷 ARG: ${ar}
 ┃
 ┃ 👥 TITULARES:
 ┃ 1.
@@ -121,24 +128,15 @@ mx
 ┃ 🪑 SUPLENTES:
 ┃ 1.
 ┃ 2.
-┃
 ╰━━━━━━━━━━━━━━━━⬣`
-: `╭━━━〔 ⚔️ 4 VS 4 〕━━━⬣
-┃
-┃ 👥 TITULARES:
-┃ 1.
-┃ 2.
-┃ 3.
-┃ 4.
-┃
-┃ 🪑 SUPLENTES:
-┃ 1.
-┃ 2.
-┃
-┣━━━━━━━━━━━━━━━━⬣
-┃ 📌 EJEMPLO:
-┃ .4vs4 7:00
-╰━━━━━━━━━━━━━━━━⬣`
+: `📌 EJEMPLO DE USO:
+
+.4vs4 7:00
+
+🕒 HORAS AUTOMÁTICAS:
+🇲🇽 MX: 7:00
+🇨🇴 COL: 8:00
+🇦🇷 ARG: 10:00`
 
     // 📤 enviar
     await sock.sendMessage(from,{
