@@ -1,86 +1,89 @@
 import config from '../config.js'
 
+// ───── HELPERS ─────
+function onlyNumber (jid = '') {
+  return jid?.toString().replace(/[^0-9]/g, '')
+}
+
 const handler = async ({
-    sock,
-    m,
-    from,
-    sender,
-    pushName,
-    isGroup,
-    participants,
-    args
+  sock,
+  m,
+  from,
+  sender,
+  isGroup,
+  pushName,
+  args
 }) => {
 
-    // 🚫 solo grupos
-    if (!isGroup) {
+  // 🚫 evitar mensajes del bot
+  if (m.key.fromMe) return
 
-        return sock.sendMessage(from,{
-            text:
-'⚠️ Este comando solo funciona en grupos.'
-        },{
-            quoted:m
-        })
-    }
+  // ❌ solo grupos
+  if (!isGroup) {
+    return sock.sendMessage(from, {
+      text: '⚠️ Este comando solo funciona en grupos.'
+    }, { quoted: m })
+  }
 
-    // 📝 texto
-    const text =
-        args.join(' ').trim()
+  // 📥 texto reporte
+  const text = args.join(' ').trim()
 
-    if (!text) {
+  if (!text) {
+    return sock.sendMessage(from, {
+      text:
+`╭━━━〔 🚨 REPORTE 〕━━━⬣
+┃
+┃ 📌 Uso correcto:
+┃ .reporte <mensaje>
+┃
+┃ 📝 Ejemplo:
+┃ .reporte El bot no responde
+┃
+╰━━━━━━━━━━━━━━━━⬣`
+    }, { quoted: m })
+  }
 
-        return sock.sendMessage(from,{
-            text:
-`⚠️ Usa el comando así:
+  // 📊 metadata grupo
+  let metadata
 
-.reporte mensaje`
-        },{
-            quoted:m
-        })
-    }
+  try {
 
-    // 📊 metadata
-    let metadata
+    metadata =
+      await sock.groupMetadata(from)
 
-    try {
+  } catch {
 
-        metadata =
-            await sock.groupMetadata(from)
+    return sock.sendMessage(from, {
+      text: '❌ Error obteniendo grupo.'
+    }, { quoted: m })
+  }
 
-    } catch {
+  const groupName =
+    metadata.subject
 
-        return sock.sendMessage(from,{
-            text:
-'❌ Error obteniendo grupo.'
-        },{
-            quoted:m
-        })
-    }
+  // ⏳ reacción
+  await sock.sendMessage(from, {
+    react: { text: '📩', key: m.key }
+  })
 
-    const groupName =
-        metadata.subject
+  try {
 
-    // ⚡ reacción
-    await sock.sendMessage(from,{
-        react:{
-            text:'📩',
-            key:m.key
-        }
-    })
+    // 👑 enviar a owners
+    for (const owner of config.ownerLid) {
 
-    try {
+      const ownerJid =
+        owner + '@s.whatsapp.net'
 
-        // 👑 enviar a owners
-        for (const owner of config.owner) {
+      await sock.sendMessage(ownerJid, {
 
-            await sock.sendMessage(owner,{
-                text:
+        text:
 `╭━━━〔 🚨 REPORTE 〕━━━⬣
 ┃
 ┃ 👤 Usuario:
 ┃ ${pushName}
 ┃
 ┃ 📞 Número:
-┃ ${sender.split('@')[0]}
+┃ ${onlyNumber(sender)}
 ┃
 ┃ 👥 Grupo:
 ┃ ${groupName}
@@ -91,12 +94,18 @@ const handler = async ({
 ╰━━━━━━━━━━━━━━━━⬣
 
 > SPIDER BOT`
-            })
-        }
 
-        // ✅ confirmación
-        await sock.sendMessage(from,{
-            text:
+      })
+    }
+
+    // ✅ reacción éxito
+    await sock.sendMessage(from, {
+      react: { text: '✅', key: m.key }
+    })
+
+    // 📩 confirmación
+    await sock.sendMessage(from, {
+      text:
 `╭━━━〔 ✅ REPORTE ENVIADO 〕━━━⬣
 ┃
 ┃ 📩 Tu reporte fue enviado
@@ -105,39 +114,30 @@ const handler = async ({
 ╰━━━━━━━━━━━━━━━━⬣
 
 > SPIDER BOT`
-        },{
-            quoted:m
-        })
+    }, { quoted: m })
 
-        // ✅ reacción
-        await sock.sendMessage(from,{
-            react:{
-                text:'✅',
-                key:m.key
-            }
-        })
+  } catch (e) {
 
-    } catch (e) {
+    console.log(
+      'REPORTE ERROR:',
+      e
+    )
 
-        console.log(
-            'REPORTE ERROR:',
-            e
-        )
+    // ❌ reacción
+    await sock.sendMessage(from, {
+      react: { text: '❌', key: m.key }
+    })
 
-        await sock.sendMessage(from,{
-            react:{
-                text:'❌',
-                key:m.key
-            }
-        })
-
-        await sock.sendMessage(from,{
-            text:
-'❌ Error enviando reporte.'
-        },{
-            quoted:m
-        })
-    }
+    return sock.sendMessage(from, {
+      text:
+`╭━━━〔 ❌ ERROR REPORTE 〕━━━⬣
+┃
+┃ ⚠️ No pude enviar el reporte
+┃ 🔄 Intenta nuevamente
+┃
+╰━━━━━━━━━━━━━━━━⬣`
+    }, { quoted: m })
+  }
 }
 
 handler.command = ['reporte']
