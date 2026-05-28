@@ -24,6 +24,7 @@ const handler = async (ctx) => {
     juegos: '🎮',
     descargas: '📥',
     tools: '⚙️',
+ff: '⚔️',
     owner: '👑',
     ia: '🔎',
     rpg: '💰',
@@ -41,6 +42,7 @@ const handler = async (ctx) => {
     owner: '🔥',
     ia: '🔍',
     rpg: '💎',
+ff: '🧧',
     stickers: '🖌️',
     search: '📂',
     'on-off': '🔛'
@@ -54,6 +56,7 @@ const handler = async (ctx) => {
     'descargas',
     'ia',
     'rpg',
+'ff',
     'stickers',
     'tools',
     'owner',
