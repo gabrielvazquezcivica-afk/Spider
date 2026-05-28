@@ -1,5 +1,5 @@
 import fetch from 'node-fetch'
-import cheerio from 'cheerio'
+import * as cheerio from 'cheerio'
 import fs from 'fs'
 
 /* 🔒 MODODADMIN */
@@ -225,9 +225,7 @@ const handler = async ({
 
         msg += `
 
-╰━━━━━━━━━━━━━━━━⬣
-
-> SPIDER BOT`
+╰━━━━━━━━━━━━━━━━⬣`
 
         await sock.sendMessage(from,{
             image:{
