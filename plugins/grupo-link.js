@@ -50,26 +50,14 @@ const handler = async ({ sock, m, from }) => {
     const code = await sock.groupInviteCode(from)
     const link = `https://chat.whatsapp.com/${code}`
 
-    // 🖼️ foto grupo
-    let groupPic
-
-    try {
-      groupPic = await sock.profilePictureUrl(from, 'image')
-    } catch {
-      groupPic = 'https://i.postimg.cc/0QNxYz4V/spider.jpg'
-    }
-
-    const text =
-`╭━━━〔 🕷️ LINK DEL GRUPO 〕━━━⬣
-┃ 🔗 ${link}
-╰━━━━━━━━━━━━━━━━⬣
-
-> SPIDER BOT`
-
     // 📤 enviar
     await sock.sendMessage(from, {
-      image: { url: groupPic },
-      caption: text
+      text:
+`🔗 𝐋𝐈𝐍𝐊 𝐃𝐄𝐋 𝐆𝐑𝐔𝐏𝐎:
+
+${link}
+
+> ⚡ Comparte el link con cuidado`
     }, { quoted: m })
 
   } catch (e) {
