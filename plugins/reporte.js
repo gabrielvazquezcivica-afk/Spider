@@ -1,4 +1,5 @@
-import config from '../config.js'
+const REPORT_GROUP =
+  '120363425574166728@g.us'
 
 // ───── HELPERS ─────
 function onlyNumber (jid = '') {
@@ -20,15 +21,19 @@ const handler = async ({
 
   // ❌ solo grupos
   if (!isGroup) {
+
     return sock.sendMessage(from, {
-      text: '⚠️ Este comando solo funciona en grupos.'
+      text:
+'⚠️ Este comando solo funciona en grupos.'
     }, { quoted: m })
   }
 
-  // 📥 texto reporte
-  const text = args.join(' ').trim()
+  // 📝 texto reporte
+  const text =
+    args.join(' ').trim()
 
   if (!text) {
+
     return sock.sendMessage(from, {
       text:
 `╭━━━〔 🚨 REPORTE 〕━━━⬣
@@ -54,7 +59,8 @@ const handler = async ({
   } catch {
 
     return sock.sendMessage(from, {
-      text: '❌ Error obteniendo grupo.'
+      text:
+'❌ Error obteniendo grupo.'
     }, { quoted: m })
   }
 
@@ -63,20 +69,18 @@ const handler = async ({
 
   // ⏳ reacción
   await sock.sendMessage(from, {
-    react: { text: '📩', key: m.key }
+    react: {
+      text: '📩',
+      key: m.key
+    }
   })
 
   try {
 
-    // 👑 enviar a owners
-    for (const owner of config.ownerLid) {
+    // 📤 enviar reporte
+    await sock.sendMessage(REPORT_GROUP, {
 
-      const ownerJid =
-        owner + '@s.whatsapp.net'
-
-      await sock.sendMessage(ownerJid, {
-
-        text:
+      text:
 `╭━━━〔 🚨 REPORTE 〕━━━⬣
 ┃
 ┃ 👤 Usuario:
@@ -95,12 +99,14 @@ const handler = async ({
 
 > SPIDER BOT`
 
-      })
-    }
+    })
 
     // ✅ reacción éxito
     await sock.sendMessage(from, {
-      react: { text: '✅', key: m.key }
+      react: {
+        text: '✅',
+        key: m.key
+      }
     })
 
     // 📩 confirmación
@@ -125,7 +131,10 @@ const handler = async ({
 
     // ❌ reacción
     await sock.sendMessage(from, {
-      react: { text: '❌', key: m.key }
+      react: {
+        text: '❌',
+        key: m.key
+      }
     })
 
     return sock.sendMessage(from, {
