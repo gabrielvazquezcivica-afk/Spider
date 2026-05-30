@@ -290,6 +290,45 @@ async function start() {
             const sender =
                 m.key.participant || from
 
+// 👻 CONTADOR DE MENSAJES
+try {
+
+    const chatsPath =
+        './data/chats.json'
+
+    let chats = {}
+
+    if (fs.existsSync(chatsPath)) {
+
+        chats = JSON.parse(
+            fs.readFileSync(
+                chatsPath,
+                'utf-8'
+            )
+        )
+    }
+
+    chats[sender] =
+        (chats[sender] || 0) + 1
+
+    fs.writeFileSync(
+        chatsPath,
+        JSON.stringify(
+            chats,
+            null,
+            2
+        )
+    )
+
+} catch (e) {
+
+    console.log(
+        'CHAT COUNTER ERROR:',
+        e
+    )
+}
+
+
             // 🚫 BAN
             const banned =
                 getBanned()
