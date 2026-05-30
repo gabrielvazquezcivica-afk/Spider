@@ -1,4 +1,3 @@
-import fs from 'fs'
 import config from '../config.js'
 
 const handler = async ({
@@ -6,86 +5,64 @@ const handler = async ({
     m,
     from,
     sender,
-    args,
-    isGroup
+    args
 }) => {
 
-    // 🚫 evitar mensajes del bot
     if (m.key.fromMe) return
 
-    // 👑 OWNER
     const senderLid =
         sender.split('@')[0]
 
     const isOwner =
-        config.ownerLid.includes(
-            senderLid
-        )
+        config.ownerLid.includes(senderLid)
 
     if (!isOwner) {
-
-        return sock.sendMessage(from,{
-            text:
-'🕷️ Solo el owner puede usar este comando.'
-        },{
-            quoted:m
-        })
+        return sock.sendMessage(from, {
+            text: '🕷️ Solo el owner puede usar este comando.'
+        }, { quoted: m })
     }
 
-    // 🔗 LINK
-    const link =
-        args[0]
+    const link = args[0]
 
     if (
         !link ||
-        !link.includes(
-            'chat.whatsapp.com/'
-        )
+        !link.includes('chat.whatsapp.com/')
     ) {
-
-        return sock.sendMessage(from,{
+        return sock.sendMessage(from, {
             text:
 `⚠️ Usa el comando así:
 
 .salir2 https://chat.whatsapp.com/XXXXX`
-        },{
-            quoted:m
-        })
+        }, { quoted: m })
     }
+
+    await sock.sendMessage(from, {
+        react: {
+            text: '⏳',
+            key: m.key
+        }
+    })
 
     try {
 
-        /* 🔍 OBTENER CÓDIGO */
         const code =
-            link.split(
-                'chat.whatsapp.com/'
-            )[1]
+            link.split('chat.whatsapp.com/')[1]
+            ?.split('?')[0]
 
         if (!code) {
-
-            return sock.sendMessage(from,{
-                text:
-'❌ Link inválido.'
-            },{
-                quoted:m
-            })
+            throw new Error('Código inválido')
         }
 
-        /* 📥 INFO DEL LINK */
+        // Obtener información del grupo
         const info =
-            await sock.groupGetInviteInfo(
-                code
-            )
+            await sock.groupGetInviteInfo(code)
 
-        const groupId =
-            info.id
-
+        const groupId = info.id
         const groupName =
-            info.subject ||
-            'Grupo'
+            info.subject || 'Grupo'
 
-        /* 📢 AVISO */
-        await sock.sendMessage(groupId,{
+        // Aviso al grupo
+        await sock.sendMessage(groupId, {
             text:
 `╭━━━〔 ⚠️ SPIDER BOT 〕━━━⬣
 ┃
@@ -98,45 +75,55 @@ const handler = async ({
 ╰━━━━━━━━━━━━━━━━⬣`
         })
 
-        /* ⏳ ESPERA */
         await new Promise(resolve =>
             setTimeout(resolve, 3000)
         )
 
-        /* 🚪 SALIR */
-        await sock.groupLeave(
-            groupId
-        )
+        await sock.groupLeave(groupId)
 
-        /* ✅ CONFIRMACIÓN */
-        await sock.sendMessage(from,{
+        await sock.sendMessage(from, {
+            react: {
+                text: '✅',
+                key: m.key
+            }
+        })
+
+        await sock.sendMessage(from, {
             text:
 `✅ Salí correctamente de:
 
 📍 ${groupName}`
-        },{
-            quoted:m
-        })
+        }, { quoted: m })
 
-    } catch(e){
+    } catch (e) {
 
         console.log(
             'SALIR2 ERROR:',
             e
         )
 
-        await sock.sendMessage(from,{
-            text:
-'❌ No pude salir de ese grupo.'
-        },{
-            quoted:m
+        await sock.sendMessage(from, {
+            react: {
+                text: '❌',
+                key: m.key
+            }
         })
+
+        await sock.sendMessage(from, {
+            text:
+`❌ No pude obtener información del enlace.
+
+Posibles causas:
+• El enlace expiró.
+• El enlace fue reiniciado.
+• WhatsApp bloqueó la consulta.
+• El bot no puede acceder a ese grupo mediante el link.`
+        }, { quoted: m })
     }
 }
 
 handler.command = ['salir2']
 handler.tags = ['owner']
-handler.group = false
 handler.menu = true
 
 export default handler
