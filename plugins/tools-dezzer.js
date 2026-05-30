@@ -74,7 +74,7 @@ const handler = async ({
 
 📌 Uso:
 
-.deezer Hay Lupita`
+.music Hay Lupita`
         }, {
             quoted: m
         })
