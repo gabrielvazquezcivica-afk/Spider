@@ -124,8 +124,11 @@ quiere casarse con
 }
 
 handler.command = ['casar']
+handler.tags = ['juegos']
+handler.help = ['casar @usuario']
 handler.group = true
-handlers.tags = ['juegos']
 handler.menu = true
+
+export default handler
 
 export default handler
