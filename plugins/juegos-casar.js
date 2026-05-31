@@ -105,6 +105,24 @@ o respondiendo un mensaje:
 
     const propuestas = getDB(propuestasPath)
 
+// 💌 propuesta pendiente
+if (propuestas[mentioned]) {
+
+    return sock.sendMessage(from,{
+        text:
+`💌 @${mentioned.split('@')[0]} ya tiene una propuesta pendiente.
+
+⏳ Debe responder primero con:
+
+.aceptar
+o
+.rechazar`,
+        mentions:[mentioned]
+    },{
+        quoted:m
+    })
+}
+
     propuestas[mentioned] = {
         de: sender,
         fecha: Date.now()
