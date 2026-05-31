@@ -27,18 +27,17 @@ const handler = async ({
     }, { quoted: m })
   }
 
-  const botNumber =
-    sock.user.id.split(':')[0] +
-    '@s.whatsapp.net'
+  const botNum =
+  onlyNumber(sock.user.id)
 
-  const botData =
-    participants.find(
-      p => p.id === botNumber
-    )
+const botData =
+  participants.find(
+    p => onlyNumber(p.id) === botNum
+  )
 
-  const botAdmin =
-    botData?.admin === 'admin' ||
-    botData?.admin === 'superadmin'
+const botAdmin =
+  botData?.admin === 'admin' ||
+  botData?.admin === 'superadmin'
 
   if (!botAdmin) {
     return sock.sendMessage(from, {
