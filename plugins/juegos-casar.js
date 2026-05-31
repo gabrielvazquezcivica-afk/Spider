@@ -48,23 +48,31 @@ if (
     !isAdmin
 ) return
 
-    const mentioned =
-        m.message?.extendedTextMessage
-            ?.contextInfo
-            ?.mentionedJid?.[0]
+    const ctx =
+    m.message?.extendedTextMessage
+        ?.contextInfo
 
-    if (!mentioned) {
+const mentioned =
+    ctx?.mentionedJid?.[0] ||
+    ctx?.participant
 
-        return sock.sendMessage(from,{
-            text:
-`💍 Debes mencionar a alguien.
+if (!mentioned) {
 
-Ejemplo:
-.casar @usuario`
-        },{
-            quoted:m
-        })
-    }
+    return sock.sendMessage(from,{
+        text:
+`💍 Debes mencionar o responder a alguien.
+
+Ejemplos:
+
+.casar @usuario
+
+o respondiendo un mensaje:
+
+.casar`
+    },{
+        quoted:m
+    })
+}
 
     if (mentioned === sender) {
 
