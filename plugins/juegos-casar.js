@@ -130,5 +130,3 @@ handler.group = true
 handler.menu = true
 
 export default handler
-
-export default handler
