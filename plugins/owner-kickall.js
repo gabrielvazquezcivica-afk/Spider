@@ -27,17 +27,12 @@ const handler = async ({
     }, { quoted: m })
   }
 
-  const botNum =
-  onlyNumber(sock.user.id)
-
-const botData =
+  const botData =
   participants.find(
-    p => onlyNumber(p.id) === botNum
+    p =>
+      onlyNumber(p.id) ===
+      onlyNumber(sock.user.id)
   )
-
-const botAdmin =
-  botData?.admin === 'admin' ||
-  botData?.admin === 'superadmin'
 
   if (!botAdmin) {
     return sock.sendMessage(from, {
