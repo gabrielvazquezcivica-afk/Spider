@@ -29,20 +29,24 @@ const handler = async ({
     if (!isGroup) return
 
     // 🔒 MODODADMIN
-    const modoadmin = getDB(modoadminPath)
+const modoadmin = getDB(modoadminPath)
 
-    if (modoadmin[from]?.enabled) {
+const isBlockedGroup =
+    modoadmin[from]
 
-        const user = participants?.find(
-            p => p.id === sender
-        )
+const user =
+    participants?.find(
+        p => p.id === sender
+    )
 
-        const isAdmin =
-            user?.admin === 'admin' ||
-            user?.admin === 'superadmin'
+const isAdmin =
+    user?.admin === 'admin' ||
+    user?.admin === 'superadmin'
 
-        if (!isAdmin) return
-    }
+if (
+    isBlockedGroup &&
+    !isAdmin
+) return
 
     const mentioned =
         m.message?.extendedTextMessage
