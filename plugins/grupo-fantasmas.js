@@ -94,7 +94,10 @@ const handler = async ({
 ┃ ✅ No se encontraron
 ┃ usuarios fantasmas.
 ┃
-╰━━━━━━━━━━━━━━━━⬣`
+╰━━━━━━━━━━━━━━━━⬣
+
+⚠️ Nota:
+El sistema cuenta mensajes desde que el bot fue agregado al grupo.`
             }, {
                 quoted: m
             })
@@ -116,7 +119,12 @@ const handler = async ({
 
 ${lista}
 
-> Usuarios sin mensajes registrados`,
+⚠️ Nota:
+Este resultado no puede ser 100% exacto.
+
+El bot comienza a registrar actividad desde que fue agregado al grupo, por lo que usuarios que hablaron antes de la entrada del bot podrían aparecer como fantasmas hasta que vuelvan a enviar un mensaje.
+
+> SPIDER BOT`,
             mentions: fantasmas
         }, {
             quoted: m
@@ -142,5 +150,6 @@ handler.command = ['fantasmas']
 handler.tags = ['grupo']
 handler.group = true
 handler.menu = true
+handler.admin = true
 
 export default handler
