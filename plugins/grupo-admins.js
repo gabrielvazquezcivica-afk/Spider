@@ -39,26 +39,64 @@ const handler = async ({
         },{ quoted:m })
     }
 
-    let texto =
-`🕷️ LLAMADO A ADMINISTRADORES
+    // ⚡ Reacción
+    await sock.sendMessage(from,{
+        react:{
+            text:'📢',
+            key:m.key
+        }
+    })
 
-`
+    // 📸 Foto del grupo
+    let pp = null
 
-    for (const admin of admins) {
+    try {
 
-        texto +=
-`👑 @${admin.id.split('@')[0]}\n`
+        pp = await sock.profilePictureUrl(
+            from,
+            'image'
+        )
+
+    } catch {
+
+        pp = 'https://i.imgur.com/4M34hi2.png'
     }
 
+    const listaAdmins =
+        admins.map(
+            a =>
+            `👑 @${a.id.split('@')[0]}`
+        ).join('\n')
+
+    const texto =
+`╭━━━〔 🕷️ LLAMADO STAFF 🕷️ 〕━━━⬣
+┃
+┃ 📢 Se solicita la atención
+┃ de los administradores.
+┃
+┣━━━━━━━━━━━━━━⬣
+${listaAdmins}
+┣━━━━━━━━━━━━━━⬣
+┃ 👤 Solicitado por:
+┃ @${sender.split('@')[0]}
+┃
+╰━━━━━━━━━━━━━━━━⬣`
+
     await sock.sendMessage(from,{
-        text:texto.trim(),
-        mentions:admins.map(
-            a => a.id
-        )
+        image:{
+            url: pp
+        },
+        caption:texto,
+        mentions:[
+            sender,
+            ...admins.map(
+                a => a.id
+            )
+        ]
     },{ quoted:m })
 }
 
-handler.command = ['admins']
+handler.command = ['admin']
 handler.tags = ['grupo']
 handler.help = ['admin']
 handler.group = true
