@@ -7,6 +7,9 @@ const nsfwFile =
         './data/nsfw.json'
     )
 
+const modoadminPath =
+    './data/modoadmin.json'
+
 /* 🔞 NSFW DB */
 function getNSFWDB() {
 
@@ -30,6 +33,27 @@ function getNSFWDB() {
     }
 }
 
+/* 🔒 DB MODODADMIN */
+function getModoadmin() {
+
+    try {
+
+        if (!fs.existsSync(modoadminPath))
+            return {}
+
+        return JSON.parse(
+            fs.readFileSync(
+                modoadminPath,
+                'utf-8'
+            )
+        )
+
+    } catch {
+
+        return {}
+    }
+}
+
 const handler = async (ctx) => {
 
     const {
@@ -37,7 +61,8 @@ const handler = async (ctx) => {
         m,
         from,
         sender,
-        isGroup
+        isGroup,
+        participants
     } = ctx
 
     if (!isGroup) {
@@ -46,6 +71,27 @@ const handler = async (ctx) => {
             text:'❌ Este comando solo funciona en grupos'
         },{ quoted:m })
     }
+
+    /* 🔒 MODODADMIN */
+    const modoadmin =
+        getModoadmin()
+
+    const isBlockedGroup =
+        modoadmin[from]
+
+    const user =
+        participants?.find(
+            p => p.id === sender
+        )
+
+    const isAdmin =
+        user?.admin === 'admin' ||
+        user?.admin === 'superadmin'
+
+    if (
+        isBlockedGroup &&
+        !isAdmin
+    ) return
 
     /* 🔞 NSFW ACTIVADO */
     const nsfwDB =
