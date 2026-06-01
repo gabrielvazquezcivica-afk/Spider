@@ -2,57 +2,77 @@ const handler = async ({ sock, m, from }) => {
 
   if (!from.endsWith('@g.us')) {
     return sock.sendMessage(from, {
-      text: '┌─ ⚠️ ─┐\n│ Solo grupos │\n└───────┘'
+      text: '⚠️ Este comando solo funciona en grupos.'
     }, { quoted: m })
   }
 
   let metadata
+
   try {
     metadata = await sock.groupMetadata(from)
   } catch {
     return sock.sendMessage(from, {
-      text: '┌─ ❌ ─┐\n│ Error grupo │\n└───────┘'
+      text: '❌ No pude obtener la información del grupo.'
     }, { quoted: m })
   }
 
   const participants = metadata.participants
   const sender = m.key.participant || m.key.remoteJid
 
-  // 🔥 MISMA LÓGICA QUE TU .n
-  const isAdmin = participants.some(p =>
-    p.id === sender && (p.admin === 'admin' || p.admin === 'superadmin')
+  const isAdmin = participants.some(
+    p =>
+      p.id === sender &&
+      (
+        p.admin === 'admin' ||
+        p.admin === 'superadmin'
+      )
   )
 
   if (!isAdmin) {
     return sock.sendMessage(from, {
-      text: '┌─ 🚫 ─┐\n│ Solo admins │\n└───────┘'
+      text: '🚫 Solo los administradores pueden usar este comando.'
     }, { quoted: m })
   }
 
-  const mentions = participants.map(p => p.id)
-  const groupName = metadata.subject
-  const total = participants.length
+  const mentions =
+    participants.map(p => p.id)
 
-  // ✅ MENCIONES EN LISTA VERTICAL
-  const mentionText = participants
-    .map((p, i) => `│ • @${p.id.split('@')[0]}`)
-    .join('\n')
+  const groupName =
+    metadata.subject
+
+  const total =
+    participants.length
 
   await sock.sendMessage(from, {
-    react: { text: '🕸️', key: m.key }
+    react: {
+      text: '🕸️',
+      key: m.key
+    }
   })
 
-  const text =
-`┌──────────────────┐
-│ 🕷️ INVITANDO A TODOS
-├──────────────────┤
-│ 📡 ${groupName}
-│ 👥 Total: ${total}
-├──────────────────┤
-${mentionText}
-└──────────────────┘
+  const mentionText =
+    participants
+      .map(
+        p =>
+        `┃ ⚡ @${p.id.split('@')[0]}`
+      )
+      .join('\n')
 
-> 🕸️ SPIDER BOT`
+  const text =
+`📢 ÚNETE AL CANAL OFICIAL DE SPIDER BOT
+
+🔗 https://whatsapp.com/channel/0029Vb8a4lI2ZjCx2SSlfn2r
+
+> 📡 ${groupName}
+> 👥 ${total} miembros
+
+╭━━━〔 🕸️ LLAMADO GENERAL 〕━━━⬣
+┃
+${mentionText}
+┃
+╰━━━━━━━━━━━━━━━━⬣
+
+> 𝐁𝐘 𝐒𝐎𝐘𝐆𝐀𝐁𝐎 `
 
   await sock.sendMessage(from, {
     text,
