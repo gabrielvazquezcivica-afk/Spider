@@ -3,7 +3,6 @@ const handler = async (ctx) => {
     const {
         sock,
         from,
-        pushName,
         m
     } = ctx
 
@@ -31,17 +30,22 @@ const handler = async (ctx) => {
     const botName =
         '𝐒𝐩𝐢𝐝𝐞𝐫-𝐁𝐨𝐭'
 
+    const userTag =
+        (m.key.participant || from)
+            .split('@')[0]
+
     const frases = [
 
-`😏 @${m.key.participant?.split('@')[0] || from.split('@')[0]} hoy viniste peligroso...`,
+`😏 @${userTag} hoy viniste peligroso...`,
 
-`🔥 @${m.key.participant?.split('@')[0] || from.split('@')[0]} anda buscando puro pecado`,
+`🔥 @${userTag} anda buscando puro pecado`,
 
-`🫦 @${m.key.participant?.split('@')[0] || from.split('@')[0]} abrió el menú prohibido`,
+`🫦 @${userTag} abrió el menú prohibido`,
 
-`💀 @${m.key.participant?.split('@')[0] || from.split('@')[0]} ya mejor ve a dormir`,
+`💀 @${userTag} ya mejor ve a dormir`,
 
-`👀 @${m.key.participant?.split('@')[0] || from.split('@')[0]} cuidado que te descubren`
+`👀 @${userTag} cuidado que te descubren`
+
     ]
 
     const frase =
@@ -97,15 +101,35 @@ const handler = async (ctx) => {
 
 > 🕷️ ${botName}`
 
-    await sock.sendMessage(from,{
-        image:{
-            url:'https://i.postimg.cc/k4hvPdLR/file-000000008160722fad60047fba4dd52d.png'
-        },
-        caption:menu,
-        mentions:[
-            m.key.participant || from
-        ]
-    },{ quoted:m })
+    const imageUrl =
+'https://i.postimg.cc/XYxFffwT/file-00000000cfac71f79671ee98bb3dd23d.png'
+
+    try {
+
+        await sock.sendMessage(from,{
+            image:{
+                url:imageUrl
+            },
+            caption:menu,
+            mentions:[
+                m.key.participant || from
+            ]
+        },{ quoted:m })
+
+    } catch (e) {
+
+        console.log(
+            'MENU2 IMG ERROR:',
+            e?.message || e
+        )
+
+        await sock.sendMessage(from,{
+            text:menu,
+            mentions:[
+                m.key.participant || from
+            ]
+        },{ quoted:m })
+    }
 }
 
 handler.command = ['menu2']
