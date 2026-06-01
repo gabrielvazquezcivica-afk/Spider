@@ -2,7 +2,6 @@ import fs from 'fs'
 
 const nsfwPath = './data/nsfw.json'
 const modoadminPath = './data/modoadmin.json'
-const autoaceptarPath = './data/autoaceptar.json'
 const antilinkPath = './data/antilink.json'
 const welcomePath = './data/welcome.json'
 
@@ -78,9 +77,6 @@ const handler = async ({
     const modoadminDB =
         getDB(modoadminPath)
 
-    const autoaceptarDB =
-        getDB(autoaceptarPath)
-
 const antilinkDB =
     getDB(antilinkPath)
 
@@ -99,11 +95,6 @@ const antilink =
 
     const modoadmin =
         modoadminDB[from]
-            ? '🟢 Activado'
-            : '🔴 Desactivado'
-
-    const autoaceptar =
-        autoaceptarDB[from]?.enabled
             ? '🟢 Activado'
             : '🔴 Desactivado'
 
@@ -143,9 +134,6 @@ const antilink =
 ┃
 ┃ 🛡️ Modo Admin:
 ┃ ${modoadmin}
-┃
-┃ 🤖 Autoaceptar:
-┃ ${autoaceptar}
 ┃
 ┃ 🔗 Antilink:
 ┃ ${antilink}
