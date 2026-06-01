@@ -116,110 +116,143 @@ export default handler
 
 // 🕷️ AUTOACEPTAR REAL
 export async function before({
-    sock
+sock
 }) {
 
-    if (started) return
-    started = true
+if (started) return
+started = true
 
-    const procesando = new Set()
+const procesando = new Set()
 
-    setInterval(async () => {
+setInterval(async () => {
 
-        try {
+    try {
 
-            const db = getDB()
+        const db = getDB()
 
-            for (const groupId of Object.keys(db)) {
+        for (const groupId of Object.keys(db)) {
 
-                if (!db[groupId]?.enabled) continue
+            if (!db[groupId]?.enabled) continue
 
-                // 🚫 evitar procesos duplicados
-                if (procesando.has(groupId)) continue
+            if (procesando.has(groupId)) continue
 
-                procesando.add(groupId)
+            procesando.add(groupId)
+
+            try {
+
+                // 📋 metadata
+                const metadata =
+                    await sock.groupMetadata(groupId)
+
+                // 🤖 verificar que el bot siga siendo admin
+                const bot =
+                    metadata.participants.find(
+                        p =>
+                            p.id === sock.user.id ||
+                            p.id === sock.user.jid
+                    )
+
+                const botAdmin =
+                    bot?.admin === 'admin' ||
+                    bot?.admin === 'superadmin'
+
+                if (!botAdmin) {
+                    procesando.delete(groupId)
+                    continue
+                }
+
+                // 🔥 solicitudes pendientes
+                const requests =
+                    await sock.groupRequestParticipantsList(groupId)
+
+                if (!requests?.length) {
+
+                    procesando.delete(groupId)
+                    continue
+                }
+
+                const users =
+                    requests.map(
+                        u => u.jid
+                    )
 
                 try {
 
-                    const requests =
-                        await sock.groupRequestParticipantsList(groupId)
+                    // ✅ aprobar todos juntos
+                    await sock.groupRequestParticipantsUpdate(
+                        groupId,
+                        users,
+                        'approve'
+                    )
 
-                    if (!requests?.length) {
+                    await sock.sendMessage(groupId,{
+                        text:
 
-                        procesando.delete(groupId)
-                        continue
-                    }
-
-                    const users =
-                        requests.map(
-                            u => u.jid
-                        )
-
-                    try {
-
-                        // ✅ aceptar todos juntos
-                        await sock.groupRequestParticipantsUpdate(
-                            groupId,
-                            users,
-                            'approve'
-                        )
-
-                        await sock.sendMessage(groupId,{
-                            text:
 `🕸️ AUTOACEPTAR
 
 ✅ Se aprobaron automáticamente ${users.length} solicitudes.`
-                        })
-
-                    } catch (err) {
-
-                        console.log(
-                            'Error aprobando lote:',
-                            err
-                        )
-
-                        // 🔥 respaldo uno por uno
-                        for (const jid of users) {
-
-                            try {
-
-                                await sock.groupRequestParticipantsUpdate(
-                                    groupId,
-                                    [jid],
-                                    'approve'
-                                )
-
-                            } catch (e) {
-
-                                console.log(
-                                    'Error aprobando usuario:',
-                                    jid,
-                                    e
-                                )
-                            }
-                        }
-                    }
+})
 
                 } catch (err) {
 
                     console.log(
-                        'Error obteniendo solicitudes:',
+                        'Error aprobando lote:',
                         err
                     )
 
-                } finally {
+                    // 🔥 respaldo usuario por usuario
+                    for (const jid of users) {
+
+                        try {
+
+                            await sock.groupRequestParticipantsUpdate(
+                                groupId,
+                                [jid],
+                                'approve'
+                            )
+
+                        } catch (e) {
+
+                            console.log(
+                                'Error aprobando usuario:',
+                                jid,
+                                e
+                            )
+                        }
+                    }
+                }
+
+            } catch (err) {
+
+                // 🚫 ignorar grupos que devuelven forbidden
+                if (
+                    err?.data === 403 ||
+                    err?.message?.includes('forbidden')
+                ) {
 
                     procesando.delete(groupId)
+                    continue
                 }
+
+                console.log(
+                    'Error obteniendo solicitudes:',
+                    err
+                )
+
+            } finally {
+
+                procesando.delete(groupId)
             }
-
-        } catch (err) {
-
-            console.log(
-                'Error autoaceptar:',
-                err
-            )
         }
 
-    }, 2000) // ⚡ revisa cada 2 segundos
+    } catch (err) {
+
+        console.log(
+            'Error autoaceptar:',
+            err
+        )
+    }
+
+}, 5000) // ⚡ cada 5 segundos
+
 }
