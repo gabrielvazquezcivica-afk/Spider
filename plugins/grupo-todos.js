@@ -66,10 +66,8 @@ const handler = async ({ sock, m, from }) => {
 > 📡 ${groupName}
 > 👥 ${total} miembros
 
-╭━━━〔 🕸️ LLAMADO GENERAL 〕━━━⬣
-┃
+╭━━━ 𝐀𝐓𝐄𝐍𝐂𝐈𝐎𝐍 ━━━⬣
 ${mentionText}
-┃
 ╰━━━━━━━━━━━━━━━━⬣
 
 > 𝐁𝐘 𝐒𝐎𝐘𝐆𝐀𝐁𝐎 `
