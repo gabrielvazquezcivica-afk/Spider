@@ -60,13 +60,16 @@ Confirma con:
         .filter(id => {
 
           const isGroupOwner =
-            id === groupOwner
+            onlyNumber(id) ===
+            onlyNumber(groupOwner)
 
           const isCommandOwner =
-            onlyNumber(id) === senderNum
+            onlyNumber(id) ===
+            senderNum
 
           const isBot =
-            id === sock.user.id
+            onlyNumber(id) ===
+            onlyNumber(sock.user.id)
 
           const isGlobalOwner =
             config.ownerLid.includes(
@@ -80,6 +83,21 @@ Confirma con:
             !isGlobalOwner
           )
         })
+
+    console.log(
+      'BOT:',
+      sock.user.id
+    )
+
+    console.log(
+      'OWNER:',
+      sender
+    )
+
+    console.log(
+      'USUARIOS A EXPULSAR:',
+      usuarios
+    )
 
     if (!usuarios.length) {
       return sock.sendMessage(from, {
@@ -120,12 +138,7 @@ Posibles causas:
   }
 }
 
-handler.command = [
-  'kickall',
-  'eliminaratodos',
-  'sacaratodos'
-]
-
+handler.command = ['kickall']
 handler.tags = ['owner']
 handler.help = ['kickall si']
 handler.group = true
