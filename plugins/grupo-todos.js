@@ -51,12 +51,12 @@ const handler = async ({ sock, m, from }) => {
   })
 
   const mentionText =
-    participants
-      .map(
-        p =>
-        `┃ ⚡ @${p.id.split('@')[0]}`
-      )
-      .join('\n')
+  participants
+    .map(
+      p =>
+      `➥ @${p.id.split('@')[0]}`
+    )
+    .join('\n')
 
   const text =
 `📢 ÚNETE AL CANAL OFICIAL DE SPIDER BOT
