@@ -115,8 +115,6 @@ handler.menu = true
 export default handler
 
 // 🕷️ AUTOACEPTAR REAL
-let started = false
-
 export async function before({
     sock
 }) {
