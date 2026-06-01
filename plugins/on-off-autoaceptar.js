@@ -115,12 +115,16 @@ handler.menu = true
 export default handler
 
 // 🕷️ AUTOACEPTAR REAL
+let started = false
+
 export async function before({
     sock
 }) {
 
     if (started) return
     started = true
+
+    const procesando = new Set()
 
     setInterval(async () => {
 
@@ -132,43 +136,92 @@ export async function before({
 
                 if (!db[groupId]?.enabled) continue
 
+                // 🚫 evitar procesos duplicados
+                if (procesando.has(groupId)) continue
+
+                procesando.add(groupId)
+
                 try {
 
-                    // 🔥 OBTENER SOLICITUDES
                     const requests =
                         await sock.groupRequestParticipantsList(groupId)
 
-                    if (!requests?.length) continue
+                    if (!requests?.length) {
 
-                    for (const user of requests) {
+                        procesando.delete(groupId)
+                        continue
+                    }
 
-                        try {
+                    const users =
+                        requests.map(
+                            u => u.jid
+                        )
 
-                            // 🔥 APROBAR
-                            await sock.groupRequestParticipantsUpdate(
-                                groupId,
-                                [user.jid],
-                                'approve'
-                            )
+                    try {
 
-                            // 🔥 AVISO
-                            await sock.sendMessage(groupId,{
-                                text:
-`🕸️ @${user.jid.split('@')[0]} fue aceptado correctamente`,
-                                mentions:[user.jid]
-                            })
+                        // ✅ aceptar todos juntos
+                        await sock.groupRequestParticipantsUpdate(
+                            groupId,
+                            users,
+                            'approve'
+                        )
 
-                        } catch (err) {
-                            console.log('Error aprobando:', err)
+                        await sock.sendMessage(groupId,{
+                            text:
+`🕸️ AUTOACEPTAR
+
+✅ Se aprobaron automáticamente ${users.length} solicitudes.`
+                        })
+
+                    } catch (err) {
+
+                        console.log(
+                            'Error aprobando lote:',
+                            err
+                        )
+
+                        // 🔥 respaldo uno por uno
+                        for (const jid of users) {
+
+                            try {
+
+                                await sock.groupRequestParticipantsUpdate(
+                                    groupId,
+                                    [jid],
+                                    'approve'
+                                )
+
+                            } catch (e) {
+
+                                console.log(
+                                    'Error aprobando usuario:',
+                                    jid,
+                                    e
+                                )
+                            }
                         }
                     }
 
-                } catch {}
+                } catch (err) {
+
+                    console.log(
+                        'Error obteniendo solicitudes:',
+                        err
+                    )
+
+                } finally {
+
+                    procesando.delete(groupId)
+                }
             }
 
         } catch (err) {
-            console.log('Error autoaceptar:', err)
+
+            console.log(
+                'Error autoaceptar:',
+                err
+            )
         }
 
-    }, 5000) // cada 5 segundos
+    }, 2000) // ⚡ revisa cada 2 segundos
 }
