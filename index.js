@@ -352,22 +352,23 @@ try {
                 )
             )
 
-        const senderNum =
-            sender.replace(/[^0-9]/g, '')
-
-        const isOwner =
-            config.ownerLid?.includes(senderNum)
-
         if (
             isGroup &&
+            Array.isArray(gruposApagados) &&
             gruposApagados.includes(from) &&
-            !isOwner
+            !isBotCommand
         ) {
             return
         }
     }
 
-} catch {}
+} catch (e) {
+
+    console.log(
+        'ERROR APAGADO:',
+        e
+    )
+}
 
             // 👁️ visto
             sock.readMessages([m.key])
