@@ -336,6 +336,39 @@ try {
             if (banned[sender])
                 return
 
+// 🔴 BOT APAGADO EN ESTE GRUPO
+try {
+
+    const apagadoPath =
+        './data/apagado.json'
+
+    if (fs.existsSync(apagadoPath)) {
+
+        const gruposApagados =
+            JSON.parse(
+                fs.readFileSync(
+                    apagadoPath,
+                    'utf-8'
+                )
+            )
+
+        const senderNum =
+            sender.replace(/[^0-9]/g, '')
+
+        const isOwner =
+            config.ownerLid?.includes(senderNum)
+
+        if (
+            isGroup &&
+            gruposApagados.includes(from) &&
+            !isOwner
+        ) {
+            return
+        }
+    }
+
+} catch {}
+
             // 👁️ visto
             sock.readMessages([m.key])
                 .catch(() => {})
