@@ -328,17 +328,6 @@ try {
     )
 }
 
-const body =
-    m.message?.conversation ||
-    m.message?.extendedTextMessage?.text ||
-    m.message?.imageMessage?.caption ||
-    m.message?.videoMessage?.caption ||
-    ''
-
-const isBotCommand =
-    body.startsWith('.bot')
-
-
             // 🚫 BAN
             const banned =
                 getBanned()
@@ -362,23 +351,22 @@ try {
                 )
             )
 
+        const senderNum =
+            sender.replace(/[^0-9]/g, '')
+
+        const isOwner =
+            config.ownerLid?.includes(senderNum)
+
         if (
             isGroup &&
-            Array.isArray(gruposApagados) &&
             gruposApagados.includes(from) &&
-            !isBotCommand
+            !isOwner
         ) {
             return
         }
     }
 
-} catch (e) {
-
-    console.log(
-        'ERROR APAGADO:',
-        e
-    )
-}
+} catch {}
 
             // 👁️ visto
             sock.readMessages([m.key])
