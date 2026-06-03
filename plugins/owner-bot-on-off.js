@@ -4,16 +4,35 @@ import config from '../config.js'
 const file = './data/apagado.json'
 
 function getDB() {
+
     try {
-        if (!fs.existsSync(file)) return []
-        return JSON.parse(fs.readFileSync(file))
+
+        if (!fs.existsSync(file))
+            return []
+
+        return JSON.parse(
+            fs.readFileSync(
+                file,
+                'utf-8'
+            )
+        )
+
     } catch {
+
         return []
     }
 }
 
 function saveDB(data) {
-    fs.writeFileSync(file, JSON.stringify(data, null, 2))
+
+    fs.writeFileSync(
+        file,
+        JSON.stringify(
+            data,
+            null,
+            2
+        )
+    )
 }
 
 const handler = async ({
@@ -34,10 +53,19 @@ const handler = async ({
         config.ownerLid?.includes(senderNum)
 
     if (!isOwner) {
+
         return sock.sendMessage(from,{
             text:'❌ Solo el owner puede usar este comando.'
         },{ quoted:m })
     }
+
+    // 🕷️ REACCIÓN
+    await sock.sendMessage(from,{
+        react:{
+            text:'🌀',
+            key:m.key
+        }
+    })
 
     let db = getDB()
 
@@ -45,27 +73,31 @@ const handler = async ({
         args[0]?.toLowerCase()
 
     if (!option) {
+
         return sock.sendMessage(from,{
             text:
 `🕷️ CONTROL DEL BOT
 
-.apagar on
-.apagar off`
+.bot on
+.bot off`
         },{ quoted:m })
     }
 
+    // 🔴 APAGAR
     if (option === 'on') {
 
         if (!db.includes(from)) {
+
             db.push(from)
             saveDB(db)
         }
 
         return sock.sendMessage(from,{
-            text:'🔴 Bot apagado en este grupo.'
+            text:'🔴 Bot desactivado en este grupo.'
         },{ quoted:m })
     }
 
+    // 🟢 ENCENDER
     if (option === 'off') {
 
         db = db.filter(
@@ -75,40 +107,18 @@ const handler = async ({
         saveDB(db)
 
         return sock.sendMessage(from,{
-            text:'🟢 Bot activado nuevamente.'
+            text:'🟢 Bot activado nuevamente en este grupo.'
         },{ quoted:m })
     }
+
+    return sock.sendMessage(from,{
+        text:'⚠️ Usa solamente:\n\n.bot on\n.bot off'
+    },{ quoted:m })
 }
 
-handler.command = ['apagar']
+handler.command = ['bot']
 handler.tags = ['owner']
 handler.group = true
 handler.menu = true
 
 export default handler
-
-export async function before({
-    m,
-    from,
-    isGroup,
-    sender
-}) {
-
-    if (!isGroup) return false
-
-    const db = getDB()
-
-    if (!db.includes(from))
-        return false
-
-    const senderNum =
-        sender.replace(/[^0-9]/g, '')
-
-    const isOwner =
-        config.ownerLid?.includes(senderNum)
-
-    if (isOwner)
-        return false
-
-    return true
-}
