@@ -328,6 +328,16 @@ try {
     )
 }
 
+const body =
+    m.message?.conversation ||
+    m.message?.extendedTextMessage?.text ||
+    m.message?.imageMessage?.caption ||
+    m.message?.videoMessage?.caption ||
+    ''
+
+const isBotCommand =
+    body.startsWith('.bot')
+
 
             // 🚫 BAN
             const banned =
