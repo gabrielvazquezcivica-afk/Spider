@@ -86,11 +86,15 @@ const handler = async ({
     // 🔴 APAGAR
     if (option === 'off') {
 
-        if (!db.includes(from)) {
+        if (db.includes(from)) {
 
-            db.push(from)
-            saveDB(db)
+            return sock.sendMessage(from,{
+                text:'⚠️ El bot ya estaba desactivado en este grupo.'
+            },{ quoted:m })
         }
+
+        db.push(from)
+        saveDB(db)
 
         return sock.sendMessage(from,{
             text:'🔴 Bot desactivado en este grupo.'
@@ -99,6 +103,13 @@ const handler = async ({
 
     // 🟢 ENCENDER
     if (option === 'on') {
+
+        if (!db.includes(from)) {
+
+            return sock.sendMessage(from,{
+                text:'⚠️ El bot ya estaba activado en este grupo.'
+            },{ quoted:m })
+        }
 
         db = db.filter(
             id => id !== from
@@ -112,7 +123,11 @@ const handler = async ({
     }
 
     return sock.sendMessage(from,{
-        text:'⚠️ Usa solamente:\n\n.bot on\n.bot off'
+        text:
+`⚠️ Uso correcto:
+
+.bot on
+.bot off`
     },{ quoted:m })
 }
 
