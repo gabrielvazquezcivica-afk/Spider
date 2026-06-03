@@ -84,7 +84,7 @@ const handler = async ({
     }
 
     // 🔴 APAGAR
-    if (option === 'on') {
+    if (option === 'off') {
 
         if (!db.includes(from)) {
 
@@ -98,7 +98,7 @@ const handler = async ({
     }
 
     // 🟢 ENCENDER
-    if (option === 'off') {
+    if (option === 'on') {
 
         db = db.filter(
             id => id !== from
