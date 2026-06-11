@@ -28,13 +28,45 @@ const handler = async ({
 
     if (!isGroup) return
 
+    // 🔴 NUEVO: comando quitar
+    if (m.text?.startsWith('.quitar')) {
+
+        let db = getDB()
+
+        if (!db[from]) {
+            return sock.sendMessage(from, {
+                text: '❌ No hay ninguna sala activa.'
+            }, { quoted: m })
+        }
+
+        let sala = db[from]
+
+        const antesT = sala.titulares.length
+        const antesS = sala.suplentes.length
+
+        sala.titulares = sala.titulares.filter(u => u !== sender)
+        sala.suplentes = sala.suplentes.filter(u => u !== sender)
+
+        if (antesT === sala.titulares.length && antesS === sala.suplentes.length) {
+            return sock.sendMessage(from, {
+                text: '⚠️ No estás en la lista.'
+            }, { quoted: m })
+        }
+
+        saveDB(db)
+
+        return sock.sendMessage(from, {
+            text: '🗑️ Te has quitado correctamente de la lista.'
+        }, { quoted: m })
+    }
+
     let db = getDB()
 
     if (!db[from]) {
-        return sock.sendMessage(from,{
-            text:'❌ No hay ninguna sala activa.'
-        },{
-            quoted:m
+        return sock.sendMessage(from, {
+            text: '❌ No hay ninguna sala activa.'
+        }, {
+            quoted: m
         })
     }
 
@@ -44,17 +76,17 @@ const handler = async ({
         sala.titulares.includes(sender) ||
         sala.suplentes.includes(sender)
     ) {
-        return sock.sendMessage(from,{
-            text:'⚠️ Ya estás anotado.'
-        },{
-            quoted:m
+        return sock.sendMessage(from, {
+            text: '⚠️ Ya estás anotado.'
+        }, {
+            quoted: m
         })
     }
 
-    await sock.sendMessage(from,{
-        react:{
-            text:'⚔️',
-            key:m.key
+    await sock.sendMessage(from, {
+        react: {
+            text: '⚔️',
+            key: m.key
         }
     })
 
@@ -78,10 +110,10 @@ const handler = async ({
 
     } else {
 
-        return sock.sendMessage(from,{
-            text:'🚫 La sala ya está llena.'
-        },{
-            quoted:m
+        return sock.sendMessage(from, {
+            text: '🚫 La sala ya está llena.'
+        }, {
+            quoted: m
         })
     }
 
@@ -90,15 +122,15 @@ const handler = async ({
     const titulares =
         Array.from({ length: 4 }, (_, i) =>
             sala.titulares[i]
-            ? `${i+1}. @${sala.titulares[i].split('@')[0]}`
-            : `${i+1}.`
+                ? `${i + 1}. @${sala.titulares[i].split('@')[0]}`
+                : `${i + 1}.`
         ).join('\n')
 
     const suplentes =
         Array.from({ length: 4 }, (_, i) =>
             sala.suplentes[i]
-            ? `🧧 @${sala.suplentes[i].split('@')[0]}`
-            : `🧧.`
+                ? `🧧 @${sala.suplentes[i].split('@')[0]}`
+                : `🧧.`
         ).join('\n')
 
     const mentions = [
@@ -106,7 +138,7 @@ const handler = async ({
         ...sala.suplentes
     ]
 
-    await sock.sendMessage(from,{
+    await sock.sendMessage(from, {
         text:
 `⚔️ 4 VS 4
 
@@ -122,12 +154,12 @@ ${suplentes}
 
 ${mensaje}`,
         mentions
-    },{
-        quoted:m
+    }, {
+        quoted: m
     })
 }
 
-handler.command = ['part']
+handler.command = ['part','quitar']
 handler.tags = ['ff']
 handler.group = true
 handler.menu = false
