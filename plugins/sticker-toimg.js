@@ -1,7 +1,6 @@
 import fs from 'fs'
 import path from 'path'
 import os from 'os'
-import sharp from 'sharp'
 import { spawn } from 'child_process'
 import { downloadContentFromMessage } from '@whiskeysockets/baileys'
 
@@ -13,18 +12,20 @@ const handler = async ({
     sender
 }) => {
 
-    // 🔒 MODODADMIN
+    // 🔒 MODOADMIN
     let isBlockedGroup = false
 
     try {
 
         const db = JSON.parse(
             fs.readFileSync(
-                './data/modoadmin.json'
+                './data/modoadmin.json',
+                'utf8'
             )
         )
 
-        isBlockedGroup = db[from]
+        isBlockedGroup =
+            db[from]?.enabled || db[from]
 
     } catch {}
 
@@ -37,13 +38,11 @@ const handler = async ({
         user?.admin === 'admin' ||
         user?.admin === 'superadmin'
 
-    // 🔥 silencioso
     if (
         isBlockedGroup &&
         !isAdmin
     ) return
 
-    // 📥 Sticker citado
     const ctx =
         m.message?.extendedTextMessage
             ?.contextInfo
@@ -98,40 +97,84 @@ const handler = async ({
         const tmp =
             os.tmpdir()
 
+        input =
+            path.join(
+                tmp,
+                `stk_${Date.now()}.webp`
+            )
+
+        fs.writeFileSync(
+            input,
+            buffer
+        )
+
         // 🖼️ STICKER NORMAL
         if (
             !sticker.isAnimated
         ) {
 
-            const image =
-                await sharp(buffer)
-                .png()
-                .toBuffer()
+            output =
+                path.join(
+                    tmp,
+                    `img_${Date.now()}.png`
+                )
+
+            await new Promise(
+                (
+                    resolve,
+                    reject
+                ) => {
+
+                    const ffmpeg =
+                        spawn(
+                            'ffmpeg',
+                            [
+                                '-y',
+                                '-i',
+                                input,
+                                output
+                            ]
+                        )
+
+                    ffmpeg.on(
+                        'error',
+                        reject
+                    )
+
+                    ffmpeg.on(
+                        'close',
+                        code => {
+
+                            if (
+                                code === 0
+                            ) resolve()
+
+                            else reject(
+                                new Error(
+                                    'FFmpeg'
+                                )
+                            )
+                        }
+                    )
+                }
+            )
 
             await sock.sendMessage(from,{
-                image
+                image:
+                    fs.readFileSync(
+                        output
+                    )
             },{ quoted:m })
 
         } else {
 
             // 🎥 STICKER ANIMADO
 
-            input =
-                path.join(
-                    tmp,
-                    `stk_${Date.now()}.webp`
-                )
-
             output =
                 path.join(
                     tmp,
-                    `stk_${Date.now()}.mp4`
+                    `vid_${Date.now()}.mp4`
                 )
-
-            fs.writeFileSync(
-                input,
-                buffer
-            )
 
             await new Promise(
                 (
@@ -214,7 +257,9 @@ const handler = async ({
                 fs.existsSync(input)
             ) {
 
-                fs.unlinkSync(input)
+                fs.unlinkSync(
+                    input
+                )
             }
 
         } catch {}
@@ -226,7 +271,9 @@ const handler = async ({
                 fs.existsSync(output)
             ) {
 
-                fs.unlinkSync(output)
+                fs.unlinkSync(
+                    output
+                )
             }
 
         } catch {}
