@@ -12,8 +12,8 @@ const handler = async ({
     sender
 }) => {
 
-    // 🔒 MODOADMIN
-    let isBlockedGroup = false 
+    // 🔒 MODODADMIN
+    let isBlockedGroup = false
 
     try {
 
@@ -43,12 +43,10 @@ const handler = async ({
         !isAdmin
     ) return
 
-    const ctx =
+    const quoted =
         m.message?.extendedTextMessage
             ?.contextInfo
-
-    const quoted =
-        ctx?.quotedMessage
+            ?.quotedMessage
 
     const sticker =
         quoted?.stickerMessage
@@ -65,7 +63,6 @@ const handler = async ({
 
     try {
 
-        // ⏳ reacción
         await sock.sendMessage(from,{
             react:{
                 text:'⏳',
@@ -73,7 +70,6 @@ const handler = async ({
             }
         })
 
-        // 📥 descargar
         const stream =
             await downloadContentFromMessage(
                 sticker,
@@ -109,9 +105,7 @@ const handler = async ({
         )
 
         // 🖼️ STICKER NORMAL
-        if (
-            !sticker.isAnimated
-        ) {
+        if (!sticker.isAnimated) {
 
             output =
                 path.join(
@@ -141,32 +135,17 @@ const handler = async ({
                         reject
                     )
 
-                    let stderr = ''
+                    ffmpeg.on(
+                        'close',
+                        code => {
 
-ffmpeg.stderr.on(
-    'data',
-    data => {
-        stderr += data.toString()
-    }
-)
+                            if (
+                                code === 0
+                            ) resolve()
 
-ffmpeg.on(
-    'close',
-    code => {
-
-        if (code === 0)
-            resolve()
-
-        else {
-
-            console.log(stderr)
-
-            reject(
-                new Error(stderr)
-            )
-        }
-    }
-)
+                            else reject()
+                        }
+                    )
                 }
             )
 
@@ -179,12 +158,12 @@ ffmpeg.on(
 
         } else {
 
-            // 🎥 STICKER ANIMADO
+            // 🎞️ STICKER ANIMADO
 
             output =
                 path.join(
                     tmp,
-                    `vid_${Date.now()}.mp4`
+                    `gif_${Date.now()}.mp4`
                 )
 
             await new Promise(
@@ -221,11 +200,7 @@ ffmpeg.on(
                                 code === 0
                             ) resolve()
 
-                            else reject(
-                                new Error(
-                                    'FFmpeg'
-                                )
-                            )
+                            else reject()
                         }
                     )
                 }
@@ -240,7 +215,6 @@ ffmpeg.on(
             },{ quoted:m })
         }
 
-        // ✅ reacción
         await sock.sendMessage(from,{
             react:{
                 text:'✅',
@@ -248,11 +222,11 @@ ffmpeg.on(
             }
         })
 
-    } catch (err) {
+    } catch (e) {
 
         console.log(
             'TOIMG ERROR:',
-            err
+            e
         )
 
         await sock.sendMessage(from,{
