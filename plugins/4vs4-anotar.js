@@ -29,29 +29,29 @@ const handler = async ({ sock, m, from, sender, isGroup }) => {
 
     let sala = db[from]
 
-    // 🔴 COMANDO QUITAR
+    // 🔴 COMANDO .quitar
     if (m.text === '.quitar') {
 
-        const antesT = sala.titulares.length
-        const antesS = sala.suplentes.length
+        const estabaEnTitulares = sala.titulares.includes(sender)
+        const estabaEnSuplentes = sala.suplentes.includes(sender)
 
-        sala.titulares = sala.titulares.filter(u => u !== sender)
-        sala.suplentes = sala.suplentes.filter(u => u !== sender)
-
-        if (antesT === sala.titulares.length && antesS === sala.suplentes.length) {
+        if (!estabaEnTitulares && !estabaEnSuplentes) {
             return sock.sendMessage(from, {
                 text: '⚠️ No estás en la lista.'
             }, { quoted: m })
         }
 
+        sala.titulares = sala.titulares.filter(u => u !== sender)
+        sala.suplentes = sala.suplentes.filter(u => u !== sender)
+
         saveDB(db)
 
         return sock.sendMessage(from, {
-            text: '🗑️ Te has quitado correctamente de la lista.'
+            text: '🗑️ Te eliminaste de la lista correctamente.'
         }, { quoted: m })
     }
 
-    // 🔴 YA ANOTADO
+    // 🔴 SI YA ESTÁ EN LISTA
     if (
         sala.titulares.includes(sender) ||
         sala.suplentes.includes(sender)
@@ -73,13 +73,11 @@ const handler = async ({ sock, m, from, sender, isGroup }) => {
     if (sala.titulares.length < 4) {
 
         sala.titulares.push(sender)
-
         mensaje = '✅ Entraste como TITULAR.'
 
     } else if (sala.suplentes.length < 4) {
 
         sala.suplentes.push(sender)
-
         mensaje = '🪑 La lista principal está llena.\nHas entrado como SUPLENTE.'
 
     } else {
