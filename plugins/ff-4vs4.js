@@ -1,20 +1,37 @@
 import fs from 'fs'
 
-const path = './data/modoadmin.json'
+const dbPath = './data/4vs4.json'
+const modoAdminPath = './data/modoadmin.json'
 
 function getDB() {
-
     try {
+        if (!fs.existsSync(dbPath)) return {}
+        return JSON.parse(fs.readFileSync(dbPath))
+    } catch {
+        return {}
+    }
+}
 
-        if (!fs.existsSync(path))
+function saveDB(db) {
+    fs.writeFileSync(
+        dbPath,
+        JSON.stringify(db, null, 2)
+    )
+}
+
+function getModoAdmin() {
+    try {
+        if (!fs.existsSync(modoAdminPath))
             return {}
 
         return JSON.parse(
-            fs.readFileSync(path, 'utf-8')
+            fs.readFileSync(
+                modoAdminPath,
+                'utf8'
+            )
         )
 
     } catch {
-
         return {}
     }
 }
@@ -28,7 +45,7 @@ function sumarHoras(mx, plus) {
         let hora =
             parseInt(partes[0])
 
-        let min =
+        const min =
             partes[1] || '00'
 
         hora += plus
@@ -54,22 +71,21 @@ const handler = async ({
     args
 }) => {
 
-    // 🚫 solo grupos
     if (!isGroup) {
 
         return sock.sendMessage(from,{
-            text:
-'⚠️ Solo funciona en grupos.'
+            text:'⚠️ Solo funciona en grupos.'
         },{
             quoted:m
         })
     }
 
-    /* 🔒 MODODADMIN */
-    const db = getDB()
+    // 🔒 MODOADMIN
+    const modoAdmin =
+        getModoAdmin()
 
     const isBlockedGroup =
-        db[from]
+        modoAdmin[from]
 
     const user =
         participants.find(
@@ -85,7 +101,6 @@ const handler = async ({
         !isAdmin
     ) return
 
-    // ⚔️ reacción
     await sock.sendMessage(from,{
         react:{
             text:'⚔️',
@@ -93,31 +108,57 @@ const handler = async ({
         }
     })
 
-    // 🕒 hora MX
     const mx =
-        args[0] || null
+        args[0]
 
-    // 🇨🇴 +1
+    if (!mx) {
+
+        return sock.sendMessage(from,{
+            text:
+`📌 EJEMPLO:
+
+.4vs4 7:00`
+        },{
+            quoted:m
+        })
+    }
+
     const col =
-        mx
-        ? sumarHoras(mx, 1)
-        : null
+        sumarHoras(mx,1)
 
-    // 🇦🇷 +3
-    const ar =
-        mx
-        ? sumarHoras(mx, 3)
-        : null
+    const arg =
+        sumarHoras(mx,3)
 
-    // 📋 mensaje
+    const db =
+        getDB()
+
+    // 🔥 REEMPLAZA LA SALA DEL GRUPO
+    db[from] = {
+
+        hora: mx,
+        mx,
+        col,
+        arg,
+
+        titulares: [],
+
+        suplentes: [],
+
+        lleno: false,
+
+        creado:
+            Date.now()
+    }
+
+    saveDB(db)
+
     const text =
-mx
-? `╭━━━〔 ⚔️ 4 VS 4 〕━━━⬣
+`╭━━━〔 ⚔️ 4 VS 4 〕━━━⬣
 ┃
 ┃ 🕒 HORA:
 ┃ 🇲🇽 MX: ${mx}
 ┃ 🇨🇴 COL: ${col}
-┃ 🇦🇷 ARG: ${ar}
+┃ 🇦🇷 ARG: ${arg}
 ┃
 ┃ 👥 TITULARES:
 ┃ 1.
@@ -130,17 +171,13 @@ mx
 ┃ 🧧.
 ┃ 🧧.
 ┃ 🧧.
-╰━━━━━━━━━━━━━━━━⬣`
-: `📌 EJEMPLO DE USO:
+╰━━━━━━━━━━━━━━━━⬣
 
-.4vs4 7:00
+📌 Usa:
 
-🕒 HORAS AUTOMÁTICAS:
-🇲🇽 MX: 7:00
-🇨🇴 COL: 8:00
-🇦🇷 ARG: 10:00`
+.part
+Para anotarte`
 
-    // 📤 enviar
     await sock.sendMessage(from,{
         text
     },{
@@ -150,7 +187,7 @@ mx
 
 handler.command = ['4vs4']
 handler.tags = ['ff']
-handler.help = ['4vs4 <hora mx>']
+handler.help = ['4vs4']
 handler.group = true
 handler.menu = true
 
