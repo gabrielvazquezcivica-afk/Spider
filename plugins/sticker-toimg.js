@@ -1,6 +1,6 @@
 import fs from 'fs'
-import path from 'path'
 import os from 'os'
+import path from 'path'
 import { spawn } from 'child_process'
 import { downloadContentFromMessage } from '@whiskeysockets/baileys'
 
@@ -119,23 +119,22 @@ const handler = async ({
                     reject
                 ) => {
 
-                    const ffmpeg =
+                    const proc =
                         spawn(
-                            'ffmpeg',
+                            'dwebp',
                             [
-                                '-y',
-                                '-i',
                                 input,
+                                '-o',
                                 output
                             ]
                         )
 
-                    ffmpeg.on(
+                    proc.on(
                         'error',
                         reject
                     )
 
-                    ffmpeg.on(
+                    proc.on(
                         'close',
                         code => {
 
@@ -163,7 +162,7 @@ const handler = async ({
             output =
                 path.join(
                     tmp,
-                    `gif_${Date.now()}.mp4`
+                    `gif_${Date.now()}.gif`
                 )
 
             await new Promise(
@@ -172,27 +171,23 @@ const handler = async ({
                     reject
                 ) => {
 
-                    const ffmpeg =
+                    const proc =
                         spawn(
                             'ffmpeg',
                             [
                                 '-y',
                                 '-i',
                                 input,
-                                '-movflags',
-                                'faststart',
-                                '-pix_fmt',
-                                'yuv420p',
                                 output
                             ]
                         )
 
-                    ffmpeg.on(
+                    proc.on(
                         'error',
                         reject
                     )
 
-                    ffmpeg.on(
+                    proc.on(
                         'close',
                         code => {
 
@@ -222,11 +217,11 @@ const handler = async ({
             }
         })
 
-    } catch (e) {
+    } catch (err) {
 
         console.log(
             'TOIMG ERROR:',
-            e
+            err
         )
 
         await sock.sendMessage(from,{
