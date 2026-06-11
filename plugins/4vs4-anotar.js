@@ -12,34 +12,25 @@ function getDB() {
 }
 
 function saveDB(db) {
-    fs.writeFileSync(
-        dbPath,
-        JSON.stringify(db, null, 2)
-    )
+    fs.writeFileSync(dbPath, JSON.stringify(db, null, 2))
 }
 
-const handler = async ({
-    sock,
-    m,
-    from,
-    sender,
-    isGroup
-}) => {
+const handler = async ({ sock, m, from, sender, isGroup }) => {
 
     if (!isGroup) return
 
-    // 🔴 NUEVO: comando quitar
-    if (m.text?.startsWith('.quitar')) {
+    let db = getDB()
 
-        let db = getDB()
+    if (!db[from]) {
+        return sock.sendMessage(from, {
+            text: '❌ No hay ninguna sala activa.'
+        }, { quoted: m })
+    }
 
-        if (!db[from]) {
-            return sock.sendMessage(from, {
-                text: '❌ No hay ninguna sala activa.'
-            }, { quoted: m })
-        }
+    let sala = db[from]
 
-        let sala = db[from]
+    // 🔴 COMANDO QUITAR
+    if (m.text === '.quitar') {
 
         const antesT = sala.titulares.length
         const antesS = sala.suplentes.length
@@ -60,27 +51,14 @@ const handler = async ({
         }, { quoted: m })
     }
 
-    let db = getDB()
-
-    if (!db[from]) {
-        return sock.sendMessage(from, {
-            text: '❌ No hay ninguna sala activa.'
-        }, {
-            quoted: m
-        })
-    }
-
-    let sala = db[from]
-
+    // 🔴 YA ANOTADO
     if (
         sala.titulares.includes(sender) ||
         sala.suplentes.includes(sender)
     ) {
         return sock.sendMessage(from, {
             text: '⚠️ Ya estás anotado.'
-        }, {
-            quoted: m
-        })
+        }, { quoted: m })
     }
 
     await sock.sendMessage(from, {
@@ -96,47 +74,36 @@ const handler = async ({
 
         sala.titulares.push(sender)
 
-        mensaje =
-            '✅ Entraste como TITULAR.'
+        mensaje = '✅ Entraste como TITULAR.'
 
-    } else if (
-        sala.suplentes.length < 4
-    ) {
+    } else if (sala.suplentes.length < 4) {
 
         sala.suplentes.push(sender)
 
-        mensaje =
-            '🪑 La lista principal está llena.\nHas entrado como SUPLENTE.'
+        mensaje = '🪑 La lista principal está llena.\nHas entrado como SUPLENTE.'
 
     } else {
 
         return sock.sendMessage(from, {
             text: '🚫 La sala ya está llena.'
-        }, {
-            quoted: m
-        })
+        }, { quoted: m })
     }
 
     saveDB(db)
 
-    const titulares =
-        Array.from({ length: 4 }, (_, i) =>
-            sala.titulares[i]
-                ? `${i + 1}. @${sala.titulares[i].split('@')[0]}`
-                : `${i + 1}.`
-        ).join('\n')
+    const titulares = Array.from({ length: 4 }, (_, i) =>
+        sala.titulares[i]
+            ? `${i + 1}. @${sala.titulares[i].split('@')[0]}`
+            : `${i + 1}.`
+    ).join('\n')
 
-    const suplentes =
-        Array.from({ length: 4 }, (_, i) =>
-            sala.suplentes[i]
-                ? `🧧 @${sala.suplentes[i].split('@')[0]}`
-                : `🧧.`
-        ).join('\n')
+    const suplentes = Array.from({ length: 4 }, (_, i) =>
+        sala.suplentes[i]
+            ? `🧧 @${sala.suplentes[i].split('@')[0]}`
+            : `🧧.`
+    ).join('\n')
 
-    const mentions = [
-        ...sala.titulares,
-        ...sala.suplentes
-    ]
+    const mentions = [...sala.titulares, ...sala.suplentes]
 
     await sock.sendMessage(from, {
         text:
@@ -154,12 +121,10 @@ ${suplentes}
 
 ${mensaje}`,
         mentions
-    }, {
-        quoted: m
-    })
+    }, { quoted: m })
 }
 
-handler.command = ['part','quitar']
+handler.command = ['part', 'quitar']
 handler.tags = ['ff']
 handler.group = true
 handler.menu = false
