@@ -13,7 +13,7 @@ const handler = async ({
 }) => {
 
     // 🔒 MODOADMIN
-    let isBlockedGroup = false
+    let isBlockedGroup = false 
 
     try {
 
@@ -141,21 +141,32 @@ const handler = async ({
                         reject
                     )
 
-                    ffmpeg.on(
-                        'close',
-                        code => {
+                    let stderr = ''
 
-                            if (
-                                code === 0
-                            ) resolve()
+ffmpeg.stderr.on(
+    'data',
+    data => {
+        stderr += data.toString()
+    }
+)
 
-                            else reject(
-                                new Error(
-                                    'FFmpeg'
-                                )
-                            )
-                        }
-                    )
+ffmpeg.on(
+    'close',
+    code => {
+
+        if (code === 0)
+            resolve()
+
+        else {
+
+            console.log(stderr)
+
+            reject(
+                new Error(stderr)
+            )
+        }
+    }
+)
                 }
             )
 
