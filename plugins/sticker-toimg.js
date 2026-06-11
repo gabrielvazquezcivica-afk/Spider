@@ -63,6 +63,7 @@ const handler = async ({
 
     try {
 
+        // ⏳ reacción
         await sock.sendMessage(from,{
             react:{
                 text:'⏳',
@@ -70,6 +71,7 @@ const handler = async ({
             }
         })
 
+        // 📥 descargar sticker
         const stream =
             await downloadContentFromMessage(
                 sticker,
@@ -99,117 +101,85 @@ const handler = async ({
                 `stk_${Date.now()}.webp`
             )
 
+        output =
+            path.join(
+                tmp,
+                `img_${Date.now()}.png`
+            )
+
         fs.writeFileSync(
             input,
             buffer
         )
 
-        // 🖼️ STICKER NORMAL
-        if (!sticker.isAnimated) {
+        // 🖼️ convertir con ImageMagick
+        await new Promise(
+            (
+                resolve,
+                reject
+            ) => {
 
-            output =
-                path.join(
-                    tmp,
-                    `img_${Date.now()}.png`
+                const proc =
+                    spawn(
+                        'magick',
+                        [
+                            input + '[0]',
+                            output
+                        ]
+                    )
+
+                let error = ''
+
+                proc.stderr.on(
+                    'data',
+                    data => {
+
+                        error +=
+                            data.toString()
+                    }
                 )
 
-            await new Promise(
-                (
-                    resolve,
+                proc.on(
+                    'error',
                     reject
-                ) => {
-
-                    const proc =
-                        spawn(
-                            'dwebp',
-                            [
-                                input,
-                                '-o',
-                                output
-                            ]
-                        )
-
-                    proc.on(
-                        'error',
-                        reject
-                    )
-
-                    proc.on(
-                        'close',
-                        code => {
-
-                            if (
-                                code === 0
-                            ) resolve()
-
-                            else reject()
-                        }
-                    )
-                }
-            )
-
-            await sock.sendMessage(from,{
-                image:
-                    fs.readFileSync(
-                        output
-                    )
-            },{ quoted:m })
-
-        } else {
-
-            // 🎞️ STICKER ANIMADO
-
-            output =
-                path.join(
-                    tmp,
-                    `gif_${Date.now()}.gif`
                 )
 
-            await new Promise(
-                (
-                    resolve,
-                    reject
-                ) => {
+                proc.on(
+                    'close',
+                    code => {
 
-                    const proc =
-                        spawn(
-                            'ffmpeg',
-                            [
-                                '-y',
-                                '-i',
-                                input,
-                                output
-                            ]
-                        )
+                        if (
+                            code === 0
+                        ) {
 
-                    proc.on(
-                        'error',
-                        reject
-                    )
+                            resolve()
 
-                    proc.on(
-                        'close',
-                        code => {
+                        } else {
 
-                            if (
-                                code === 0
-                            ) resolve()
+                            console.log(
+                                error
+                            )
 
-                            else reject()
+                            reject(
+                                new Error(
+                                    error
+                                )
+                            )
                         }
-                    )
-                }
-            )
+                    }
+                )
+            }
+        )
 
-            await sock.sendMessage(from,{
-                video:
-                    fs.readFileSync(
-                        output
-                    ),
-                gifPlayback:true
-            },{ quoted:m })
-        }
+        // 📤 enviar imagen
+        await sock.sendMessage(from,{
+            image:
+                fs.readFileSync(
+                    output
+                )
+        },{ quoted:m })
 
+        // ✅ reacción
         await sock.sendMessage(from,{
             react:{
                 text:'✅',
