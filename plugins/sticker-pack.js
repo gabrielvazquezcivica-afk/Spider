@@ -1,21 +1,19 @@
-import fetch from 'node-fetch'
-import * as cheerio from 'cheerio'
 import fs from 'fs'
+import axios from 'axios'
 
-/* 🔒 MODODADMIN */
-const modoadminPath = './data/modoadmin.json'
+const modoAdminPath = './data/modoadmin.json'
 
-function getDB() {
+function getModoAdmin() {
 
     try {
 
-        if (!fs.existsSync(modoadminPath))
+        if (!fs.existsSync(modoAdminPath))
             return {}
 
         return JSON.parse(
             fs.readFileSync(
-                modoadminPath,
-                'utf-8'
+                modoAdminPath,
+                'utf8'
             )
         )
 
@@ -25,219 +23,153 @@ function getDB() {
     }
 }
 
-/* 🔍 BUSCADOR */
-async function searchStickerPacks(
-    searchTerm,
-    limit = 5
-) {
-
-    try {
-
-        const url =
-`https://getstickerpack.com/stickers?query=${encodeURIComponent(searchTerm)}`
-
-        const res =
-            await fetch(url, {
-                headers: {
-                    'User-Agent':
-                        'Mozilla/5.0',
-                    'Accept':
-                        'text/html'
-                }
-            })
-
-        if (!res.ok)
-            throw new Error(
-                `HTTP ${res.status}`
-            )
-
-        const html =
-            await res.text()
-
-        const $ =
-            cheerio.load(html)
-
-        const packs = []
-
-        $('.sticker-pack-cols').each(
-            (i, el) => {
-
-                if (
-                    packs.length >= limit
-                ) return
-
-                const linkTag =
-                    $(el).find('a')
-
-                const packUrl =
-                    linkTag.attr('href')
-
-                const title =
-                    $(el)
-                        .find('.title')
-                        .text()
-                        .trim()
-
-                const author =
-                    $(el)
-                        .find('.username')
-                        .text()
-                        .trim() ||
-                    'Desconocido'
-
-                const trayIcon =
-                    $(el)
-                        .find('img')
-                        .attr('src')
-
-                if (
-                    packUrl &&
-                    title
-                ) {
-
-                    packs.push({
-                        title,
-                        author,
-                        pack_url:
-                            packUrl.startsWith('http')
-                                ? packUrl
-                                : `https://getstickerpack.com${packUrl}`,
-                        tray_icon:
-                            trayIcon
-                    })
-                }
-            }
-        )
-
-        return {
-            status: true,
-            total: packs.length,
-            packs
-        }
-
-    } catch (e) {
-
-        return {
-            status: false,
-            error: e.message
-        }
-    }
-}
-
-/* 🚀 COMANDO */
 const handler = async ({
     sock,
     m,
     from,
     sender,
-    isGroup,
     participants,
+    isGroup,
     args
 }) => {
 
-    /* 🔒 MODODADMIN */
-    if (isGroup) {
+    // 🔒 MODOADMIN
+    const db =
+        getModoAdmin()
 
-        const db =
-            getDB()
+    const isBlockedGroup =
+        db[from]
 
-        const isBlockedGroup =
-            db[from]
+    const user =
+        participants?.find(
+            p => p.id === sender
+        )
 
-        const user =
-            participants.find(
-                p => p.id === sender
-            )
+    const isAdmin =
+        user?.admin === 'admin' ||
+        user?.admin === 'superadmin'
 
-        const isAdmin =
-            user?.admin === 'admin' ||
-            user?.admin === 'superadmin'
+    if (
+        isGroup &&
+        isBlockedGroup &&
+        !isAdmin
+    ) return
 
-        if (
-            isBlockedGroup &&
-            !isAdmin
-        ) return
-    }
-
-    const text =
+    const query =
         args.join(' ').trim()
 
-    if (!text) {
+    if (!query) {
 
         return sock.sendMessage(from,{
             text:
-`🕷️ Usa el comando así:
+`🔍 BUSCADOR DE STICKERS
 
-.pack anime`
+Ejemplo:
+.packs gato
+.pack anime
+.pack meme`
         },{
             quoted:m
         })
     }
 
-    /* ⏳ */
-    await sock.sendMessage(from,{
-        react:{
-            text:'🔍',
-            key:m.key
-        }
-    })
-
     try {
 
-        const result =
-            await searchStickerPacks(
-                text,
-                5
-            )
+        // 🔍 reacción
+        await sock.sendMessage(from,{
+            react:{
+                text:'🔍',
+                key:m.key
+            }
+        })
+
+        const {
+            data
+        } = await axios.get(
+            'https://fare.ink/search/s',
+            {
+                params:{
+                    q:query
+                }
+            }
+        )
 
         if (
-            !result.status ||
-            !result.packs.length
+            !data.status ||
+            !data.resultado?.packs?.length
         ) {
 
             return sock.sendMessage(from,{
                 text:
-'❌ No encontré packs'
+'❌ No se encontraron resultados.'
             },{
                 quoted:m
             })
         }
 
-        let msg =
-`╭━━━〔 🕷️ STICKER SEARCH 〕━━━⬣
-┃
-┃ 🔎 Búsqueda:
-┃ ${text}
-┃
-┃ 📦 Resultados:
-┃`
+        const pack =
+            data.resultado.packs[0]
 
-        result.packs.forEach(
-            (p, i) => {
-
-                msg += `
-
-┃ ${i + 1}. ${p.title}
-┃ 👤 ${p.author}
-┃ 🔗 ${p.pack_url}`
-            }
-        )
-
-        msg += `
-
-╰━━━━━━━━━━━━━━━━⬣`
+        const total =
+            pack.stickers.length
 
         await sock.sendMessage(from,{
-            image:{
-                url:
-                    result.packs[0].tray_icon
-            },
-            caption: msg
+            text:
+`╭━━━〔 🔍 STICKER SEARCH 〕━━━⬣
+┃
+┃ 📦 PACK:
+┃ ${pack.title}
+┃
+┃ 👤 AUTOR:
+┃ ${pack.author}
+┃
+┃ 🎯 RESULTADOS:
+┃ ${total} stickers
+┃
+┃ 📝 BÚSQUEDA:
+┃ ${query}
+╰━━━━━━━━━━━━━━━━⬣
+
+> 🕸️ SPIDER BOT`
         },{
             quoted:m
         })
 
-        /* ✅ */
+        // 📤 enviar primeros 5
+        const enviar =
+            pack.stickers.slice(0,5)
+
+        for (
+            const url
+            of enviar
+        ) {
+
+            try {
+
+                const res =
+                    await axios.get(
+                        url,
+                        {
+                            responseType:
+                            'arraybuffer'
+                        }
+                    )
+
+                await sock.sendMessage(
+                    from,
+                    {
+                        sticker:
+                        Buffer.from(
+                            res.data
+                        )
+                    }
+                )
+
+            } catch {}
+
+        }
+
+        // ✅ reacción final
         await sock.sendMessage(from,{
             react:{
                 text:'✅',
@@ -248,20 +180,13 @@ const handler = async ({
     } catch (e) {
 
         console.log(
-            'PACK ERROR:',
+            'STICKER SEARCH:',
             e
         )
 
         await sock.sendMessage(from,{
-            react:{
-                text:'❌',
-                key:m.key
-            }
-        })
-
-        await sock.sendMessage(from,{
             text:
-'❌ Error buscando packs'
+'❌ Error buscando stickers.'
         },{
             quoted:m
         })
@@ -270,8 +195,7 @@ const handler = async ({
 
 handler.command = ['pack']
 handler.tags = ['stickers']
-handler.help = ['pack <texto>']
+handler.help = ['s <tema>']
 handler.menu = true
-handler.group = true
 
 export default handler
