@@ -4,9 +4,7 @@ import axios from 'axios'
 const modoAdminPath = './data/modoadmin.json'
 
 function getModoAdmin() {
-
     try {
-
         if (!fs.existsSync(modoAdminPath))
             return {}
 
@@ -18,9 +16,35 @@ function getModoAdmin() {
         )
 
     } catch {
-
         return {}
     }
+}
+
+// 🎲 mezclar array
+function shuffle(arr) {
+
+    const array = [...arr]
+
+    for (
+        let i = array.length - 1;
+        i > 0;
+        i--
+    ) {
+
+        const j = Math.floor(
+            Math.random() * (i + 1)
+        )
+
+        ;[
+            array[i],
+            array[j]
+        ] = [
+            array[j],
+            array[i]
+        ]
+    }
+
+    return array
 }
 
 const handler = async ({
@@ -33,7 +57,7 @@ const handler = async ({
     args
 }) => {
 
-    // 🔒 MODOADMIN
+    // 🔒 MODODADMIN
     const db =
         getModoAdmin()
 
@@ -62,7 +86,7 @@ const handler = async ({
 
         return sock.sendMessage(from,{
             text:
-`🔍 BUSCADOR DE STICKERS
+`🔍 BUSCADOR DE PACKS
 
 Ejemplo:
 .pack gato
@@ -107,15 +131,26 @@ Ejemplo:
             })
         }
 
-        const pack =
-            data.resultado.packs[0]
+        // 🎲 pack aleatorio
+        const packs =
+            data.resultado.packs
 
-        const total =
-            pack.stickers.length
+        const pack =
+            packs[
+                Math.floor(
+                    Math.random() *
+                    packs.length
+                )
+            ]
+
+        const stickers =
+            shuffle(
+                pack.stickers
+            ).slice(0,5)
 
         await sock.sendMessage(from,{
             text:
-`╭━━━〔 🔍 STICKER SEARCH 〕━━━⬣
+`╭━━━〔 🔍 STICKER PACK 〕━━━⬣
 ┃
 ┃ 📦 PACK:
 ┃ ${pack.title}
@@ -123,11 +158,14 @@ Ejemplo:
 ┃ 👤 AUTOR:
 ┃ ${pack.author}
 ┃
-┃ 🎯 RESULTADOS:
-┃ ${total} stickers
+┃ 🎯 STICKERS:
+┃ ${pack.stickers.length}
 ┃
-┃ 📝 BÚSQUEDA:
+┃ 🔍 BÚSQUEDA:
 ┃ ${query}
+┃
+┃ 🔗 LINK:
+┃ ${pack.pack_url}
 ╰━━━━━━━━━━━━━━━━⬣
 
 > 🕸️ SPIDER BOT`
@@ -135,13 +173,10 @@ Ejemplo:
             quoted:m
         })
 
-        // 📤 enviar primeros 5
-        const enviar =
-            pack.stickers.slice(0,5)
-
+        // 📤 enviar 5 stickers aleatorios
         for (
             const url
-            of enviar
+            of stickers
         ) {
 
             try {
@@ -165,8 +200,13 @@ Ejemplo:
                     }
                 )
 
-            } catch {}
+            } catch (e) {
 
+                console.log(
+                    'ERROR STICKER:',
+                    e
+                )
+            }
         }
 
         // ✅ reacción final
@@ -180,13 +220,13 @@ Ejemplo:
     } catch (e) {
 
         console.log(
-            'STICKER SEARCH:',
+            'PACK ERROR:',
             e
         )
 
         await sock.sendMessage(from,{
             text:
-'❌ Error buscando stickers.'
+'❌ Error buscando packs.'
         },{
             quoted:m
         })
@@ -195,7 +235,7 @@ Ejemplo:
 
 handler.command = ['pack']
 handler.tags = ['stickers']
-handler.help = ['s <tema>']
+handler.help = ['pack <tema>']
 handler.menu = true
 
 export default handler
