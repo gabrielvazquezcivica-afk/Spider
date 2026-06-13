@@ -59,6 +59,15 @@ const handler = async ({
             }
         })
 
+// 🗑️ borrar el comando .del
+await sock.sendMessage(from, {
+    delete: {
+        remoteJid: from,
+        fromMe: true,
+        id: m.key.id
+    }
+})
+
         // ✅ reacción final
         await sock.sendMessage(from, {
             react: {
