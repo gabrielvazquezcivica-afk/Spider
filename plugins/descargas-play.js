@@ -55,7 +55,6 @@ const handler = async ({
       user?.admin === 'admin' ||
       user?.admin === 'superadmin'
 
-    // 🔥 silencioso
     if (
       isBlockedGroup &&
       !isAdmin
@@ -73,7 +72,7 @@ const handler = async ({
 `🎵 Escribe el nombre de una canción
 
 Ejemplo:
-.play IMU`
+.play Bad Bunny`
     },{
       quoted:m
     })
@@ -157,17 +156,8 @@ Ejemplo:
     const audio =
       data.data.download
 
-    // 📥 descargar miniatura
-const thumb = (
-  await axios.get(
-    thumbnail,
-    {
-      responseType: 'arraybuffer'
-    }
-  )
-).data
-
-const info =
+    /* 🎨 DISEÑO */
+    const info =
 `╭─────〔 🎵 SPIDER PLAY 〕─────⬣
 
 🎶 𝐓𝐈𝐓𝐔𝐋𝐎
@@ -187,10 +177,20 @@ const info =
 
 ━━━━━━━━━━━━━━━━━━
 ⬇️ Procesando descarga...
-🎧 Espera un momento.
+🎧 Espera un momento...
 
 🕸️ 𝐒𝐏𝐈𝐃𝐄𝐑 𝐌𝐔𝐒𝐈𝐂
 ╰──────────────────⬣`
+
+    /* 🖼️ PORTADA */
+    await sock.sendMessage(from,{
+      image:{
+        url: thumbnail
+      },
+      caption: info
+    },{
+      quoted:m
+    })
 
     /* 🎧 AUDIO */
     await sock.sendMessage(from,{
