@@ -65,7 +65,7 @@ const handler = async ({
 `🔍 BUSCADOR DE STICKERS
 
 Ejemplo:
-.packs gato
+.pack gato
 .pack anime
 .pack meme`
         },{
