@@ -73,7 +73,7 @@ const handler = async ({
 `🎵 Escribe el nombre de una canción
 
 Ejemplo:
-.play Bad Bunny`
+.play IMU`
     },{
       quoted:m
     })
@@ -167,31 +167,30 @@ const thumb = (
   )
 ).data
 
-// 🎴 tarjeta
-await sock.sendMessage(
-  from,
-  {
-    text:
-`⬇️ Procesando descarga, espera un momento...
+const info =
+`╭─────〔 🎵 SPIDER PLAY 〕─────⬣
 
-🎶 Spider Bot`,
-    contextInfo: {
-      externalAdReply: {
-        title: title,
-        body:
-`${author?.name || 'Desconocido'} • ${timestamp}`,
-        thumbnail: Buffer.from(thumb),
-        mediaType: 1,
-        renderLargerThumbnail: true,
-        showAdAttribution: false,
-        sourceUrl: url
-      }
-    }
-  },
-  {
-    quoted: m
-  }
-)
+🎶 𝐓𝐈𝐓𝐔𝐋𝐎
+➜ ${title}
+
+👤 𝐀𝐑𝐓𝐈𝐒𝐓𝐀
+➜ ${author?.name || 'Desconocido'}
+
+⏱️ 𝐃𝐔𝐑𝐀𝐂𝐈𝐎𝐍
+➜ ${timestamp}
+
+👁️ 𝐕𝐈𝐒𝐈𝐓𝐀𝐒
+➜ ${views.toLocaleString()}
+
+🔗 𝐋𝐈𝐍𝐊
+➜ ${url}
+
+━━━━━━━━━━━━━━━━━━
+⬇️ Procesando descarga...
+🎧 Espera un momento.
+
+🕸️ 𝐒𝐏𝐈𝐃𝐄𝐑 𝐌𝐔𝐒𝐈𝐂
+╰──────────────────⬣`
 
     /* 🎧 AUDIO */
     await sock.sendMessage(from,{
