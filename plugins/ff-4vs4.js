@@ -176,7 +176,10 @@ const handler = async ({
 📌 Usa:
 
 .part
-Para anotarte`
+Para anotarte
+
+.quitar
+Para salirte`
 
     await sock.sendMessage(from,{
         text
