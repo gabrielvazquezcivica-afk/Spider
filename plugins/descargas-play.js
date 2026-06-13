@@ -157,7 +157,17 @@ Ejemplo:
     const audio =
       data.data.download
 
-    /* 🎴 TARJETA */
+    // 📥 descargar miniatura
+const thumb = (
+  await axios.get(
+    thumbnail,
+    {
+      responseType: 'arraybuffer'
+    }
+  )
+).data
+
+// 🎴 tarjeta
 await sock.sendMessage(
   from,
   {
@@ -167,15 +177,13 @@ await sock.sendMessage(
 🎶 Spider Bot`,
     contextInfo: {
       externalAdReply: {
-        showAdAttribution: false,
         title: title,
         body:
-`🎵 ${author?.name || 'Desconocido'}
-⏱️ ${timestamp}
-👁️ ${views.toLocaleString()} vistas`,
+`${author?.name || 'Desconocido'} • ${timestamp}`,
+        thumbnail: Buffer.from(thumb),
         mediaType: 1,
         renderLargerThumbnail: true,
-        thumbnailUrl: thumbnail,
+        showAdAttribution: false,
         sourceUrl: url
       }
     }
