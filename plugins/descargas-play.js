@@ -157,34 +157,33 @@ Ejemplo:
     const audio =
       data.data.download
 
-    /* 🎨 INFO */
-    const info =
-`╭━━━〔 🎵 SPIDER PLAY 〕━━⬣
-┃
-┃ 🎶 Título:
-┃ ${title}
-┃
-┃ 👤 Canal:
-┃ ${author?.name || 'Desconocido'}
-┃
-┃ ⏱️ Duración:
-┃ ${timestamp}
-┃
-┃ 👁️ Visitas:
-┃ ${views.toLocaleString()}
-┃
-┃ ⚡Descargando audio...
-╰━━━━━━━━━━━━━━━━`
+    /* 🎴 TARJETA */
+await sock.sendMessage(
+  from,
+  {
+    text:
+`⬇️ Procesando descarga, espera un momento...
 
-    /* 🖼️ PORTADA */
-    await sock.sendMessage(from,{
-      image:{
-        url: thumbnail
-      },
-      caption: info
-    },{
-      quoted:m
-    })
+🎶 Spider Bot`,
+    contextInfo: {
+      externalAdReply: {
+        showAdAttribution: false,
+        title: title,
+        body:
+`🎵 ${author?.name || 'Desconocido'}
+⏱️ ${timestamp}
+👁️ ${views.toLocaleString()} vistas`,
+        mediaType: 1,
+        renderLargerThumbnail: true,
+        thumbnailUrl: thumbnail,
+        sourceUrl: url
+      }
+    }
+  },
+  {
+    quoted: m
+  }
+)
 
     /* 🎧 AUDIO */
     await sock.sendMessage(from,{
