@@ -41,15 +41,7 @@ const handler = async ({
 
     try {
 
-        // ⚡ reacción
-        await sock.sendMessage(from, {
-            react: {
-                text: '🗑️',
-                key: m.key
-            }
-        })
-
-        // 🗑️ borrar mensaje
+        // 🗑️ borrar mensaje citado
         await sock.sendMessage(from, {
             delete: {
                 remoteJid: from,
@@ -59,20 +51,12 @@ const handler = async ({
             }
         })
 
-// 🗑️ borrar el comando .del
-await sock.sendMessage(from, {
-    delete: {
-        remoteJid: from,
-        fromMe: true,
-        id: m.key.id
-    }
-})
-
-        // ✅ reacción final
+        // 🗑️ borrar mensaje del comando
         await sock.sendMessage(from, {
-            react: {
-                text: '✅',
-                key: m.key
+            delete: {
+                remoteJid: from,
+                fromMe: true,
+                id: m.key.id
             }
         })
 
