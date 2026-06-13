@@ -42,23 +42,24 @@ const handler = async ({
     try {
 
         // 🗑️ borrar mensaje citado
-        await sock.sendMessage(from, {
-            delete: {
-                remoteJid: from,
-                fromMe: false,
-                id: quoted.stanzaId,
-                participant: quoted.participant
-            }
-        })
+await sock.sendMessage(from, {
+    delete: {
+        remoteJid: from,
+        fromMe: false,
+        id: quoted.stanzaId,
+        participant: quoted.participant
+    }
+})
 
-        // 🗑️ borrar mensaje del comando
-        await sock.sendMessage(from, {
-            delete: {
-                remoteJid: from,
-                fromMe: true,
-                id: m.key.id
-            }
-        })
+// 🗑️ borrar el .del
+await sock.sendMessage(from, {
+    delete: {
+        remoteJid: from,
+        fromMe: false,
+        id: m.key.id,
+        participant: sender
+    }
+})
 
     } catch (e) {
 
