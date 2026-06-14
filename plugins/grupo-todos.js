@@ -59,9 +59,7 @@ const handler = async ({ sock, m, from }) => {
     .join('\n')
 
   const text =
-`📢 ÚNETE AL CANAL OFICIAL DE SPIDER BOT
-
-🔗 https://whatsapp.com/channel/0029Vb8a4lI2ZjCx2SSlfn2r
+`𝐋𝐈𝐕𝐄 𝐀 𝐇𝐀𝐏𝐏𝐘 𝐋𝐈𝐅𝐄 🌟 
 
 > 📡 ${groupName}
 > 👥 ${total} miembros
