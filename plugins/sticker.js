@@ -19,18 +19,11 @@ const handler = async ({
         const db = JSON.parse(
             fs.readFileSync('./data/modoadmin.json')
         )
-
         isBlockedGroup = db[from]
-
     } catch {}
 
-    const user = participants?.find(
-        p => p.id === sender
-    )
-
-    const isAdmin =
-        user?.admin === 'admin' ||
-        user?.admin === 'superadmin'
+    const user = participants?.find(p => p.id === sender)
+    const isAdmin = user?.admin === 'admin' || user?.admin === 'superadmin'
 
     // 🔥 silencioso
     if (isBlockedGroup && !isAdmin) return
@@ -70,94 +63,57 @@ const handler = async ({
     let output = ''
 
     try {
-
         // ⏳ reacción
         await sock.sendMessage(from, {
-            react: {
-                text: '⏳',
-                key: m.key
-            }
+            react: { text: '⏳', key: m.key }
         })
 
         // 📥 descargar media
         const type = isVideo ? 'video' : 'image'
-
-        const stream = await downloadContentFromMessage(
-            media,
-            type
-        )
+        const stream = await downloadContentFromMessage(media, type)
 
         let buffer = Buffer.alloc(0)
-
         for await (const chunk of stream) {
             buffer = Buffer.concat([buffer, chunk])
         }
 
         const tmp = os.tmpdir()
-
-        input = path.join(
-            tmp,
-            `stk_${Date.now()}.${isVideo ? 'mp4' : 'jpg'}`
-        )
-
-        output = path.join(
-            tmp,
-            `stk_${Date.now()}.webp`
-        )
+        input = path.join(tmp, `stk_${Date.now()}.${isVideo ? 'mp4' : 'jpg'}`)
+        output = path.join(tmp, `stk_${Date.now()}.webp`)
 
         fs.writeFileSync(input, buffer)
 
-        // ⚡ FFMPEG
+        // ⚡ FFMPEG - SIN RELLENOS NI BORDES
         await new Promise((resolve, reject) => {
-
             const args = isVideo
             ? [
                 '-i', input,
                 '-vcodec', 'libwebp',
-                '-vf',
-                'scale=512:512:force_original_aspect_ratio=decrease:flags=lanczos,fps=15,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=white@0.0',
+                '-vf', 'scale=w=512:h=512:force_original_aspect_ratio=decrease:flags=lanczos,fps=15',
                 '-loop', '0',
                 '-ss', '00:00:00',
                 '-t', '06',
                 '-preset', 'picture',
                 '-an',
                 '-vsync', '0',
-                '-s', '512:512',
+                '-q:v', '90',
                 output
             ]
             : [
                 '-i', input,
-                '-vf',
-                'scale=512:512:force_original_aspect_ratio=decrease:flags=lanczos,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=white@0.0',
+                '-vf', 'scale=w=512:h=512:force_original_aspect_ratio=decrease:flags=lanczos',
                 '-vcodec', 'libwebp',
+                '-q:v', '90',
                 output
             ]
 
-            const ffmpeg = spawn(
-                'ffmpeg',
-                args
-            )
+            const ffmpeg = spawn('ffmpeg', args)
 
-            ffmpeg.on(
-                'error',
-                reject
-            )
-
-            ffmpeg.on(
-                'close',
-                code => {
-
-                    if (code === 0)
-                        resolve()
-
-                    else
-                        reject(
-                            new Error(
-                                'FFmpeg error'
-                            )
-                        )
-                }
-            )
+            ffmpeg.on('error', reject)
+            ffmpeg.on('close', code => {
+                if (code === 0) resolve()
+                else reject(new Error('FFmpeg error'))
+            })
         })
 
         // 🕷️ enviar sticker
@@ -167,34 +123,18 @@ const handler = async ({
 
         // ✅ reacción
         await sock.sendMessage(from, {
-            react: {
-                text: '✅',
-                key: m.key
-            }
+            react: { text: '✅', key: m.key }
         })
 
     } catch (err) {
-
-        console.log(
-            'STICKER ERROR:',
-            err
-        )
-
+        console.log('STICKER ERROR:', err)
         await sock.sendMessage(from, {
             text: '❌ Error creando sticker'
         }, { quoted: m })
 
     } finally {
-
-        try {
-            if (input)
-                fs.unlinkSync(input)
-        } catch {}
-
-        try {
-            if (output)
-                fs.unlinkSync(output)
-        } catch {}
+        try { if (input) fs.unlinkSync(input) } catch {}
+        try { if (output) fs.unlinkSync(output) } catch {}
     }
 }
 
