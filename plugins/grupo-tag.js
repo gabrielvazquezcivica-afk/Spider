@@ -51,16 +51,12 @@ const handler = async ({ sock, m, from }) => {
     ? text.slice(2).trim()
     : text.trim()
 
-  // ───────── 🔥 ANTI LOOP REAL ─────────
-  const quotedMsg =
-    m.message?.extendedTextMessage?.contextInfo?.quotedMessage
-
-  const quotedText =
-    quotedMsg?.conversation ||
-    quotedMsg?.extendedTextMessage?.text ||
-    ''
-
-  if (quotedText.includes('.n')) return
+  // ───────── 🔥 ANTI LOOP CORREGIDO ─────────
+  const quotedContext = m.message?.extendedTextMessage?.contextInfo
+  const quotedMsg = quotedContext?.quotedMessage
+  // Verificamos si el mensaje citado es del bot, no si tiene ".n"
+  const isQuotedFromMe = quotedContext?.participant === sock.user.id || quotedContext?.fromMe === true
+  if (isQuotedFromMe) return // Solo evitamos bucles con mensajes del bot
 
   // 🔥 reacción
   await sock.sendMessage(from, {
@@ -77,25 +73,22 @@ const handler = async ({ sock, m, from }) => {
 
   // ───────── CITADO ─────────
   if (quotedMsg) {
-
     const type = Object.keys(quotedMsg)[0]
 
     // 📄 texto citado
-if (type === 'conversation' || type === 'extendedTextMessage') {
+    if (type === 'conversation' || type === 'extendedTextMessage') {
+      const quotedText =
+        quotedMsg.conversation ||
+        quotedMsg.extendedTextMessage?.text ||
+        ''
 
-  const quotedText =
-    quotedMsg.conversation ||
-    quotedMsg.extendedTextMessage?.text ||
-    ''
+      const finalText = clean || quotedText
 
-  const finalText =
-    clean || quotedText
-
-  return sock.sendMessage(from, {
-    text: finalText + footer(),
-    mentions
-  }, { quoted: m })
-}
+      return sock.sendMessage(from, {
+        text: finalText + footer(),
+        mentions
+      }, { quoted: m })
+    }
 
     const mediaType = type.replace('Message', '')
 
