@@ -57,7 +57,7 @@ try {
         from,
         {
             react:{
-                text:'🎵',
+                text:'😂',
                 key:m.key
             }
         }
@@ -81,7 +81,7 @@ try {
         from,
         {
             react:{
-                text:'✅',
+                text:'👄',
                 key:m.key
             }
         }
