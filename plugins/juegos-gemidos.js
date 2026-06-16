@@ -2,10 +2,8 @@ import fs from 'fs'
 
 const audios = [
 
-'https://files.catbox.moe/xxxxx.mp3',
-'https://files.catbox.moe/yyyyy.mp3',
-'https://files.catbox.moe/zzzzz.mp3',
-'https://files.catbox.moe/aaaaa.mp3'
+'https://files.catbox.moe/worv9r.mp3',
+'https://files.catbox.moe/nwy6n2.mp3',
 
 ]
 
