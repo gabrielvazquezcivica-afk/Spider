@@ -104,11 +104,16 @@ const handler = async ({
     }
 
     // 📥 argumentos
-    const argsText =
-        m.body
-        ?.trim()
-        .split(/\s+/)
-        .slice(1)
+    const text =
+    m.body ||
+    m.text ||
+    ''
+
+const argsText =
+    text
+    .trim()
+    .split(/\s+/)
+    .slice(1)
 
     if (
         !argsText ||
