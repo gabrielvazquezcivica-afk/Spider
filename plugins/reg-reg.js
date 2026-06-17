@@ -1,129 +1,119 @@
 import fs from 'fs'
 
-const path = './data/registros.json'
+const pathDB = './data/registros.json'
 
 function getDB() {
 
-    try {
+try {
 
-        if (!fs.existsSync(path)) {
+    if (!fs.existsSync(pathDB)) {
 
-            fs.writeFileSync(
-                path,
-                JSON.stringify({})
-            )
-
-            return {}
-        }
-
-        return JSON.parse(
-            fs.readFileSync(
-                path,
-                'utf8'
-            )
+        fs.writeFileSync(
+            pathDB,
+            JSON.stringify({})
         )
-
-    } catch {
 
         return {}
     }
+
+    return JSON.parse(
+        fs.readFileSync(
+            pathDB,
+            'utf8'
+        )
+    )
+
+} catch {
+
+    return {}
+}
+
 }
 
 function saveDB(db) {
 
-    fs.writeFileSync(
-        path,
-        JSON.stringify(
-            db,
-            null,
-            2
-        )
+fs.writeFileSync(
+    pathDB,
+    JSON.stringify(
+        db,
+        null,
+        2
     )
+)
+
 }
 
 const handler = async ({
-    sock,
-    m,
-    from,
-    sender,
-    participants
+sock,
+m,
+from,
+sender,
+args,
+participants
 }) => {
 
-    // 🔒 MODODADMIN
-    let isBlockedGroup = false
+// 🔒 MODODADMIN
+let isBlockedGroup = false
 
-    try {
+try {
 
-        const adminDB = JSON.parse(
-            fs.readFileSync(
-                './data/modoadmin.json'
-            )
+    const adminDB = JSON.parse(
+        fs.readFileSync(
+            './data/modoadmin.json',
+            'utf8'
         )
+    )
 
-        isBlockedGroup =
-            adminDB[from]
+    isBlockedGroup = adminDB[from]
 
-    } catch {}
+} catch {}
 
-    const user =
-        participants?.find(
-            p => p.id === sender
-        )
+const user = participants?.find(
+    p => p.id === sender
+)
 
-    const isAdmin =
-        user?.admin === 'admin' ||
-        user?.admin === 'superadmin'
+const isAdmin =
+    user?.admin === 'admin' ||
+    user?.admin === 'superadmin'
 
-    if (
-        isBlockedGroup &&
-        !isAdmin
-    ) return
+if (
+    isBlockedGroup &&
+    !isAdmin
+) return
 
-    const db =
-        getDB()
+const db = getDB()
 
-    const id =
-        sender.split('@')[0]
+const id =
+    sender.split('@')[0]
 
-    // ⚠️ ya registrado
-    if (db[id]) {
+// ⚠️ ya registrado
+if (db[id]) {
 
-        return sock.sendMessage(
-            from,
-            {
-                text:
+    return sock.sendMessage(
+        from,
+        {
+            text:
+
 `⚠️ Ya estás registrado.
 
 👤 ${db[id].nombre}
-🎂 ${db[id].edad} años`
-            },
-            {
-                quoted:m
-            }
-        )
-    }
+🎂 ${db[id].edad} años
+⭐ Nivel ${db[id].nivel}`
+},
+{
+quoted:m
+}
+)
+}
 
-    // 📥 argumentos
-    const text =
-    m.body ||
-    m.text ||
-    ''
+// 📝 ejemplo
+if (!args || args.length < 2) {
 
-const argsText =
-    text
-    .trim()
-    .split(/\s+/)
-    .slice(1)
+    return sock.sendMessage(
+        from,
+        {
+            text:
 
-    if (
-        !argsText ||
-        argsText.length < 2
-    ) {
-
-        return sock.sendMessage(
-            from,
-            {
-                text:
 `📝 REGISTRO
 
 Uso:
@@ -131,75 +121,93 @@ Uso:
 
 Ejemplo:
 .reg Gabo 40`
-            },
-            {
-                quoted:m
-            }
-        )
-    }
+},
+{
+quoted:m
+}
+)
+}
 
-    const nombre =
-        argsText
-        .slice(0, -1)
-        .join(' ')
-
-    const edad =
-        parseInt(
-            argsText[
-                argsText.length - 1
-            ]
-        )
-
-    if (
-        !edad ||
-        edad < 1 ||
-        edad > 100
-    ) {
-
-        return sock.sendMessage(
-            from,
-            {
-                text:
-'⚠️ Ingresa una edad válida.'
-            },
-            {
-                quoted:m
-            }
-        )
-    }
-
-    // ⚡ reacción
-    await sock.sendMessage(
-        from,
-        {
-            react:{
-                text:'📝',
-                key:m.key
-            }
-        }
+const edad =
+    parseInt(
+        args[args.length - 1]
     )
 
-    // 💾 guardar
-    db[id] = {
+const nombre =
+    args
+    .slice(0, -1)
+    .join(' ')
 
-        nombre,
-        edad,
+if (
+    !nombre ||
+    isNaN(edad)
+) {
 
-        nivel: 1,
-        vida: 100,
-        dinero: 0,
-
-        fecha:
-            Date.now()
-    }
-
-    saveDB(db)
-
-    // ✅ mensaje
-    await sock.sendMessage(
+    return sock.sendMessage(
         from,
         {
             text:
+
+`⚠️ Formato incorrecto.
+
+Ejemplo:
+.reg Gabo 40`
+},
+{
+quoted:m
+}
+)
+}
+
+if (
+    edad < 1 ||
+    edad > 100
+) {
+
+    return sock.sendMessage(
+        from,
+        {
+            text:
+
+'⚠️ Ingresa una edad válida entre 1 y 100.'
+},
+{
+quoted:m
+}
+)
+}
+
+// ⚡ reacción
+await sock.sendMessage(
+    from,
+    {
+        react:{
+            text:'📝',
+            key:m.key
+        }
+    }
+)
+
+db[id] = {
+
+    nombre,
+    edad,
+
+    nivel: 1,
+    vida: 100,
+    dinero: 0,
+
+    fecha:
+        Date.now()
+}
+
+saveDB(db)
+
+await sock.sendMessage(
+    from,
+    {
+        text:
+
 `╭━━━〔 ✅ REGISTRO 〕━━━⬣
 ┃
 ┃ 👤 Nombre:
@@ -221,22 +229,23 @@ Ejemplo:
 ┃
 ╰━━━━━━━━━━━━━━━━⬣
 
-> SPIDER BOT`
-        },
-        {
-            quoted:m
-        }
-    )
+«SPIDER BOT`
+},
+{
+quoted:m
+}
+)»
 
-    await sock.sendMessage(
-        from,
-        {
-            react:{
-                text:'✅',
-                key:m.key
-            }
+await sock.sendMessage(
+    from,
+    {
+        react:{
+            text:'✅',
+            key:m.key
         }
-    )
+    }
+)
+
 }
 
 handler.command = ['reg']
