@@ -207,7 +207,6 @@ await sock.sendMessage(
     from,
     {
         text:
-
 `╭━━━〔 ✅ REGISTRO 〕━━━⬣
 ┃
 ┃ 👤 Nombre:
@@ -229,12 +228,12 @@ await sock.sendMessage(
 ┃
 ╰━━━━━━━━━━━━━━━━⬣
 
-«SPIDER BOT`
-},
-{
-quoted:m
-}
-)»
+> SPIDER BOT`
+    },
+    {
+        quoted:m
+    }
+)
 
 await sock.sendMessage(
     from,
