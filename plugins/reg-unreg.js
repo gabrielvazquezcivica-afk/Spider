@@ -93,7 +93,6 @@ await sock.sendMessage(
     from,
     {
         text:
-
 `╭━━━〔 🗑️ UNREG 〕━━━⬣
 ┃
 ┃ 👤 Usuario:
@@ -103,12 +102,12 @@ await sock.sendMessage(
 ┃
 ╰━━━━━━━━━━━━━━━━⬣
 
-«SPIDER BOT`
-},
-{
-quoted: m
-}
-)»
+> SPIDER BOT`
+    },
+    {
+        quoted: m
+    }
+)
 
 await sock.sendMessage(
     from,
@@ -123,7 +122,7 @@ await sock.sendMessage(
 }
 
 handler.command = ['unreg']
-handler.tags = ['reg']
+handler.tags = ['rpg']
 handler.help = ['unreg']
 handler.group = true
 handler.menu = true
