@@ -72,23 +72,25 @@ const handler = async ({
         }, { quoted: m })
     }
 
-    let target = null
+    const messageType = Object.keys(m.message || {})[0]
 
-    const quoted =
-        m.message?.extendedTextMessage
-        ?.contextInfo
+const contextInfo =
+    m.message?.[messageType]?.contextInfo || {}
 
-    if (quoted?.participant)
-        target = quoted.participant
+let target = null
 
-    if (
-        quoted?.mentionedJid &&
-        quoted.mentionedJid.length
-    ) {
-        target = quoted.mentionedJid[0]
-    }
+// responder mensaje
+if (contextInfo.participant) {
+    target = contextInfo.participant
+}
 
-    if (!target) {
+// mencionar usuario
+if (
+    contextInfo.mentionedJid &&
+    contextInfo.mentionedJid.length
+) {
+    target = contextInfo.mentionedJid[0]
+}
         return sock.sendMessage(from, {
             text:
 `⚠️ Debes responder o mencionar a alguien.
