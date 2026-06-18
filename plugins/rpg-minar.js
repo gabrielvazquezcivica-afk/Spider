@@ -132,7 +132,7 @@ await sock.sendMessage(
 {
 quoted: m
 }
-)»
+)
 
 await sock.sendMessage(
     from,
