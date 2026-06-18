@@ -9,10 +9,7 @@ function getDB() {
             fs.writeFileSync(pathDB, JSON.stringify({}))
             return {}
         }
-
-        return JSON.parse(
-            fs.readFileSync(pathDB, 'utf8')
-        )
+        return JSON.parse(fs.readFileSync(pathDB, 'utf8'))
     } catch {
         return {}
     }
@@ -40,26 +37,23 @@ const handler = async ({
     participants
 }) => {
 
-    // 🔒 MODODADMIN
+    // MODODADMIN
     let isBlockedGroup = false
 
     try {
         const adminDB = JSON.parse(
-            fs.readFileSync(
-                './data/modoadmin.json',
-                'utf8'
-            )
+            fs.readFileSync('./data/modoadmin.json', 'utf8')
         )
         isBlockedGroup = adminDB[from]
     } catch {}
 
-    const userAdmin = participants?.find(
+    const adminUser = participants?.find(
         p => p.id === sender
     )
 
     const isAdmin =
-        userAdmin?.admin === 'admin' ||
-        userAdmin?.admin === 'superadmin'
+        adminUser?.admin === 'admin' ||
+        adminUser?.admin === 'superadmin'
 
     if (isBlockedGroup && !isAdmin) return
 
@@ -68,32 +62,33 @@ const handler = async ({
 
     if (!db[myId]) {
         return sock.sendMessage(from, {
-            text: '⚠️ Debes registrarte primero con .reg'
+            text: '⚠️ Debes registrarte con .reg'
         }, { quoted: m })
     }
 
-    const messageType = Object.keys(m.message || {})[0]
+    // DETECTAR TARGET (FIX)
+    const messageType =
+        Object.keys(m.message || {})[0]
 
-const contextInfo =
-    m.message?.[messageType]?.contextInfo || {}
+    const contextInfo =
+        m.message?.[messageType]?.contextInfo || {}
 
-let target = null
+    let target = null
 
-// responder mensaje
-if (contextInfo.participant) {
-    target = contextInfo.participant
-}
+    if (contextInfo.participant)
+        target = contextInfo.participant
 
-// mencionar usuario
-if (
-    contextInfo.mentionedJid &&
-    contextInfo.mentionedJid.length
-) {
-    target = contextInfo.mentionedJid[0]
-}
+    if (
+        contextInfo.mentionedJid &&
+        contextInfo.mentionedJid.length
+    ) {
+        target = contextInfo.mentionedJid[0]
+    }
+
+    if (!target) {
         return sock.sendMessage(from, {
             text:
-`⚠️ Debes responder o mencionar a alguien.
+`⚠️ Responde o menciona a alguien.
 
 Ejemplo:
 .robar 500 @usuario`
@@ -114,9 +109,9 @@ Ejemplo:
         }, { quoted: m })
     }
 
-    const amount = Number(args[0])
+    const amount = parseInt(args[0])
 
-    if (!amount || amount <= 0) {
+    if (isNaN(amount) || amount <= 0) {
         return sock.sendMessage(from, {
             text:
 `⚠️ Cantidad inválida.
@@ -138,8 +133,7 @@ Ejemplo:
     if (diff < COOLDOWN) {
         return sock.sendMessage(from, {
             text:
-`⏳ Debes esperar.
-
+`⏳ Espera:
 ${formatTime(COOLDOWN - diff)}`
         }, { quoted: m })
     }
@@ -153,93 +147,58 @@ ${formatTime(COOLDOWN - diff)}`
         }
     })
 
-    const success =
-        Math.random() < 0.5
+    const success = Math.random() < 0.5
 
     if (success) {
-
         const stolen =
-            Math.min(
-                amount,
-                victim.dinero
-            )
+            Math.min(amount, victim.dinero)
 
         victim.dinero -= stolen
         robber.dinero += stolen
 
         saveDB(db)
 
-        return sock.sendMessage(
-            from,
-            {
-                text:
+        return sock.sendMessage(from, {
+            text:
 `╭━━━〔 🦹 ROBO 〕━━━⬣
 ┃
 ┃ ✅ Robo exitoso
 ┃
-┃ 🕷️ Ladrón:
-┃ @${myId}
+┃ 🕷️ @${myId}
+┃ robó a
+┃ 🎯 @${victimId}
 ┃
-┃ 🎯 Víctima:
-┃ @${victimId}
+┃ 💸 $${stolen}
 ┃
-┃ 💸 Robaste:
-┃ $${stolen}
-┃
-╰━━━━━━━━━━━━━━━━⬣
-
-> SPIDER BOT`,
-                mentions: [
-                    sender,
-                    target
-                ]
-            },
-            {
-                quoted: m
-            }
-        )
+╰━━━━━━━━━━━━━━━━⬣`,
+            mentions: [sender, target]
+        }, { quoted: m })
     }
 
     const penalty =
-        Math.min(
-            amount,
-            robber.dinero
-        )
+        Math.min(amount, robber.dinero)
 
     robber.dinero -= penalty
     victim.dinero += penalty
 
     saveDB(db)
 
-    return sock.sendMessage(
-        from,
-        {
-            text:
-`╭━━━〔 🚨 ROBO FALLIDO 〕━━━⬣
+    return sock.sendMessage(from, {
+        text:
+`╭━━━〔 🚨 FALLASTE 〕━━━⬣
 ┃
 ┃ ❌ Te atraparon
 ┃
-┃ 🕷️ Ladrón:
-┃ @${myId}
+┃ 🕷️ @${myId}
+┃ perdió
+┃ 💸 $${penalty}
 ┃
-┃ 🎯 Víctima:
-┃ @${victimId}
+┃ 🎯 @${victimId}
+┃ recibió el dinero
 ┃
-┃ 💸 Perdiste:
-┃ $${penalty}
-┃
-╰━━━━━━━━━━━━━━━━⬣
-
-> SPIDER BOT`,
-            mentions: [
-                sender,
-                target
-            ]
-        },
-        {
-            quoted: m
-        }
-    )
+╰━━━━━━━━━━━━━━━━⬣`,
+        mentions: [sender, target]
+    }, { quoted: m })
 }
 
 handler.command = ['robar']
