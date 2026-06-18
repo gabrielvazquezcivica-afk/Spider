@@ -12,7 +12,6 @@ return {}
     return JSON.parse(
         fs.readFileSync(pathDB, 'utf8')
     )
-
 } catch {
     return {}
 }
@@ -34,7 +33,6 @@ sender,
 participants
 }) => {
 
-// 🔒 MODODADMIN
 let isBlockedGroup = false
 
 try {
@@ -46,7 +44,6 @@ try {
     )
 
     isBlockedGroup = adminDB[from]
-
 } catch {}
 
 const user = participants?.find(
@@ -69,17 +66,14 @@ if (!db[id]) {
     return sock.sendMessage(
         from,
         {
-            text:
-
-'⚠️ No estás registrado.'
-},
-{
-quoted: m
-}
-)
+            text: '⚠️ No estás registrado.'
+        },
+        {
+            quoted: m
+        }
+    )
 }
 
-// 🗑️ reacción
 await sock.sendMessage(
     from,
     {
@@ -91,8 +85,8 @@ await sock.sendMessage(
 )
 
 const nombre = db[id].nombre
-delete db[id]
 
+delete db[id]
 saveDB(db)
 
 await sock.sendMessage(
@@ -109,7 +103,7 @@ await sock.sendMessage(
 ┃
 ╰━━━━━━━━━━━━━━━━⬣
 
-> SPIDER BOT`
+«SPIDER BOT`
 },
 {
 quoted: m
