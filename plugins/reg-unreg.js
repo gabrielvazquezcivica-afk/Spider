@@ -122,7 +122,7 @@ await sock.sendMessage(
 }
 
 handler.command = ['unreg']
-handler.tags = ['rpg']
+handler.tags = ['reg']
 handler.help = ['unreg']
 handler.group = true
 handler.menu = true
