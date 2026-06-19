@@ -1,30 +1,37 @@
 import fs from 'fs'
 
 const fightDB = './data/peleas.json'
-const regDB = './data/registros.json'
 
 function getFightDB() {
     try {
-        return JSON.parse(fs.readFileSync(fightDB,'utf8'))
+        if (!fs.existsSync(fightDB)) {
+            fs.writeFileSync(
+                fightDB,
+                JSON.stringify({})
+            )
+            return {}
+        }
+
+        return JSON.parse(
+            fs.readFileSync(
+                fightDB,
+                'utf8'
+            )
+        )
     } catch {
         return {}
     }
 }
 
 function saveFightDB(db) {
-    fs.writeFileSync(fightDB, JSON.stringify(db,null,2))
-}
-
-function getRegDB() {
-    try {
-        return JSON.parse(fs.readFileSync(regDB,'utf8'))
-    } catch {
-        return {}
-    }
-}
-
-function saveRegDB(db) {
-    fs.writeFileSync(regDB, JSON.stringify(db,null,2))
+    fs.writeFileSync(
+        fightDB,
+        JSON.stringify(
+            db,
+            null,
+            2
+        )
+    )
 }
 
 const handler = async ({
@@ -37,81 +44,97 @@ const handler = async ({
 
     // MODODADMIN
     let isBlockedGroup = false
+
     try {
         const db = JSON.parse(
-            fs.readFileSync('./data/modoadmin.json')
+            fs.readFileSync(
+                './data/modoadmin.json'
+            )
         )
+
         isBlockedGroup = db[from]
     } catch {}
 
-    const user = participants?.find(p => p.id === sender)
+    const adminUser =
+        participants?.find(
+            p => p.id === sender
+        )
 
     const isAdmin =
-        user?.admin === 'admin' ||
-        user?.admin === 'superadmin'
+        adminUser?.admin === 'admin' ||
+        adminUser?.admin === 'superadmin'
 
-    if (isBlockedGroup && !isAdmin) return
+    if (
+        isBlockedGroup &&
+        !isAdmin
+    ) return
 
-    const fights = getFightDB()
-    const regs = getRegDB()
+    const peleas = getFightDB()
+    const pelea = peleas[from]
 
-    const fight = fights[from]
-
-    if (!fight) {
+    if (!pelea) {
         return sock.sendMessage(from,{
-            text:'⚠️ No hay pelea.'
+            text:
+'⚠️ No hay pelea pendiente.'
         },{ quoted:m })
     }
 
-    if (fight.target !== sender) {
+    if (!pelea.pending) {
         return sock.sendMessage(from,{
-            text:'⚠️ Esa pelea no es tuya.'
+            text:
+'⚠️ Esa pelea ya comenzó.'
         },{ quoted:m })
     }
 
-    const p1 = regs[fight.challenger.split('@')[0]]
-    const p2 = regs[fight.target.split('@')[0]]
-
-    let hp1 = 100
-    let hp2 = 100
-
-    while (hp1 > 0 && hp2 > 0) {
-        hp2 -= Math.floor(Math.random()*20)+5
-        if (hp2 <= 0) break
-        hp1 -= Math.floor(Math.random()*20)+5
+    if (sender !== pelea.target) {
+        return sock.sendMessage(from,{
+            text:
+'⚠️ Esa pelea no es para ti.'
+        },{ quoted:m })
     }
 
-    let winner
+    pelea.pending = false
+    pelea.active = true
 
-    if (hp1 > 0)
-        winner = p1
-    else
-        winner = p2
+    pelea.hp1 = 100
+    pelea.hp2 = 100
 
-    winner.dinero += fight.bet
-    winner.exp = (winner.exp || 0) + 50
-    winner.nivel = winner.nivel || 1
+    pelea.turn = pelea.challenger
 
-    if (winner.exp >= 200) {
-        winner.exp -= 200
-        winner.nivel += 1
-    }
+    saveFightDB(peleas)
 
-    saveRegDB(regs)
+    const challengerId =
+        pelea.challenger.split('@')[0]
 
-    delete fights[from]
-    saveFightDB(fights)
+    const targetId =
+        pelea.target.split('@')[0]
 
     await sock.sendMessage(from,{
         text:
-`⚔️ Pelea terminada
-
-🏆 Ganador: ${winner.nombre}
-💰 Premio: $${fight.bet}`
+`╭━━━〔 ⚔️ PELEA INICIADA 〕━━━⬣
+┃
+┃ 🥊 @${challengerId}
+┃ ❤️ HP: 100
+┃
+┃ 🥊 @${targetId}
+┃ ❤️ HP: 100
+┃
+┃ 🎯 Turno de:
+┃ @${challengerId}
+┃
+┃ Usa:
+┃ .ataque
+┃
+╰━━━━━━━━━━━━━━━━⬣`,
+        mentions:[
+            pelea.challenger,
+            pelea.target
+        ]
     },{ quoted:m })
 }
 
 handler.command = ['aceptar']
+handler.tags = ['rpg']
 handler.group = true
 handler.menu = false
 
