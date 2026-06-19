@@ -215,8 +215,8 @@ const handler = async ({
 ┃ $${apuesta}
 ┃
 ┃ Usa:
-┃ .aceptar
-┃ .rechazar
+┃ .accept
+┃ .decline
 ┃
 ╰━━━━━━━━━━━━━━━━⬣`,
         mentions:[
