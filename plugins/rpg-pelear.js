@@ -120,6 +120,7 @@ Te desafiaron a pelear.
 }
 
 handler.command = ['pelear']
+handler.tags = ['rpg']
 handler.group = true
 handler.menu = true
 
