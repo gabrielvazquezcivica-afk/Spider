@@ -133,7 +133,7 @@ const handler = async ({
     },{ quoted:m })
 }
 
-handler.command = ['aceptar']
+handler.command = ['accept']
 handler.tags = ['rpg']
 handler.group = true
 handler.menu = false
