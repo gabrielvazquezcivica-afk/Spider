@@ -4,14 +4,34 @@ const fightDB = './data/peleas.json'
 
 function getFightDB() {
     try {
-        return JSON.parse(fs.readFileSync(fightDB,'utf8'))
+        if (!fs.existsSync(fightDB)) {
+            fs.writeFileSync(
+                fightDB,
+                JSON.stringify({})
+            )
+            return {}
+        }
+
+        return JSON.parse(
+            fs.readFileSync(
+                fightDB,
+                'utf8'
+            )
+        )
     } catch {
         return {}
     }
 }
 
 function saveFightDB(db) {
-    fs.writeFileSync(fightDB, JSON.stringify(db,null,2))
+    fs.writeFileSync(
+        fightDB,
+        JSON.stringify(
+            db,
+            null,
+            2
+        )
+    )
 }
 
 const handler = async ({
@@ -24,45 +44,73 @@ const handler = async ({
 
     // MODODADMIN
     let isBlockedGroup = false
+
     try {
         const db = JSON.parse(
-            fs.readFileSync('./data/modoadmin.json')
+            fs.readFileSync(
+                './data/modoadmin.json'
+            )
         )
+
         isBlockedGroup = db[from]
     } catch {}
 
-    const user = participants?.find(p => p.id === sender)
+    const adminUser =
+        participants?.find(
+            p => p.id === sender
+        )
 
     const isAdmin =
-        user?.admin === 'admin' ||
-        user?.admin === 'superadmin'
+        adminUser?.admin === 'admin' ||
+        adminUser?.admin === 'superadmin'
 
-    if (isBlockedGroup && !isAdmin) return
+    if (
+        isBlockedGroup &&
+        !isAdmin
+    ) return
 
-    const fights = getFightDB()
-    const fight = fights[from]
+    const peleas = getFightDB()
+    const pelea = peleas[from]
 
-    if (!fight) {
+    if (!pelea) {
         return sock.sendMessage(from,{
-            text:'⚠️ No hay pelea.'
+            text:'⚠️ No hay pelea pendiente.'
         },{ quoted:m })
     }
 
-    if (fight.target !== sender) {
+    if (sender !== pelea.target) {
         return sock.sendMessage(from,{
-            text:'⚠️ Esa pelea no es tuya.'
+            text:'⚠️ Esa pelea no es para ti.'
         },{ quoted:m })
     }
 
-    delete fights[from]
-    saveFightDB(fights)
+    const challengerId =
+        pelea.challenger.split('@')[0]
+
+    const targetId =
+        pelea.target.split('@')[0]
+
+    delete peleas[from]
+    saveFightDB(peleas)
 
     await sock.sendMessage(from,{
-        text:'❌ Pelea rechazada.'
+        text:
+`╭━━━〔 ❌ PELEA CANCELADA 〕━━━⬣
+┃
+┃ @${targetId}
+┃ rechazó el desafío de
+┃ @${challengerId}
+┃
+╰━━━━━━━━━━━━━━━━⬣`,
+        mentions:[
+            pelea.challenger,
+            pelea.target
+        ]
     },{ quoted:m })
 }
 
 handler.command = ['rechazar']
+handler.tags = ['rpg']
 handler.group = true
 handler.menu = false
 
