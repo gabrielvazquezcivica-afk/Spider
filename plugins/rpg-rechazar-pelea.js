@@ -109,7 +109,7 @@ const handler = async ({
     },{ quoted:m })
 }
 
-handler.command = ['rechazar']
+handler.command = ['decline']
 handler.tags = ['rpg']
 handler.group = true
 handler.menu = false
