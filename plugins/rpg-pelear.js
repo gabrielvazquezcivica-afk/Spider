@@ -6,22 +6,51 @@ const regDB = './data/registros.json'
 function getFightDB() {
     try {
         if (!fs.existsSync(fightDB)) {
-            fs.writeFileSync(fightDB, JSON.stringify({}))
+            fs.writeFileSync(
+                fightDB,
+                JSON.stringify({})
+            )
             return {}
         }
-        return JSON.parse(fs.readFileSync(fightDB, 'utf8'))
+
+        return JSON.parse(
+            fs.readFileSync(
+                fightDB,
+                'utf8'
+            )
+        )
     } catch {
         return {}
     }
 }
 
 function saveFightDB(db) {
-    fs.writeFileSync(fightDB, JSON.stringify(db, null, 2))
+    fs.writeFileSync(
+        fightDB,
+        JSON.stringify(
+            db,
+            null,
+            2
+        )
+    )
 }
 
 function getRegDB() {
     try {
-        return JSON.parse(fs.readFileSync(regDB, 'utf8'))
+        if (!fs.existsSync(regDB)) {
+            fs.writeFileSync(
+                regDB,
+                JSON.stringify({})
+            )
+            return {}
+        }
+
+        return JSON.parse(
+            fs.readFileSync(
+                regDB,
+                'utf8'
+            )
+        )
     } catch {
         return {}
     }
@@ -38,84 +67,162 @@ const handler = async ({
 
     // MODODADMIN
     let isBlockedGroup = false
+
     try {
         const db = JSON.parse(
-            fs.readFileSync('./data/modoadmin.json')
+            fs.readFileSync(
+                './data/modoadmin.json'
+            )
         )
+
         isBlockedGroup = db[from]
+
     } catch {}
 
-    const user = participants?.find(p => p.id === sender)
+    const adminUser =
+        participants?.find(
+            p => p.id === sender
+        )
 
     const isAdmin =
-        user?.admin === 'admin' ||
-        user?.admin === 'superadmin'
+        adminUser?.admin === 'admin' ||
+        adminUser?.admin === 'superadmin'
 
-    if (isBlockedGroup && !isAdmin) return
+    if (
+        isBlockedGroup &&
+        !isAdmin
+    ) return
 
-    const regs = getRegDB()
-    const fights = getFightDB()
+    const registros = getRegDB()
+    const peleas = getFightDB()
 
-    const myId = sender.split('@')[0]
+    const myId =
+        sender.split('@')[0]
 
-    if (!regs[myId]) {
+    if (!registros[myId]) {
         return sock.sendMessage(from,{
-            text:'⚠️ Debes registrarte.'
+            text:'⚠️ Debes registrarte con .reg'
         },{ quoted:m })
     }
 
-    const amount = parseInt(args[0])
+    const apuesta =
+        parseInt(args[0])
 
-    if (!amount || amount <= 0) {
+    if (
+        !apuesta ||
+        apuesta <= 0
+    ) {
         return sock.sendMessage(from,{
-            text:'⚠️ Usa: .pelear 500 @usuario'
+            text:
+`⚠️ Usa:
+
+.pelear 500 @usuario`
         },{ quoted:m })
     }
 
-    const messageType = Object.keys(m.message || {})[0]
-    const contextInfo = m.message?.[messageType]?.contextInfo || {}
+    if (
+        registros[myId].dinero <
+        apuesta
+    ) {
+        return sock.sendMessage(from,{
+            text:'⚠️ No tienes suficiente dinero.'
+        },{ quoted:m })
+    }
+
+    const messageType =
+        Object.keys(
+            m.message || {}
+        )[0]
+
+    const contextInfo =
+        m.message?.[messageType]
+        ?.contextInfo || {}
 
     let target = null
 
     if (contextInfo.participant)
-        target = contextInfo.participant
+        target =
+            contextInfo.participant
 
-    if (contextInfo.mentionedJid?.length)
-        target = contextInfo.mentionedJid[0]
+    if (
+        contextInfo.mentionedJid &&
+        contextInfo.mentionedJid.length
+    ) {
+        target =
+            contextInfo
+            .mentionedJid[0]
+    }
 
     if (!target) {
         return sock.sendMessage(from,{
-            text:'⚠️ Menciona o responde a alguien.'
+            text:
+'⚠️ Menciona o responde a alguien.'
         },{ quoted:m })
     }
 
-    const targetId = target.split('@')[0]
-
-    if (!regs[targetId]) {
+    if (target === sender) {
         return sock.sendMessage(from,{
-            text:'⚠️ Usuario no registrado.'
+            text:
+'⚠️ No puedes pelear contigo mismo.'
         },{ quoted:m })
     }
 
-    fights[from] = {
+    const targetId =
+        target.split('@')[0]
+
+    if (!registros[targetId]) {
+        return sock.sendMessage(from,{
+            text:
+'⚠️ Ese usuario no está registrado.'
+        },{ quoted:m })
+    }
+
+    if (
+        registros[targetId].dinero <
+        apuesta
+    ) {
+        return sock.sendMessage(from,{
+            text:
+'⚠️ El rival no tiene suficiente dinero.'
+        },{ quoted:m })
+    }
+
+    if (peleas[from]) {
+        return sock.sendMessage(from,{
+            text:
+'⚠️ Ya existe una pelea en este grupo.'
+        },{ quoted:m })
+    }
+
+    peleas[from] = {
         challenger: sender,
         target,
-        bet: amount
+        bet: apuesta,
+        pending: true
     }
 
-    saveFightDB(fights)
+    saveFightDB(peleas)
 
     await sock.sendMessage(from,{
         text:
-`⚔️ @${targetId}
-
-Te desafiaron a pelear.
-
-💰 Apuesta: $${amount}
-
-.aceptar
-.rechazar`,
-        mentions:[target]
+`╭━━━〔 ⚔️ DESAFÍO 〕━━━⬣
+┃
+┃ 🥊 @${myId}
+┃ desafió a
+┃ @${targetId}
+┃
+┃ 💰 Apuesta:
+┃ $${apuesta}
+┃
+┃ Usa:
+┃ .aceptar
+┃ .rechazar
+┃
+╰━━━━━━━━━━━━━━━━⬣`,
+        mentions:[
+            sender,
+            target
+        ]
     },{ quoted:m })
 }
 
