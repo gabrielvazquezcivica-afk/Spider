@@ -112,8 +112,7 @@ const handler = async ({
 }
 
 handler.command = ['aceptar']
-handler.tags = ['rpg']
 handler.group = true
-handler.menu = true
+handler.menu = false
 
 export default handler
