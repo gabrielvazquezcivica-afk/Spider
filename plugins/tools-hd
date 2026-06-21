@@ -194,7 +194,7 @@ const handler = async ({
     }
 }
 
-handler.command = ['hd'
+handler.command = ['hd']
 handler.tags = ['tools']
 handler.group = true
 handler.menu = true
