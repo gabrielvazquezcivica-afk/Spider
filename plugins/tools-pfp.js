@@ -73,12 +73,13 @@ const handler = async ({
             )
 
         await sock.sendMessage(from,{
-            image:{ url: pfp },
-            caption:
+    image:{ url: pfp },
+    caption:
 `🕷️ Foto de perfil
 
-👤 ${target.split('@')[0]}`
-        },{ quoted:m })
+👤 @${target.split('@')[0]}`,
+    mentions: [target]
+},{ quoted:m })
 
         await sock.sendMessage(from,{
             react:{
