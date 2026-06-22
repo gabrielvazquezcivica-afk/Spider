@@ -30,15 +30,11 @@ const handler = async ({
     participants
 }) => {
 
-    // MODODADMIN
     let isBlockedGroup = false
 
     try {
         const adminDB = JSON.parse(
-            fs.readFileSync(
-                './data/modoadmin.json',
-                'utf8'
-            )
+            fs.readFileSync('./data/modoadmin.json','utf8')
         )
         isBlockedGroup = adminDB[from]
     } catch {}
@@ -62,6 +58,24 @@ const handler = async ({
         },{ quoted:m })
     }
 
+    db[id].cooldowns = db[id].cooldowns || {}
+
+    const now = Date.now()
+    const cd = 2 * 60 * 1000
+
+    if (
+        db[id].cooldowns.flip &&
+        now < db[id].cooldowns.flip
+    ) {
+        const left = db[id].cooldowns.flip - now
+        const mins = Math.floor(left / 60000)
+        const secs = Math.floor((left % 60000) / 1000)
+
+        return sock.sendMessage(from,{
+            text:`⏳ Espera ${mins}m ${secs}s`
+        },{ quoted:m })
+    }
+
     const bet = parseInt(args[0])
 
     if (!bet || bet <= 0) {
@@ -76,7 +90,6 @@ const handler = async ({
         },{ quoted:m })
     }
 
-    // 50/50 REAL
     const win = Math.random() < 0.5
 
     let msg = ''
@@ -94,6 +107,7 @@ const handler = async ({
 
     db[id].exp = (db[id].exp || 0) + 10
     db[id].nivel = db[id].nivel || 1
+    db[id].cooldowns.flip = now + cd
 
     let levelup = false
 
