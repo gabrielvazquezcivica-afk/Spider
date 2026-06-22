@@ -1,28 +1,30 @@
 import fs from 'fs'
-import fetch from 'node-fetch'
-import FormData from 'form-data'
-import crypto from 'crypto'
+import path from 'path'
+import os from 'os'
+import { spawn } from 'child_process'
+import { downloadContentFromMessage } from '@whiskeysockets/baileys'
 
 const handler = async ({
     sock,
     m,
     from,
-    participants,
-    sender
+    sender,
+    isGroup,
+    participants
 }) => {
 
-    // MODODADMIN
+    // 🔒 MODODADMIN
     let isBlockedGroup = false
 
     try {
-        const adminDB = JSON.parse(
+        const db = JSON.parse(
             fs.readFileSync(
                 './data/modoadmin.json',
                 'utf8'
             )
         )
 
-        isBlockedGroup = adminDB[from]
+        isBlockedGroup = db[from]
     } catch {}
 
     const user = participants?.find(
@@ -34,131 +36,108 @@ const handler = async ({
         user?.admin === 'superadmin'
 
     if (
+        isGroup &&
         isBlockedGroup &&
         !isAdmin
     ) return
 
-    const key = Buffer.from(
-        'c2FzdWtl',
-        'base64'
-    ).toString('utf-8')
-
+    // 📥 quoted
     const quoted =
-        m.message?.extendedTextMessage?.contextInfo
-            ?.quotedMessage
+        m.message?.extendedTextMessage?.contextInfo ||
+        m.message?.imageMessage?.contextInfo
 
-    const media =
+    const qmsg = quoted?.quotedMessage
+
+    const imgMsg =
         m.message?.imageMessage ||
-        quoted?.imageMessage
+        qmsg?.imageMessage ||
+        qmsg?.viewOnceMessageV2?.message?.imageMessage
 
-    if (!media) {
+    if (!imgMsg) {
         return sock.sendMessage(from,{
-            text:
-`⚠️ Responde o envía una imagen
-
-Ejemplo:
-.hd`
+            text:'📸 Responde a una imagen para mejorarla en HD'
         },{ quoted:m })
     }
 
     await sock.sendMessage(from,{
         react:{
-            text:'⏳',
+            text:'✨',
             key:m.key
         }
     })
 
+    let input = ''
+    let output = ''
+
     try {
 
+        // 📥 descargar
         const stream =
-            await import('@whiskeysockets/baileys')
-                .then(async mod =>
-                    mod.downloadContentFromMessage(
-                        media,
-                        'image'
-                    )
-                )
+            await downloadContentFromMessage(
+                imgMsg,
+                'image'
+            )
 
         let buffer = Buffer.alloc(0)
 
         for await (const chunk of stream) {
-            buffer = Buffer.concat([
-                buffer,
-                chunk
-            ])
+            buffer = Buffer.concat([buffer, chunk])
         }
 
-        const filename =
-            'img-' +
-            crypto.randomBytes(8).toString('hex') +
-            '.jpg'
+        const tmp = os.tmpdir()
 
-        const form =
-            new FormData()
-
-        form.append(
-            'file',
-            buffer,
-            {
-                filename,
-                contentType:'image/jpeg'
-            }
+        input = path.join(
+            tmp,
+            `hd_in_${Date.now()}.jpg`
         )
 
-        const upload =
-            await fetch(
-                `https://api.evogb.org/tools/upload?key=${key}`,
-                {
-                    method:'POST',
-                    body:form,
-                    headers:{
-                        ...form.getHeaders()
-                    }
+        output = path.join(
+            tmp,
+            `hd_out_${Date.now()}.jpg`
+        )
+
+        fs.writeFileSync(input, buffer)
+
+        // 🎨 mejorar imagen
+        await new Promise((resolve, reject) => {
+
+            const ffmpeg = spawn(
+                'ffmpeg',
+                [
+                    '-i', input,
+                    '-vf',
+                    'eq=brightness=0.04:contrast=1.18:saturation=1.12,unsharp=5:5:1.3',
+                    '-q:v', '2',
+                    output
+                ]
+            )
+
+            ffmpeg.on(
+                'error',
+                reject
+            )
+
+            ffmpeg.on(
+                'close',
+                code => {
+                    if (code === 0)
+                        resolve()
+                    else
+                        reject(
+                            new Error('FFmpeg error')
+                        )
                 }
             )
+        })
 
-        const uploadJson =
-            await upload.json()
-
-        if (
-            !uploadJson.status ||
-            !uploadJson.url
-        ) {
-            throw new Error(
-                'upload fail'
-            )
-        }
-
-        const res =
-            await fetch(
-                `https://api.evogb.org/tools/upscale?method=url&url=${encodeURIComponent(uploadJson.url)}&key=${key}`
-            )
-
-        const contentType =
-            res.headers.get('content-type')
-
-        if (
-            contentType &&
-            contentType.includes(
-                'application/json'
-            )
-        ) {
-            throw new Error(
-                'api fail'
-            )
-        }
-
-        const img =
-            await res.buffer()
-
+        // 📤 enviar
         await sock.sendMessage(from,{
-            image: img,
+            image:
+                fs.readFileSync(output),
             caption:
-`╭━━━〔 🖼️ HD IMAGE 〕━━━⬣
-┃
-┃ ✅ Imagen mejorada
-┃ ⚡ Upscale completado
-╰━━━━━━━━━━━━━━━━⬣`
+`✨ Imagen mejorada en HD
+
+> SPIDER BOT`
         },{ quoted:m })
 
         await sock.sendMessage(from,{
@@ -176,22 +155,27 @@ Ejemplo:
         )
 
         await sock.sendMessage(from,{
-            react:{
-                text:'❌',
-                key:m.key
-            }
-        })
-
-        await sock.sendMessage(from,{
             text:
-'❌ Error mejorando imagen.'
+'❌ No pude mejorar la imagen'
         },{ quoted:m })
+
+    } finally {
+
+        try {
+            if (input)
+                fs.unlinkSync(input)
+        } catch {}
+
+        try {
+            if (output)
+                fs.unlinkSync(output)
+        } catch {}
     }
 }
 
 handler.command = ['hd']
 handler.tags = ['tools']
-handler.group = true
 handler.menu = true
+handler.group = true
 
 export default handler
