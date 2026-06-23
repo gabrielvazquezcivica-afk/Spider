@@ -90,6 +90,7 @@ const handler = async ({ sock,m,from,sender,args,participants }) => {
 }
 
 handler.command = ['lujo']
+handler.tags = ['rpg']
 handler.group = true
 handler.menu = true
 export default handler
