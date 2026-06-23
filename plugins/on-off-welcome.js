@@ -192,13 +192,13 @@ export async function before({
 
                 let text =
 welcomeDB[id] ||
-`╭━━━〔 🕷️ SPIDER SYSTEM 〕━━━⬣
+`╭━━━〔 𝐁𝐈𝐄𝐍𝐕𝐄𝐍𝐈𝐃𝐎 〕━━━⬣
 ┃
-┃ 🕸️ Nuevo usuario detectado
+┃ 🕸️ 𝐍𝐔𝐄𝐕𝐎 𝐌𝐈𝐄𝐌𝐁𝐑𝐎
 ┃ 👤 @user
-┃ 👥 Miembros: @members
+┃ 👥 𝐌𝐈𝐄𝐌𝐁𝐑𝐎𝐒: @members
 ┃
-┃ ⚡ Bienvenido a @group
+┃ ⚡ 𝐁𝐈𝐄𝐍𝐕𝐄𝐍𝐈𝐃𝐎 𝐀 @group
 ╰━━━━━━━━━━━━━━━━⬣`
 
                 text = text
@@ -239,13 +239,13 @@ welcomeDB[id] ||
 
                 let text =
 byeDB[id] ||
-`╭━━━〔 🕷️ SPIDER SYSTEM 〕━━━⬣
+`╭━━━〔 𝐇𝐀𝐒𝐓𝐀 𝐏𝐑𝐎𝐍𝐓𝐎 〕━━━⬣
 ┃
-┃ ☠️ Usuario desconectado
+┃ ☠️ 𝐇𝐀𝐒𝐓𝐀 𝐋𝐔𝐄𝐆𝐎
 ┃ 👤 @user
-┃ 👥 Miembros: @members
+┃ 👥 𝐌𝐈𝐄𝐌𝐁𝐑𝐎𝐒: @members
 ┃
-┃ 🕷️ Salió de @group
+┃ 🕷️ 𝐒𝐀𝐋𝐈𝐎 𝐃𝐄 @group
 ╰━━━━━━━━━━━━━━━━⬣`
 
                 text = text
