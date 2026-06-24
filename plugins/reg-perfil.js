@@ -3,84 +3,109 @@ import fs from 'fs'
 const pathDB = './data/registros.json'
 
 function getDB() {
-try {
-if (!fs.existsSync(pathDB)) {
-fs.writeFileSync(pathDB, JSON.stringify({}))
-return {}
-}
+    try {
+        if (!fs.existsSync(pathDB)) {
+            fs.writeFileSync(pathDB, JSON.stringify({}))
+            return {}
+        }
 
-    return JSON.parse(
-        fs.readFileSync(pathDB, 'utf8')
-    )
-} catch {
-    return {}
-}
-
+        return JSON.parse(
+            fs.readFileSync(pathDB, 'utf8')
+        )
+    } catch {
+        return {}
+    }
 }
 
 const handler = async ({
-sock,
-m,
-from,
-sender,
-participants
+    sock,
+    m,
+    from,
+    sender,
+    participants
 }) => {
 
-let target = sender
+    // MODODADMIN
+    let isBlockedGroup = false
 
-const quoted =
-    m.message?.extendedTextMessage
-    ?.contextInfo
+    try {
+        const adminDB = JSON.parse(
+            fs.readFileSync(
+                './data/modoadmin.json',
+                'utf8'
+            )
+        )
 
-if (quoted?.participant) {
-    target = quoted.participant
-}
+        isBlockedGroup = adminDB[from]
+    } catch {}
 
-const mentioned =
-    quoted?.mentionedJid
+    const adminUser =
+        participants?.find(
+            p => p.id === sender
+        )
 
-if (
-    mentioned &&
-    mentioned.length
-) {
-    target = mentioned[0]
-}
+    const isSenderAdmin =
+        adminUser?.admin === 'admin' ||
+        adminUser?.admin === 'superadmin'
 
-const db = getDB()
-const id = target.split('@')[0]
+    if (
+        isBlockedGroup &&
+        !isSenderAdmin
+    ) return
 
-if (!db[id]) {
-    return sock.sendMessage(
-        from,
-        {
-            text:
+    let target = sender
 
+    const quoted =
+        m.message?.extendedTextMessage
+        ?.contextInfo
+
+    if (quoted?.participant) {
+        target = quoted.participant
+    }
+
+    const mentioned =
+        quoted?.mentionedJid
+
+    if (
+        mentioned &&
+        mentioned.length
+    ) {
+        target = mentioned[0]
+    }
+
+    const db = getDB()
+    const id = target.split('@')[0]
+
+    if (!db[id]) {
+        return sock.sendMessage(
+            from,
+            {
+                text:
 '⚠️ Ese usuario no está registrado.'
-},
-{
-quoted: m
-}
-)
-}
+            },
+            {
+                quoted: m
+            }
+        )
+    }
 
-const data = db[id]
+    const data = db[id]
 
-const participant =
-    participants?.find(
-        p => p.id === target
-    )
+    const participant =
+        participants?.find(
+            p => p.id === target
+        )
 
-const isAdmin =
-    participant?.admin === 'admin' ||
-    participant?.admin === 'superadmin'
+    const isAdmin =
+        participant?.admin === 'admin' ||
+        participant?.admin === 'superadmin'
 
-const rango =
-    isAdmin
-    ? 'Admin 👑'
-    : 'Miembro 👤'
+    const rango =
+        isAdmin
+        ? 'Admin 👑'
+        : 'Miembro 👤'
 
-const caption =
-
+    const caption =
 `╭━━━〔 👤 PERFIL 〕━━━⬣
 ┃
 ┃ 🆔 ID:
@@ -106,40 +131,39 @@ const caption =
 ┃
 ╰━━━━━━━━━━━━━━━━⬣`
 
-try {
+    try {
 
-    const pfp =
-        await sock.profilePictureUrl(
-            target,
-            'image'
+        const pfp =
+            await sock.profilePictureUrl(
+                target,
+                'image'
+            )
+
+        await sock.sendMessage(
+            from,
+            {
+                image: {
+                    url: pfp
+                },
+                caption
+            },
+            {
+                quoted: m
+            }
         )
 
-    await sock.sendMessage(
-        from,
-        {
-            image: {
-                url: pfp
+    } catch {
+
+        await sock.sendMessage(
+            from,
+            {
+                text: caption
             },
-            caption
-        },
-        {
-            quoted: m
-        }
-    )
-
-} catch {
-
-    await sock.sendMessage(
-        from,
-        {
-            text: caption
-        },
-        {
-            quoted: m
-        }
-    )
-}
-
+            {
+                quoted: m
+            }
+        )
+    }
 }
 
 handler.command = ['perfil']
