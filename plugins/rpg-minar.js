@@ -4,121 +4,145 @@ const pathDB = './data/registros.json'
 const COOLDOWN = 30 * 60 * 1000
 
 function getDB() {
-try {
-if (!fs.existsSync(pathDB)) {
-fs.writeFileSync(pathDB, JSON.stringify({}))
-return {}
-}
+    try {
+        if (!fs.existsSync(pathDB)) {
+            fs.writeFileSync(pathDB, JSON.stringify({}))
+            return {}
+        }
 
-    return JSON.parse(
-        fs.readFileSync(pathDB, 'utf8')
-    )
-} catch {
-    return {}
-}
-
+        return JSON.parse(
+            fs.readFileSync(pathDB, 'utf8')
+        )
+    } catch {
+        return {}
+    }
 }
 
 function saveDB(db) {
-fs.writeFileSync(
-pathDB,
-JSON.stringify(db, null, 2)
-)
+    fs.writeFileSync(
+        pathDB,
+        JSON.stringify(db, null, 2)
+    )
 }
 
 function formatTime(ms) {
-const min =
-Math.floor(ms / 60000)
+    const min =
+        Math.floor(ms / 60000)
 
-const sec =
-    Math.floor(
-        (ms % 60000) / 1000
-    )
+    const sec =
+        Math.floor(
+            (ms % 60000) / 1000
+        )
 
-return `${min}m ${sec}s`
-
+    return `${min}m ${sec}s`
 }
 
 const handler = async ({
-sock,
-m,
-from,
-sender
+    sock,
+    m,
+    from,
+    sender,
+    participants
 }) => {
 
-const db = getDB()
-const id = sender.split('@')[0]
+    // MODODADMIN
+    let isBlockedGroup = false
 
-if (!db[id]) {
-    return sock.sendMessage(
-        from,
-        {
-            text:
+    try {
+        const adminDB = JSON.parse(
+            fs.readFileSync(
+                './data/modoadmin.json',
+                'utf8'
+            )
+        )
 
+        isBlockedGroup = adminDB[from]
+    } catch {}
+
+    const adminUser =
+        participants?.find(
+            p => p.id === sender
+        )
+
+    const isAdmin =
+        adminUser?.admin === 'admin' ||
+        adminUser?.admin === 'superadmin'
+
+    if (
+        isBlockedGroup &&
+        !isAdmin
+    ) return
+
+    const db = getDB()
+    const id = sender.split('@')[0]
+
+    if (!db[id]) {
+        return sock.sendMessage(
+            from,
+            {
+                text:
 '⚠️ Debes registrarte primero con .reg'
-},
-{
-quoted: m
-}
-)
-}
+            },
+            {
+                quoted: m
+            }
+        )
+    }
 
-const user = db[id]
+    const user = db[id]
 
-if (!user.lastMine) {
-    user.lastMine = 0
-}
+    if (!user.lastMine) {
+        user.lastMine = 0
+    }
 
-const now = Date.now()
-const diff =
-    now - user.lastMine
+    const now = Date.now()
+    const diff =
+        now - user.lastMine
 
-if (diff < COOLDOWN) {
+    if (diff < COOLDOWN) {
 
-    const remain =
-        COOLDOWN - diff
+        const remain =
+            COOLDOWN - diff
 
-    return sock.sendMessage(
-        from,
-        {
-            text:
-
+        return sock.sendMessage(
+            from,
+            {
+                text:
 `⏳ Ya minaste recientemente.
 
 Vuelve en:
 ${formatTime(remain)}`
-},
-{
-quoted: m
-}
-)
-}
-
-await sock.sendMessage(
-    from,
-    {
-        react:{
-            text:'⛏️',
-            key:m.key
-        }
+            },
+            {
+                quoted: m
+            }
+        )
     }
-)
 
-const reward =
-    Math.floor(
-        Math.random() * 500
-    ) + 100
+    await sock.sendMessage(
+        from,
+        {
+            react:{
+                text:'⛏️',
+                key:m.key
+            }
+        }
+    )
 
-user.dinero += reward
-user.lastMine = now
+    const reward =
+        Math.floor(
+            Math.random() * 500
+        ) + 100
 
-saveDB(db)
+    user.dinero += reward
+    user.lastMine = now
 
-await sock.sendMessage(
-    from,
-    {
-        text:
+    saveDB(db)
 
+    await sock.sendMessage(
+        from,
+        {
+            text:
 `╭━━━〔 ⛏️ MINA 〕━━━⬣
 ┃
 ┃ 💎 Has minado:
@@ -128,22 +152,21 @@ await sock.sendMessage(
 ┃ $${user.dinero}
 ┃
 ╰━━━━━━━━━━━━━━━━⬣`
-},
-{
-quoted: m
-}
-)
-
-await sock.sendMessage(
-    from,
-    {
-        react:{
-            text:'✅',
-            key:m.key
+        },
+        {
+            quoted: m
         }
-    }
-)
+    )
 
+    await sock.sendMessage(
+        from,
+        {
+            react:{
+                text:'✅',
+                key:m.key
+            }
+        }
+    )
 }
 
 handler.command = ['minar']
