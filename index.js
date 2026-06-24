@@ -6,6 +6,7 @@ import { connect } from './lib/connection.js'
 import config from './config.js'
 import { verificarMuteados } from './lib/muteWatcher.js'
 import { verificarAntilink } from './lib/antilink.js'
+import { verificarAntibot } from './lib/antibot.js'
 
 // 📁 rutas
 const __filename = fileURLToPath(import.meta.url)
@@ -397,6 +398,19 @@ try {
 
             if (eliminado)
                 return
+
+// antibot 🤖 
+const botDetectado =
+    await verificarAntibot({
+        sock,
+        m,
+        from,
+        isGroup
+    })
+
+if (botDetectado)
+    return
+
 
             // 📄 texto
             const msg =
