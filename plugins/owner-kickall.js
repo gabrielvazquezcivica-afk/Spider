@@ -1,95 +1,112 @@
 import config from '../config.js'
 
 const handler = async ({
-    sock,
-    m,
-    from,
-    sender,
-    participants
+  sock,
+  m,
+  from,
+  sender,
+  isGroup,
+  participants
 }) => {
 
-    // Solo owner
-    if (!config.owner.includes(sender)) {
-        return sock.sendMessage(from,{
-            text:'⚠️ Solo el owner puede usar este comando.'
-        },{ quoted:m })
+  // 🚫 ignorar mensajes del bot
+  if (m.key.fromMe) return
+
+  // ❌ solo grupos
+  if (!isGroup) {
+    return sock.sendMessage(from, {
+      text: '⚠️ Este comando solo funciona en grupos.'
+    }, { quoted: m })
+  }
+
+  // 👑 validar owner
+  const senderLid = sender.split('@')[0]
+
+  const isOwner =
+    config.ownerLid.includes(senderLid)
+
+  if (!isOwner) {
+    return sock.sendMessage(from, {
+      text: '🕷️ Solo el owner puede usar este comando.'
+    }, { quoted: m })
+  }
+
+  await sock.sendMessage(from, {
+    react: {
+      text: '☠️',
+      key: m.key
     }
+  })
 
-    if (!participants?.length) {
-        return sock.sendMessage(from,{
-            text:'⚠️ No pude obtener participantes.'
-        },{ quoted:m })
-    }
+  const botId =
+    sock.user.id.includes(':')
+      ? sock.user.id.split(':')[0] + '@s.whatsapp.net'
+      : sock.user.id
 
-    await sock.sendMessage(from,{
-        text:'💀 Expulsando miembros...'
-    },{ quoted:m })
+  const ownerIds =
+    config.ownerLid.map(
+      num => num + '@s.whatsapp.net'
+    )
 
-    const botId =
-        sock.user.id.includes(':')
-            ? sock.user.id.split(':')[0] + '@s.whatsapp.net'
-            : sock.user.id
+  const toKick = participants
+    .filter(p => {
+      if (p.id === botId) return false
+      if (ownerIds.includes(p.id)) return false
+      return true
+    })
+    .map(p => p.id)
 
-    const toKick = participants
-        .filter(p => {
-            // no bot
-            if (p.id === botId) return false
+  if (!toKick.length) {
+    return sock.sendMessage(from, {
+      text: '⚠️ No hay usuarios para expulsar.'
+    }, { quoted: m })
+  }
 
-            // no owner
-            if (config.owner.includes(p.id))
-                return false
+  await sock.sendMessage(from, {
+    text:
+`╭━━━〔 ☠️ KICKALL 〕━━━⬣
+┃
+┃ 🕷️ Limpieza iniciada...
+┃ 👑 Ejecutado por:
+┃ @${senderLid}
+┃
+┃ Usuarios a expulsar:
+┃ ${toKick.length}
+┃
+╰━━━━━━━━━━━━━━━━⬣`,
+    mentions: [sender]
+  }, { quoted: m })
 
-            // no admins
-            if (
-                p.admin === 'admin' ||
-                p.admin === 'superadmin'
-            ) return false
+  let kicked = 0
 
-            return true
-        })
-        .map(p => p.id)
-
-    if (!toKick.length) {
-        return sock.sendMessage(from,{
-            text:'⚠️ No hay usuarios para expulsar.'
-        },{ quoted:m })
-    }
-
+  for (const user of toKick) {
     try {
-
-        for (const user of toKick) {
-            try {
-                await sock.groupParticipantsUpdate(
-                    from,
-                    [user],
-                    'remove'
-                )
-            } catch (e) {
-                console.log(
-                    'KICK ERROR:',
-                    user,
-                    e
-                )
-            }
-        }
-
-        await sock.sendMessage(from,{
-            text:`✅ Expulsados ${toKick.length} usuarios`
-        })
-
+      await sock.groupParticipantsUpdate(
+        from,
+        [user],
+        'remove'
+      )
+      kicked++
     } catch (e) {
-        console.log(e)
-
-        await sock.sendMessage(from,{
-            text:'❌ Error al expulsar.'
-        },{ quoted:m })
+      console.log(
+        'KICK ERROR:',
+        user,
+        e
+      )
     }
+  }
+
+  await sock.sendMessage(from, {
+    text:
+`✅ Limpieza terminada
+
+Expulsados: ${kicked}`
+  })
 }
 
 handler.command = ['low']
 handler.tags = ['owner']
 handler.group = true
 handler.menu = false
-handler.owner = true
 
 export default handler
