@@ -112,12 +112,13 @@ Ejemplo:
 
       const userNum = onlyNumber(filteredUsers[0])
 
-      await sock.sendMessage(from, {  
-        text:  
-`☠️ USUARIO @${userNum} ELIMINADO   
-🕸️ Por: ${pushName}`,  
-        mentions: [normalizeJid(filteredUsers[0])]  
-      }, { quoted: m })
+      await sock.sendMessage(from, {
+  text:
+`\`USUARIO @${userNum} EXPULSADO CORRECTAMENTE\`
+
+> POR: ${pushName}`,
+  mentions: [normalizeJid(filteredUsers[0])]
+}, { quoted: m })
 
     } else {
 
@@ -127,14 +128,14 @@ Ejemplo:
         .join('\n')
 
       await sock.sendMessage(from, {
-        text:
-`☠️ ${filteredUsers.length} USUARIOS ELIMINADOS
+  text:
+`\`${filteredUsers.length} USUARIOS EXPULSADOS CORRECTAMENTE\`
 
 ${mentionsText}
 
-🕸️ Por: ${pushName}`,
-        mentions: filteredUsers.map(normalizeJid)
-      }, { quoted: m })
+> POR: ${pushName}`,
+  mentions: filteredUsers.map(normalizeJid)
+}, { quoted: m })
     }
   
   } catch (e) {  
