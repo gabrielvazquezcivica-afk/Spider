@@ -65,7 +65,7 @@ const handler = async ({ sock, m, from }) => {
 
   // Emojis aleatorios lista
   const listEmojis = [
-    '➥', '⚡', '🔥', '🌟',
+    '⚡', '🔥', '🌟',
     '🎯', '💫', '🕷️', '🚀'
   ]
 
@@ -89,7 +89,7 @@ const handler = async ({ sock, m, from }) => {
 
 𝐀𝐓𝐄𝐍𝐂𝐈𝐎𝐍
 
-${mentionText}
+➥ ${mentionText}
 
 > 𝐁𝐘 𝐒𝐎𝐘𝐆𝐀𝐁𝐎`
 
