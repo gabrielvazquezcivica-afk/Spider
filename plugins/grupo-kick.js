@@ -143,7 +143,7 @@ ${mentionsText}
     console.log('❌ Error kick:', e)  
   
     return sock.sendMessage(from, {  
-      text: '❌ No pude expulsar al usuario.'  
+      text: '❌ No tengo permiso para expulsar.'  
     }, { quoted: m })
   }  
 }  
