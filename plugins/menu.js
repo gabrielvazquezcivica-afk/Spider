@@ -1,7 +1,7 @@
 const handler = async (ctx) => {
 
   const { sock, from, pushName, m } = ctx
-  const plugins = global.plugins || []
+  const plugins = [...(global.plugins || [])]
 
   if (!Array.isArray(plugins) || !plugins.length) {
     return sock.sendMessage(from, {
