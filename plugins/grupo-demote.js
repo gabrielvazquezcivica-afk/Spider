@@ -38,7 +38,8 @@ const handler = async ({
         },{ quoted:m })
     }
 
-    const ctx = m.message?.extendedTextMessage?.contextInfo
+    const ctx =
+        m.message?.extendedTextMessage?.contextInfo
 
     const userRaw =
         ctx?.mentionedJid?.[0] ||
@@ -52,7 +53,6 @@ const handler = async ({
 
     const userNum = onlyNumber(userRaw)
 
-    // ✅ verificar si NO es admin
     const targetData = participants.find(p =>
         onlyNumber(p.id) === userNum
     )
@@ -68,7 +68,10 @@ const handler = async ({
     }
 
     await sock.sendMessage(from,{
-        react:{ text:'⬇️', key:m.key }
+        react:{
+            text:'🔻',
+            key:m.key
+        }
     })
 
     try {
@@ -81,18 +84,21 @@ const handler = async ({
 
         await sock.sendMessage(from,{
             text:
-`⬇️ @${userNum} ya no es administrador
+`\`USUARIO @${userNum} DEGRADADO CORRECTAMENTE\`
 
-> por ${pushName}`,
+> POR: ${pushName}`,
             mentions:[normalizeJid(userRaw)]
         },{ quoted:m })
 
     } catch (e) {
 
-        console.log('❌ Error demote:', e)
+        console.log(
+            '❌ Error demote:',
+            e
+        )
 
         return sock.sendMessage(from,{
-            text:'❌ No pude quitarle admin al usuario'
+            text:'❌ No pude quitarle admin al usuario, ocupo ser admin'
         },{ quoted:m })
     }
 }
