@@ -43,32 +43,55 @@ const handler = async ({ sock, m, from }) => {
   const total =
     participants.length
 
+  // Emojis aleatorios reacción
+  const reactEmojis = [
+    '🔥', '⚡', '🕸️', '💥',
+    '🌟', '🚀', '👀', '🎯'
+  ]
+
+  const react =
+    reactEmojis[
+      Math.floor(
+        Math.random() * reactEmojis.length
+      )
+    ]
+
   await sock.sendMessage(from, {
     react: {
-      text: '🕸️',
+      text: react,
       key: m.key
     }
   })
 
+  // Emojis aleatorios lista
+  const listEmojis = [
+    '➥', '⚡', '🔥', '🌟',
+    '🎯', '💫', '🕷️', '🚀'
+  ]
+
   const mentionText =
-  participants
-    .map(
-      p =>
-      `➥ @${p.id.split('@')[0]}`
-    )
-    .join('\n')
+    participants.map(p => {
+      const emoji =
+        listEmojis[
+          Math.floor(
+            Math.random() * listEmojis.length
+          )
+        ]
+
+      return `${emoji} @${p.id.split('@')[0]}`
+    }).join('\n')
 
   const text =
-`𝐋𝐈𝐕𝐄 𝐀 𝐇𝐀𝐏𝐏𝐘 𝐋𝐈𝐅𝐄 🌟 
+`𝐋𝐈𝐕𝐄 𝐀 𝐇𝐀𝐏𝐏𝐘 𝐋𝐈𝐅𝐄 🌟
 
 > 📡 ${groupName}
 > 👥 ${total} miembros
 
-╭━━━ 𝐀𝐓𝐄𝐍𝐂𝐈𝐎𝐍 ━━━⬣
-${mentionText}
-╰━━━━━━━━━━━━━━━━⬣
+𝐀𝐓𝐄𝐍𝐂𝐈𝐎𝐍
 
-> 𝐁𝐘 𝐒𝐎𝐘𝐆𝐀𝐁𝐎 `
+${mentionText}
+
+> 𝐁𝐘 𝐒𝐎𝐘𝐆𝐀𝐁𝐎`
 
   await sock.sendMessage(from, {
     text,
