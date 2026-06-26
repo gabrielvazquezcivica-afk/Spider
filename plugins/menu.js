@@ -1,3 +1,5 @@
+import fs from 'fs'
+
 const handler = async (ctx) => {
 
   const { sock, from, pushName, m } = ctx
@@ -9,9 +11,11 @@ const handler = async (ctx) => {
     }, { quoted: m })
   }
 
-  // ⚡ reacción
   await sock.sendMessage(from, {
-    react: { text: '📜', key: m.key }
+    react: {
+      text: '🔖',
+      key: m.key
+    }
   })
 
   const botName = '𝐒𝐩𝐢𝐝𝐞𝐫-𝐁𝐨𝐭'
@@ -31,23 +35,39 @@ const handler = async (ctx) => {
     rpg: '💰',
     stickers: '🖼️',
     search: '📁',
-    'on-off': '🔴🟢'
+    'on-off': '🔴'
+  }
+
+  const fancyTag = {
+    informacion: '𝐈𝐍𝐅𝐎𝐑𝐌𝐀𝐂𝐈𝐎𝐍',
+    grupo: '𝐆𝐑𝐔𝐏𝐎',
+    juegos: '𝐉𝐔𝐄𝐆𝐎𝐒',
+    descargas: '𝐃𝐄𝐒𝐂𝐀𝐑𝐆𝐀𝐒',
+    tools: '𝐓𝐎𝐎𝐋𝐒',
+    ff: '𝐅𝐑𝐄𝐄 𝐅𝐈𝐑𝐄',
+    reg: '𝐑𝐄𝐆𝐈𝐒𝐓𝐑𝐎',
+    owner: '𝐎𝐖𝐍𝐄𝐑',
+    ia: '𝐈𝐀',
+    rpg: '𝐑𝐏𝐆',
+    stickers: '𝐒𝐓𝐈𝐂𝐊𝐄𝐑𝐒',
+    search: '𝐒𝐄𝐀𝐑𝐂𝐇',
+    'on-off': '𝐎𝐍-𝐎𝐅𝐅'
   }
 
   const cmdEmojiByTag = {
-    informacion: '⚠️',
-    grupo: '🌟',
-    juegos: '🎯',
-    descargas: '⬇️',
-    tools: '🔧',
-    owner: '🔥',
-    ia: '🔍',
-    rpg: '💎',
-    ff: '🧧',
+    informacion: '🤹🏻',
+    grupo: '🪐',
+    juegos: '🪀',
+    descargas: '⏳',
+    tools: '📿',
+    owner: '🛡️',
+    ia: '❇️',
+    rpg: '⚔️',
+    ff: '🎽',
     reg: '📂',
-    stickers: '🖌️',
-    search: '📂',
-    'on-off': '🔛'
+    stickers: '🌠',
+    search: '📌',
+    'on-off': '🔮'
   }
 
   const tagOrder = [
@@ -71,7 +91,8 @@ const handler = async (ctx) => {
 
   for (const plugin of plugins) {
 
-    if (!plugin.menu || !plugin.command) continue
+    if (!plugin.menu || !plugin.command)
+      continue
 
     const cmds = Array.isArray(plugin.command)
       ? plugin.command
@@ -79,18 +100,20 @@ const handler = async (ctx) => {
 
     const tag = plugin.tags?.[0] || 'others'
 
-    if (!categories[tag]) categories[tag] = []
+    if (!categories[tag])
+      categories[tag] = []
 
     categories[tag].push(...cmds)
     total += cmds.length
   }
 
-  let menu = `╭━━━〔 🕷️ ${botName} 〕━━━⬣
-┃ 👋 ${saludo}
-┃ 👤 ${pushName}
-┃ ⚙️ Dev: ${dev}
-╰━━━━━━━━━━━━━━━━⬣
-📊 Comandos: ${total}\n`
+  let menu =
+`╭〔 🕷️ ${botName} 〕
+│ 👋 ${saludo}
+│ 👤 ${pushName}
+│ ⚙️ ${dev}
+│ 📊 ${total} comandos
+╰────────────`
 
   for (const tag of tagOrder) {
 
@@ -101,16 +124,16 @@ const handler = async (ctx) => {
 
     const cmds = [...new Set(categories[tag])].sort()
 
-    menu += `\n╭─ ${emojiTag} ${tag.toUpperCase()}\n`
+    menu += `\n\n┌ ${emojiTag} ${fancyTag[tag]}`
 
     for (const cmd of cmds) {
-      menu += `│ ${emojiCmd} .${cmd}\n`
+      menu += `\n├ ${emojiCmd} .${cmd}`
     }
 
-    menu += `╰────────────⬣`
+    menu += `\n└────────────`
   }
 
-  menu += `\n\n╰─➤ ${botName}`
+  menu += `\n\n> 𝐁𝐘 𝐒𝐎𝐘𝐆𝐀𝐁𝐎`
 
   await sock.sendMessage(from, {
     image: {
