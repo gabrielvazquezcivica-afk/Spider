@@ -78,7 +78,7 @@ const handler = async ({ sock, m, from }) => {
           )
         ]
 
-      return `${emoji} @${p.id.split('@')[0]}`
+      return `➥ ${emoji} @${p.id.split('@')[0]}`
     }).join('\n')
 
   const text =
@@ -89,7 +89,7 @@ const handler = async ({ sock, m, from }) => {
 
 𝐀𝐓𝐄𝐍𝐂𝐈𝐎𝐍
 
-➥ ${mentionText}
+${mentionText}
 
 > 𝐁𝐘 𝐒𝐎𝐘𝐆𝐀𝐁𝐎`
 
