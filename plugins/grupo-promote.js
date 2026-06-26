@@ -99,7 +99,7 @@ const handler = async ({
         )
 
         return sock.sendMessage(from,{
-            text:'❌ No pude promover al usuario'
+            text:'❌ No tengo permisos para promoverlo'
         },{ quoted:m })
     }
 }
