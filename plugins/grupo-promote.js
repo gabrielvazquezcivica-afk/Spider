@@ -38,7 +38,8 @@ const handler = async ({
         },{ quoted:m })
     }
 
-    const ctx = m.message?.extendedTextMessage?.contextInfo
+    const ctx =
+        m.message?.extendedTextMessage?.contextInfo
 
     const userRaw =
         ctx?.mentionedJid?.[0] ||
@@ -68,7 +69,10 @@ const handler = async ({
     }
 
     await sock.sendMessage(from,{
-        react:{ text:'👑', key:m.key }
+        react:{
+            text:'⚡',
+            key:m.key
+        }
     })
 
     try {
@@ -81,15 +85,18 @@ const handler = async ({
 
         await sock.sendMessage(from,{
             text:
-`👑 @${userNum} ahora es administrador
+`\`USUARIO @${userNum} PROMOVIDO CORRECTAMENTE\`
 
-> por ${pushName}`,
+> POR: ${pushName}`,
             mentions:[normalizeJid(userRaw)]
         },{ quoted:m })
 
     } catch (e) {
 
-        console.log('❌ Error promote:', e)
+        console.log(
+            '❌ Error promote:',
+            e
+        )
 
         return sock.sendMessage(from,{
             text:'❌ No pude promover al usuario'
